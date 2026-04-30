@@ -1,0 +1,22 @@
+{
+    "config": {
+        "db_host": "127.0.0.1",
+        "db_port": "3306",
+        "db_name": "demo",
+        "db_user": "root",
+        "db_pass": "",
+        "db_charset": "utf8mb4",
+        "dump_file": "complete_database_export.sql",
+        "skip_duplicates": true,
+        "truncate_before_import": true
+    },
+    "offset": 64025035,
+    "line": 112579,
+    "queries_executed": 109759,
+    "duplicate_rows_skipped": 1,
+    "tables_truncated": true,
+    "started_at": "2026-03-12T12:56:12+01:00",
+    "last_error": null,
+    "completed": true,
+    "completed_at": "2026-03-12T13:00:31+01:00"
+}

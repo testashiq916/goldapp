@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jewelry Sales - Bill Entry</title>
+    <link rel="stylesheet" href="css/sales.css">
+</head>
+<body>
+
+<!-- TOOLBAR (replaces PB window title bar + rate display) -->
+<div class="toolbar">
+    <h1>&#128142; Jewelry Sales Entry</h1>
+    <div class="rates" id="rates-display">
+        <span class="rate-item">Gold 22K: <span>0.00</span></span>
+        <span class="rate-item">Silver: <span>0.00</span></span>
+    </div>
+    <div>
+        <button class="btn btn-new" onclick="initNewSale()" title="Ctrl+N">&#9998; New</button>
+        <button class="btn btn-save" onclick="saveSale()" title="Ctrl+S">&#128190; Save</button>
+        <button class="btn btn-print" onclick="printBill()" title="Ctrl+P">&#128424; Print</button>
+        <button class="btn btn-primary" onclick="showSearchBillModal()" title="Ctrl+F">&#128269; Find</button>
+    </div>
+</div>
+
+<div class="main-container">
+
+    <!-- BILL HEADER (replaces PB header controls) -->
+    <div class="panel">
+        <div class="panel-header gold">
+            Bill Information
+            <span id="eb-badge" class="badge badge-est">ESTIMATE</span>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Bill/Estimate</label>
+                <select id="eb" class="w-100">
+                    <option value="E">Estimate</option>
+                    <option value="B">Bill</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Bill No</label>
+                <input id="billno" class="w-150" readonly>
+            </div>
+            <div class="form-group">
+                <label>Bill Date</label>
+                <input id="billdate" class="w-120" placeholder="DD/MM/YYYY">
+            </div>
+            <div class="form-group">
+                <label>Bill Type</label>
+                <select id="billtype" class="w-120"></select>
+            </div>
+            <div class="form-group">
+                <label>Salesman</label>
+                <select id="salesman" class="w-150"></select>
+            </div>
+            <div class="form-group">
+                <label>Counter</label>
+                <select id="counter" class="w-100"></select>
+            </div>
+            <div class="form-group">
+                <label>Scheme</label>
+                <select id="scheme" class="w-120"></select>
+            </div>
+            <div class="form-group">
+                <label>Stk Type</label>
+                <select id="stktype" class="w-100"></select>
+            </div>
+        </div>
+
+        <!-- Customer Section (replaces PB customer fields) -->
+        <div class="form-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:5px">
+            <div class="form-group">
+                <label>Cust Code</label>
+                <input id="custcode" class="w-100" placeholder="Code">
+            </div>
+            <div class="form-group" style="position:relative">
+                <label>Customer Name</label>
+                <input id="custname" class="w-250" placeholder="Search customer..." autocomplete="off">
+                <div id="cust-autocomplete" class="autocomplete-list" style="display:none"></div>
+            </div>
+            <div class="form-group">
+                <label>Address</label>
+                <input id="custaddr" class="w-200">
+            </div>
+            <div class="form-group">
+                <label>Phone</label>
+                <input id="custphone" class="w-120">
+            </div>
+            <div class="form-group">
+                <label>GSTIN</label>
+                <input id="custgstin" class="w-200">
+            </div>
+            <div class="form-group">
+                <label>State</label>
+                <select id="statecd" class="w-120"></select>
+            </div>
+            <div class="form-group">
+                <label>Old Balance</label>
+                <span id="oldbalance" style="font-weight:bold;color:var(--danger);font-size:14px;padding-top:5px">0.00</span>
+            </div>
+            <div class="form-group">
+                <label>Interstate GST</label>
+                <input type="checkbox" id="interstate">
+            </div>
+        </div>
+    </div>
+
+    <!-- BARCODE ENTRY (replaces PB barcode control) -->
+    <div class="panel">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Scan Barcode</label>
+                <input id="bcode" type="number" class="w-150" placeholder="Enter barcode..." autofocus>
+            </div>
+            <button class="btn btn-primary" onclick="scanBarcode()" style="margin-top:18px">Scan</button>
+            <button class="btn btn-outline" onclick="addBlankRow()" style="margin-top:18px" title="F2">+ Add Row</button>
+            <div style="flex-grow:1"></div>
+            <div class="form-group">
+                <label>Remark</label>
+                <input id="remark" class="w-250">
+            </div>
+        </div>
+    </div>
+
+    <!-- ITEMS GRID (replaces PB dw_2 DataWindow) -->
+    <div class="panel" style="padding:0;overflow-x:auto">
+        <table class="items-grid">
+            <thead>
+                <tr>
+                    <th style="width:35px">SN</th>
+                    <th style="width:140px">Item</th>
+                    <th style="width:70px">Barcode</th>
+                    <th style="width:45px">Qty</th>
+                    <th style="width:75px">Gross Wt</th>
+                    <th style="width:75px">Stone Wt</th>
+                    <th style="width:75px">Net Wt</th>
+                    <th style="width:60px">Wst%</th>
+                    <th style="width:80px">Rate</th>
+                    <th style="width:75px">MC</th>
+                    <th style="width:70px">St.Price</th>
+                    <th style="width:55px">Tax%</th>
+                    <th style="width:90px">Amount</th>
+                    <th style="width:35px"></th>
+                </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+            <tfoot id="items-foot">
+                <tr><td colspan="14" style="text-align:center;color:#999">No items - scan barcode or add row (F2)</td></tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- TOTALS, EXCHANGE, PAYMENT (replaces PB bottom section) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+        <!-- LEFT: Exchange + Return -->
+        <div>
+            <!-- Exchange Section -->
+            <div class="panel">
+                <div class="panel-header exchange">Exchange (Old Ornaments)</div>
+                <div class="form-row">
+                    <div class="form-group"><label>Gold Wt(g)</label><input id="exchgoldwt" type="number" step="0.001" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Touch%</label><input id="exchgoldtouch" type="number" step="0.01" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Rate/g</label><input id="exchgoldrate" type="number" step="0.01" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Amount</label><input id="exchgoldamt" type="number" class="w-100 readonly amount" readonly></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Silver Wt(g)</label><input id="exchsilverwt" type="number" step="0.001" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Touch%</label><input id="exchsilvertouch" type="number" step="0.01" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Rate/g</label><input id="exchsilverrate" type="number" step="0.01" class="w-80" value="0"></div>
+                    <div class="form-group"><label>Amount</label><input id="exchsilveramt" type="number" class="w-100 readonly amount" readonly></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Old Amt (Other)</label><input id="excholdamt" type="number" step="0.01" class="w-120" value="0" onchange="recalcTotals()"></div>
+                </div>
+            </div>
+
+            <!-- Return Section -->
+            <div class="panel">
+                <div class="panel-header return">Sales Return</div>
+                <div class="form-row">
+                    <div class="form-group"><label>Return Amount</label><input id="sreturnamt" type="number" step="0.01" class="w-150" value="0" onchange="recalcTotals()"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Totals + Payment -->
+        <div>
+            <!-- Totals Section -->
+            <div class="panel">
+                <div class="panel-header">Bill Totals</div>
+                <div class="form-row">
+                    <div class="form-group"><label>Sub Total</label><input id="totalamt" class="w-120 readonly amount" readonly></div>
+                    <div class="form-group"><label>Disc %</label><input id="discperc" type="number" step="0.01" class="w-60" value="0"></div>
+                    <div class="form-group"><label>Discount</label><input id="discount" type="number" step="0.01" class="w-100" value="0"></div>
+                    <div class="form-group"><label>Add/Less</label><input id="addless" type="number" step="0.01" class="w-100" value="0"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>SGST</label><input id="sgst_display" class="w-80 readonly" readonly></div>
+                    <div class="form-group"><label>CGST</label><input id="cgst_display" class="w-80 readonly" readonly></div>
+                    <div class="form-group"><label>IGST</label><input id="igst_display" class="w-80 readonly" readonly></div>
+                    <div class="form-group"><label>Cess</label><input id="cess_display" class="w-80 readonly" readonly></div>
+                    <div class="form-group"><label>TCS</label><input id="tcs_display" class="w-80 readonly" readonly></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Tax Amount</label><input id="taxamt" class="w-100 readonly" readonly></div>
+                    <div class="form-group"><label>Net Amount</label><input id="netamt" class="w-120 readonly amount" readonly></div>
+                    <div class="form-group"><label>Advance</label><input id="advance" type="number" step="0.01" class="w-100" value="0"></div>
+                    <div class="form-group"><label>Round Off</label><input id="roundoff" class="w-80 readonly" readonly></div>
+                </div>
+                <div class="form-row" style="background:var(--primary);margin:-12px;padding:10px 12px;border-radius:0 0 6px 6px">
+                    <div class="form-group"><label style="color:white">GRAND TOTAL</label><input id="grandtotal" class="w-150" readonly style="font-size:18px;font-weight:bold;color:var(--primary);background:white"></div>
+                </div>
+            </div>
+
+            <!-- Payment Section -->
+            <div class="panel">
+                <div class="panel-header payment">
+                    Payment
+                    <button class="btn btn-small" onclick="payFullCash()" style="background:rgba(255,255,255,0.3)">Full Cash</button>
+                </div>
+                <div class="payment-grid">
+                    <div class="form-group"><label>Cash</label><input id="cashamt" type="number" step="0.01" class="w-120" value="0" onchange="recalcTotals()"></div>
+                    <div class="form-group"><label>Bank</label><input id="bankamt" type="number" step="0.01" class="w-120" value="0" onchange="recalcTotals()"></div>
+                    <div class="form-group"><label>Card</label><input id="cardamt" type="number" step="0.01" class="w-120" value="0" onchange="recalcTotals()"></div>
+                    <div class="form-group"><label>Cheque</label><input id="chequeamt" type="number" step="0.01" class="w-120" value="0" onchange="recalcTotals()"></div>
+                </div>
+                <div class="form-row" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+                    <div><strong>Balance Due:</strong> <span id="balancedue" style="font-size:16px;font-weight:bold">0.00</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SEARCH BILL MODAL (replaces PB find bill dialog) -->
+<div class="modal-overlay" id="search-bill-modal">
+    <div class="modal" style="max-width:800px">
+        <div class="modal-header">
+            <span>Search Bills</span>
+            <button class="modal-close" onclick="closeModal('search-bill-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <input id="search-bill-input" class="w-300" placeholder="Bill no or customer name..." onkeyup="searchBills()" autofocus>
+            </div>
+            <div id="search-bill-results" class="search-results"></div>
+        </div>
+    </div>
+</div>
+
+<!-- STATUS BAR (replaces PB status bar) -->
+<div class="status-bar">
+    <span id="status-msg">Ready</span>
+    <span>
+        Mode: <strong id="status-mode">NEW</strong> |
+        <span id="status-time"></span> |
+        Ctrl+S: Save | Ctrl+N: New | Ctrl+P: Print | Ctrl+F: Find | F2: Add Row
+    </span>
+</div>
+
+<script src="js/sales.js"></script>
+</body>
+</html>

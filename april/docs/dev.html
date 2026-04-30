@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GoldApp — Developer Documentation</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; margin: 0; padding: 0; }
+  .page { max-width: 800px; margin: 40px auto; padding: 0 40px 60px; }
+  h1 { font-size: 24pt; color: #0f2942; border-bottom: 3px solid #0f2942; padding-bottom: 8px; margin-top: 44px; }
+  h2 { font-size: 15pt; color: #1e5799; margin-top: 30px; border-left: 5px solid #1e5799; padding-left: 10px; }
+  h3 { font-size: 12pt; color: #2a6398; margin-top: 20px; }
+  h4 { font-size: 11pt; color: #375b84; margin-top: 14px; font-style: italic; }
+  p  { line-height: 1.7; margin: 6px 0; }
+  ul, ol { line-height: 1.8; padding-left: 24px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10pt; }
+  th { background: #0f2942; color: #fff; padding: 7px 10px; text-align: left; }
+  td { padding: 6px 10px; border-bottom: 1px solid #dde6f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f4f8fd; }
+  .cover { text-align: center; padding: 80px 0 60px; border-bottom: 2px solid #0f2942; margin-bottom: 40px; }
+  .cover h1 { border: none; font-size: 30pt; }
+  .cover .sub { font-size: 13pt; color: #5b7088; margin-top: 8px; }
+  .cover .date { font-size: 10pt; color: #7a9ab8; margin-top: 30px; }
+  .note { background: #e8f4fd; border-left: 4px solid #2a6398; padding: 10px 14px; margin: 12px 0; border-radius: 4px; font-size: 10pt; }
+  .warn { background: #fff8e1; border-left: 4px solid #f59e0b; padding: 10px 14px; margin: 12px 0; border-radius: 4px; font-size: 10pt; }
+  .code { background: #1e293b; color: #e2e8f0; padding: 14px 18px; border-radius: 6px; font-family: Consolas, 'Courier New', monospace; font-size: 9.5pt; margin: 12px 0; white-space: pre; overflow-x: auto; line-height: 1.6; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: Consolas, monospace; font-size: 9.5pt; color: #0f2942; }
+  .toc a { color: #1e5799; text-decoration: none; }
+  .toc li { padding: 3px 0; }
+  hr { border: none; border-top: 1px solid #d7e4f0; margin: 30px 0; }
+  .kw { color: #93c5fd; } .str { color: #86efac; } .cm { color: #94a3b8; } .fn { color: #fde68a; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- COVER -->
+<div class="cover">
+  <h1>GoldApp</h1>
+  <div class="sub">Developer Documentation</div>
+  <div class="sub" style="font-size:11pt;margin-top:6px;">Architecture · Database Schema · API Reference · Patterns</div>
+  <div class="date">Version 1.0 &nbsp;|&nbsp; March 2026</div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<h2>Table of Contents</h2>
+<ol class="toc">
+  <li><a href="#stack">Tech Stack &amp; Environment</a></li>
+  <li><a href="#arch">Architecture Overview</a></li>
+  <li><a href="#auth">Authentication &amp; Session</a></li>
+  <li><a href="#patterns">Key Coding Patterns</a></li>
+  <li><a href="#schema">Database Schema</a></li>
+  <li><a href="#routes">Route Map</a></li>
+  <li><a href="#controllers">Controller Reference</a></li>
+  <li><a href="#views">View Structure</a></li>
+  <li><a href="#dashboard">Dashboard Module System</a></li>
+  <li><a href="#addmodule">How to Add a New Module</a></li>
+  <li><a href="#reports">Report Pattern</a></li>
+  <li><a href="#troubleshoot">Troubleshooting</a></li>
+</ol>
+
+<hr>
+
+<!-- 1. TECH STACK -->
+<h1 id="stack">1. Tech Stack &amp; Environment</h1>
+<table>
+  <tr><th>Component</th><th>Value</th></tr>
+  <tr><td>Framework</td><td>Laravel 12 (PHP 8.2)</td></tr>
+  <tr><td>Database</td><td>MySQL 5.7+ — DB name: <code>tester</code> (dev) / <code>demo</code> (prod)</td></tr>
+  <tr><td>Web Server</td><td>XAMPP (Apache) on Windows</td></tr>
+  <tr><td>Frontend</td><td>Vanilla JS + Blade templates (no Vue/React)</td></tr>
+  <tr><td>CSS</td><td>Inline styles per view (no Tailwind/Bootstrap)</td></tr>
+  <tr><td>Authentication</td><td>Custom session-based (no Laravel Sanctum/Passport)</td></tr>
+  <tr><td>Module System</td><td>iframe-based inside <code>dashboard.blade.php</code></td></tr>
+</table>
+
+<h3>Environment Files</h3>
+<div class="code"><span class="cm"># .env (key settings)</span>
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tester
+DB_USERNAME=root
+DB_PASSWORD=</div>
+
+<div class="warn"><strong>Config Cache Warning:</strong> After editing <code>.env</code>, always run:<br>
+<code>php artisan config:clear &amp;&amp; php artisan cache:clear</code><br>
+A stale <code>bootstrap/cache/config.php</code> will override <code>.env</code> settings.</div>
+
+<hr>
+
+<!-- 2. ARCHITECTURE -->
+<h1 id="arch">2. Architecture Overview</h1>
+
+<h3>Request Flow</h3>
+<div class="code">Browser → routes/web.php → Controller → DB (MySQL) → JSON response → JS renders HTML</div>
+
+<h3>Module System</h3>
+<p>The application uses a <strong>single-page iframe model</strong>:</p>
+<ul>
+  <li><code>resources/views/native/dashboard.blade.php</code> is the shell</li>
+  <li>Each module is a separate Blade view rendered inside an <code>&lt;iframe&gt;</code></li>
+  <li>The <code>moduleConfigMap</code> JS object maps module IDs to URLs</li>
+  <li>Modules communicate with the parent via <code>window.parent.postMessage()</code></li>
+</ul>
+
+<h3>Two-Layer API Pattern</h3>
+<p>Every module has two route types:</p>
+<ol>
+  <li><strong>Page route</strong> — <code>GET /module-name</code> → returns a Blade view</li>
+  <li><strong>API route</strong> — <code>GET /api/module-name/data</code> → returns JSON</li>
+</ol>
+<p>The Blade view contains a <code>&lt;script&gt;</code> block that calls the API via <code>fetch()</code> and renders the table in the browser.</p>
+
+<hr>
+
+<!-- 3. AUTHENTICATION -->
+<h1 id="auth">3. Authentication &amp; Session</h1>
+
+<h3>Login Check Pattern</h3>
+<p>Every controller method must begin with a session guard:</p>
+<div class="code"><span class="cm">// Page method:</span>
+<span class="kw">if</span> (!$request->session()->has(<span class="str">'user_code'</span>)) <span class="kw">return</span> redirect(<span class="str">'/login'</span>);
+
+<span class="cm">// API method:</span>
+<span class="kw">if</span> (!$request->session()->has(<span class="str">'user_code'</span>)) <span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">false</span>], 401);</div>
+
+<h3>Session Variables</h3>
+<table>
+  <tr><th>Key</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>user_code</code></td><td>string</td><td>Logged-in user code — present = authenticated</td></tr>
+  <tr><td><code>gilevel</code></td><td>int</td><td>Access level (1 = book entry, 2 = confirmed)</td></tr>
+  <tr><td><code>semi</code></td><td>int</td><td>Semi-control flag for bill posting level</td></tr>
+</table>
+
+<hr>
+
+<!-- 4. PATTERNS -->
+<h1 id="patterns">4. Key Coding Patterns</h1>
+
+<h2>4.1 API Response Format</h2>
+<p>Always return <strong>flat JSON</strong>. JS reads fields directly from the response object.</p>
+<div class="code"><span class="cm">// CORRECT</span>
+<span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">true</span>, <span class="str">'rows'</span> => $rows, <span class="str">'totals'</span> => $totals]);
+
+<span class="cm">// WRONG — do not nest data</span>
+<span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">true</span>, <span class="str">'data'</span> => [<span class="str">'rows'</span> => $rows]]);</div>
+
+<h2>4.2 Schema Guard Pattern</h2>
+<p>Always check table/column existence before querying — legacy tables may be missing optional columns:</p>
+<div class="code"><span class="cm">// Guard entire table</span>
+<span class="kw">if</span> (!Schema::hasTable(<span class="str">'repairm'</span>)) {
+    <span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">true</span>, <span class="str">'rows'</span> => []]);
+}
+
+<span class="cm">// Guard optional column</span>
+<span class="kw">if</span> (Schema::hasColumn(<span class="str">'repairm'</span>, <span class="str">'rbillno'</span>)) {
+    $q->addSelect(<span class="str">'m.rbillno'</span>);
+}</div>
+
+<h2>4.3 GROUP BY — ONLY_FULL_GROUP_BY Fix</h2>
+<p>MySQL strict mode requires all non-aggregated SELECT columns to appear in GROUP BY. Fix: group only by the key/code column, use <code>MAX()</code> for display name columns.</p>
+<div class="code"><span class="cm">// WRONG — causes SQL error 1055</span>
+->groupBy(<span class="str">'m.refcode'</span>, <span class="str">'c.name'</span>)
+
+<span class="cm">// CORRECT</span>
+->groupBy(<span class="str">'m.refcode'</span>)
+->selectRaw(<span class="str">'MAX(TRIM(COALESCE(c.name, m.refcode))) as refinername'</span>)
+->orderByRaw(<span class="str">'MAX(c.name)'</span>)</div>
+
+<h2>4.4 f() Filter Helper (safe insert)</h2>
+<p>Used in transaction controllers to only insert columns that actually exist in the table:</p>
+<div class="code"><span class="kw">private function</span> <span class="fn">f</span>(string $table, array $data): array {
+    <span class="kw">static</span> $cols = [];
+    <span class="kw">if</span> (!isset($cols[$table])) {
+        $cols[$table] = Schema::hasTable($table)
+            ? array_map(<span class="str">'strtolower'</span>, Schema::getColumnListing($table))
+            : [];
+    }
+    <span class="kw">return</span> array_filter($data,
+        fn($k) => in_array(strtolower($k), $cols[$table], <span class="kw">true</span>),
+        ARRAY_FILTER_USE_KEY
+    );
+}</div>
+
+<h2>4.5 Date Validation</h2>
+<div class="code"><span class="kw">private function</span> <span class="fn">date</span>(Request $request, string $key): string {
+    $v = (string) $request->query($key, date(<span class="str">'Y-m-d'</span>));
+    <span class="kw">return</span> preg_match(<span class="str">'/^\d{4}-\d{2}-\d{2}$/'</span>, $v) ? $v : date(<span class="str">'Y-m-d'</span>);
+}</div>
+
+<h2>4.6 Exit Button (module close)</h2>
+<p>All views must include this to allow the dashboard to close the iframe:</p>
+<div class="code">document.getElementById(<span class="str">'exitBtn'</span>).addEventListener(<span class="str">'click'</span>, () =>
+    window.parent.postMessage({<span class="str">type</span>: <span class="str">'goldapp:close-module-frame'</span>}, <span class="str">'*'</span>)
+);</div>
+
+<hr>
+
+<!-- 5. DATABASE SCHEMA -->
+<h1 id="schema">5. Database Schema</h1>
+<p>GoldApp uses <strong>legacy tables</strong> from the original PowerBuilder desktop application. No migrations exist for these tables — they were imported directly.</p>
+
+<h2>Master / Settings Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>clients</code></td><td>All parties (customers, suppliers, smiths, refiners)</td><td>code, name, ctype, addr1, addr2, balance</td></tr>
+  <tr><td><code>items</code></td><td>Jewellery item master with stock</td><td>code, name, itype, weight, qty, stonewgt, cost</td></tr>
+  <tr><td><code>itemsstk</code></td><td>Stock type-wise item breakdown</td><td>code, stktype, weight, qty</td></tr>
+  <tr><td><code>itemsothers</code></td><td>Other (non-precious) item master</td><td>code, name, stock, srate, prate, cost, grp</td></tr>
+  <tr><td><code>sman</code></td><td>Salesmen / staff</td><td>code, name, cat, comn, accode</td></tr>
+  <tr><td><code>counter</code></td><td>Billing counters</td><td>code, name, startbillno</td></tr>
+  <tr><td><code>incharge</code></td><td>In-charge persons</td><td>code, name</td></tr>
+  <tr><td><code>salestype</code></td><td>Bill types / categories</td><td>code, name, prefix, startno, taxperc</td></tr>
+  <tr><td><code>generali</code></td><td>Integer settings</td><td>code, cvalue — e.g. SERIALNO, REPAIRB, RM4B</td></tr>
+  <tr><td><code>generals</code></td><td>String settings</td><td>code, cvalue — e.g. PBPREF, SBPREF</td></tr>
+  <tr><td><code>generald</code></td><td>Decimal settings</td><td>code, cvalue — e.g. GRATE, SRATE, PGRATE</td></tr>
+</table>
+
+<h2>Sales Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>salesm</code></td><td>Sales bill master</td><td>slno, billno, tdate, custcode, custname, billamt, netamt, ramt, status, control</td></tr>
+  <tr><td><code>salesd</code></td><td>Sales bill details (items)</td><td>slno, sno, code, name, qty, weight, stonewgt, mcharge, rate, amount</td></tr>
+  <tr><td><code>salesrm</code></td><td>Sales return master</td><td>slno, billno, tdate, custname, billamt, pamt</td></tr>
+  <tr><td><code>salesrd</code></td><td>Sales return details</td><td>slno, sno, code, name, qty, weight</td></tr>
+</table>
+
+<h2>Purchase Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>purchasem</code></td><td>Purchase bill master</td><td>slno, billno, tdate, name, billamt, nettot, paidamt, balance</td></tr>
+  <tr><td><code>purchased</code></td><td>Purchase bill details</td><td>slno, sno, code, name, qty, weight, touch, rate, netwgt</td></tr>
+  <tr><td><code>purchaserm</code></td><td>Purchase return master</td><td>slno, billno, tdate</td></tr>
+  <tr><td><code>purchaserd</code></td><td>Purchase return details</td><td>slno, sno, code, weight</td></tr>
+</table>
+
+<h2>Remake / Repair Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>repairm</code></td><td>Remake transaction master</td><td>slno, billno, tdate, duedate, custcode, custname, givrec ('R'=from customer, 'G'=to customer), rbillno, amount, rcvd, sman</td></tr>
+  <tr><td><code>repaird</code></td><td>Remake transaction details</td><td>slno, sno, code, name, qty, weight, stonewgt, netwgt, complaint, purity, mcharge, wastage, amount, givrec</td></tr>
+</table>
+
+<h2>Goldsmith / Deposit Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>smithm</code></td><td>Goldsmith transaction master</td><td>slno, docno, tdate, smithcode, control, doctype ('N'=Normal, 'F'=Fixing, 'U'=Unfixing)</td></tr>
+  <tr><td><code>smithd</code></td><td>Goldsmith transaction details</td><td>slno, sno, code, name, weight, stonewgt, netwgt, touch, mcharge, givrec ('G'=Given/Issued, 'R'=Received)</td></tr>
+</table>
+
+<h2>Refinery Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>refinerym</code></td><td>Refinery transaction master</td><td>slno, refno, tdate, refcode, status (1=Forward, 2=Return), charge, paidamt</td></tr>
+  <tr><td><code>refineryd</code></td><td>Refinery transaction details</td><td>slno, sno, code, name, weight, stonewgt, touch, lessperc, lesswgt, netwgt</td></tr>
+</table>
+
+<h2>Partners Weight Deposit Table</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>wgtrcptpmnt</code></td><td>Weight receipt &amp; payment</td><td>slno, tdate, pcode, pname, ttype ('R'=Receipt/Deposit, 'P'=Payment/Withdraw), grosswgt, netwgt, interest</td></tr>
+</table>
+
+<h2>Other Item Transaction Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>oitemtranm</code></td><td>Other item transaction master</td><td>slno, docno, tdate, pcode, pname, billamt, ramt, sp ('S'=Sale, 'P'=Purchase), lessamt, addamt</td></tr>
+  <tr><td><code>oitemtrand</code></td><td>Other item transaction details</td><td>slno, sno, code, name, qty, rate, amount, cost</td></tr>
+</table>
+
+<h2>Accounting Tables</h2>
+<table>
+  <tr><th>Table</th><th>Description</th><th>Key Columns</th></tr>
+  <tr><td><code>daybook</code></td><td>All financial transactions (journal)</td><td>slno, tdate, ttype, billno, accode, acname, amount, control</td></tr>
+  <tr><td><code>daybookpart</code></td><td>Daybook line items / breakdown</td><td>slno, sno, accode, acname, amount, ttype</td></tr>
+</table>
+
+<h2>clients.ctype Reference</h2>
+<table>
+  <tr><th>ctype value</th><th>Meaning</th></tr>
+  <tr><td><code>C</code></td><td>Customer (Party Weight Deposit depositor)</td></tr>
+  <tr><td><code>S</code></td><td>Supplier</td></tr>
+  <tr><td><code>R</code></td><td>Refiner</td></tr>
+  <tr><td><code>G</code></td><td>Goldsmith</td></tr>
+</table>
+
+<hr>
+
+<!-- 6. ROUTE MAP -->
+<h1 id="routes">6. Route Map</h1>
+<p>All routes are defined in <code>routes/web.php</code>.</p>
+
+<h2>Transaction Routes</h2>
+<table>
+  <tr><th>URL</th><th>Controller</th><th>Purpose</th></tr>
+  <tr><td>GET /sales-bill/{mode?}</td><td>SalesBillController</td><td>Sales bill entry page</td></tr>
+  <tr><td>POST /api/sales-bill/save</td><td>SalesBillController</td><td>Save sales bill</td></tr>
+  <tr><td>GET /purchase-bill/{mode?}</td><td>PurchaseBillController</td><td>Purchase bill entry page</td></tr>
+  <tr><td>POST /api/purchase-bill/save</td><td>PurchaseBillController</td><td>Save purchase bill</td></tr>
+  <tr><td>GET /sales-return/{mode?}</td><td>SalesReturnController</td><td>Sales return page</td></tr>
+  <tr><td>GET /remake-rcpt-memo-to-party/{mode?}</td><td>RepairReceiptMemoPartyController</td><td>Remake receipt memo</td></tr>
+  <tr><td>GET /repair-return/{mode?}</td><td>RepairReturnController</td><td>Remake return to party</td></tr>
+  <tr><td>GET /other-item-trans</td><td>OtherItemTransController</td><td>Other item transactions</td></tr>
+</table>
+
+<h2>Report Routes</h2>
+<table>
+  <tr><th>URL Prefix</th><th>Controller</th><th>Reports</th></tr>
+  <tr><td>/refinery-reports/*</td><td>RefineryReportController</td><td>entry-report, refiners-summary, analysis, ac-summary, less-comparison</td></tr>
+  <tr><td>/deposit-reports/*</td><td>DepositReportController</td><td>transactions, depositer-ledger, wgt-amt-summary, deposit-book, wgt-balance-summary</td></tr>
+  <tr><td>/remake-reports/*</td><td>RemakeReportController</td><td>remake-reports, remake-pending, remake-returns</td></tr>
+  <tr><td>/other-item-reports/*</td><td>OtherItemReportController</td><td>sales-book, sales-register, purchase-book, purchase-register, stock-ledger, stock-list</td></tr>
+  <tr><td>/sales-book-report</td><td>SalesBookReportController</td><td>Sales book, tax book, return book</td></tr>
+  <tr><td>/sales-register</td><td>SalesRegisterController</td><td>Sales register</td></tr>
+  <tr><td>/daybook</td><td>DayBookController</td><td>Day book</td></tr>
+  <tr><td>/stock/*</td><td>StockPeriodLedgerController</td><td>Period ledger, sub-group, item history</td></tr>
+</table>
+
+<hr>
+
+<!-- 7. CONTROLLER REFERENCE -->
+<h1 id="controllers">7. Controller Reference</h1>
+<table>
+  <tr><th>Controller</th><th>File</th><th>Tables</th></tr>
+  <tr><td>SalesBillController</td><td>app/Http/Controllers/SalesBillController.php</td><td>salesm, salesd, items, clients, daybook</td></tr>
+  <tr><td>PurchaseBillController</td><td>app/Http/Controllers/PurchaseBillController.php</td><td>purchasem, purchased, items, clients</td></tr>
+  <tr><td>SalesReturnController</td><td>app/Http/Controllers/SalesReturnController.php</td><td>salesrm, salesrd, salesm, items</td></tr>
+  <tr><td>RepairReceiptMemoPartyController</td><td>app/Http/Controllers/RepairReceiptMemoPartyController.php</td><td>repairm (givrec='R'), repaird, items, clients</td></tr>
+  <tr><td>RepairReturnController</td><td>app/Http/Controllers/RepairReturnController.php</td><td>repairm (givrec='G'), repaird, clients, daybook</td></tr>
+  <tr><td>GoldsmithTransactionController</td><td>app/Http/Controllers/GoldsmithTransactionController.php</td><td>smithm, smithd, clients, items</td></tr>
+  <tr><td>OtherItemTransController</td><td>app/Http/Controllers/OtherItemTransController.php</td><td>oitemtranm, oitemtrand, itemsothers, daybook</td></tr>
+  <tr><td>RefineryReportController</td><td>app/Http/Controllers/RefineryReportController.php</td><td>refinerym, refineryd, clients</td></tr>
+  <tr><td>DepositReportController</td><td>app/Http/Controllers/DepositReportController.php</td><td>smithm, smithd, wgtrcptpmnt, clients</td></tr>
+  <tr><td>RemakeReportController</td><td>app/Http/Controllers/RemakeReportController.php</td><td>repairm, repaird, smithm, smithd</td></tr>
+  <tr><td>OtherItemReportController</td><td>app/Http/Controllers/OtherItemReportController.php</td><td>oitemtranm, oitemtrand, itemsothers</td></tr>
+  <tr><td>SalesBookReportController</td><td>app/Http/Controllers/SalesBookReportController.php</td><td>salesm, salesd, salesrm, salesrd</td></tr>
+  <tr><td>DayBookController</td><td>app/Http/Controllers/DayBookController.php</td><td>daybook, daybookpart</td></tr>
+  <tr><td>StockPeriodLedgerController</td><td>app/Http/Controllers/StockPeriodLedgerController.php</td><td>items, salesm, salesd, purchasem, purchased</td></tr>
+</table>
+
+<hr>
+
+<!-- 8. VIEW STRUCTURE -->
+<h1 id="views">8. View Structure</h1>
+<div class="code">resources/views/
+├── native/
+│   └── dashboard.blade.php        ← Main shell with moduleConfigMap
+├── sales-bill/
+│   └── index.blade.php
+├── purchase-bill/
+│   └── index.blade.php
+├── sales-return/
+│   └── index.blade.php
+├── repair-receipt-memo-party/
+│   └── index.blade.php
+├── repair-return/
+│   └── index.blade.php
+├── refinery-reports/
+│   ├── entry-report.blade.php
+│   ├── refiners-summary.blade.php
+│   ├── analysis.blade.php
+│   ├── ac-summary.blade.php
+│   └── less-comparison.blade.php
+├── deposit-reports/
+│   ├── transactions.blade.php
+│   ├── depositer-ledger.blade.php
+│   ├── wgt-amt-summary.blade.php
+│   ├── deposit-book.blade.php
+│   └── wgt-balance-summary.blade.php
+├── remake-reports/
+│   ├── remake-reports.blade.php
+│   ├── remake-pending.blade.php
+│   └── remake-returns.blade.php
+├── other-item-reports/
+│   ├── sales-book.blade.php
+│   ├── sales-register.blade.php
+│   ├── purchase-book.blade.php
+│   ├── purchase-register.blade.php
+│   ├── stock-ledger.blade.php
+│   └── stock-list.blade.php
+└── reports/
+    └── sales-book.blade.php</div>
+
+<hr>
+
+<!-- 9. DASHBOARD MODULE SYSTEM -->
+<h1 id="dashboard">9. Dashboard Module System</h1>
+
+<h3>moduleConfigMap</h3>
+<p>Located in <code>dashboard.blade.php</code>. Maps a string module ID to its URL and mode:</p>
+<div class="code"><span class="kw">const</span> moduleConfigMap = {
+    <span class="str">'sales-bill'</span>: { mode: <span class="str">'iframe'</span>, url: <span class="str">'{{ url("/sales-bill/new") }}'</span> },
+    <span class="str">'remake-reports-remake-reports'</span>: {
+        mode: <span class="str">'iframe'</span>,
+        url: <span class="str">'{{ url("/remake-reports/remake-reports?module=remake-reports-remake-reports") }}'</span>
+    },
+    <span class="cm">// ...</span>
+};</div>
+
+<h3>Menu Definition</h3>
+<p>The menu is a JS array of objects. Each item uses the helper <code>m(label, moduleId, icon, shortcut?)</code>:</p>
+<div class="code">{ label: <span class="str">'Remake'</span>, icon: <span class="str">'fa-recycle'</span>, children: [
+    m(<span class="str">'Remake Reports'</span>, <span class="str">'remake-reports-remake-reports'</span>, <span class="str">'fa-file-lines'</span>),
+    m(<span class="str">'Remake Pending'</span>, <span class="str">'remake-reports-remake-pending'</span>, <span class="str">'fa-hourglass-half'</span>),
+]}</div>
+
+<h3>Module Close Signal</h3>
+<p>iframes signal the parent to close them by posting a message:</p>
+<div class="code">window.parent.postMessage({ <span class="str">type</span>: <span class="str">'goldapp:close-module-frame'</span> }, <span class="str">'*'</span>);</div>
+
+<hr>
+
+<!-- 10. ADDING A NEW MODULE -->
+<h1 id="addmodule">10. How to Add a New Module</h1>
+
+<h3>Step 1 — Create the Controller</h3>
+<div class="code">php artisan make:controller MyNewReportController</div>
+<p>Add page method + API data method. Use the session guard. Follow the flat JSON response pattern.</p>
+
+<h3>Step 2 — Create the View</h3>
+<p>Create <code>resources/views/my-report/index.blade.php</code>. Include:</p>
+<ul>
+  <li>Toolbar with date filters + Show/Print/Exit buttons</li>
+  <li><code>&lt;table&gt;</code> with <code>id="reportBody"</code> and tfoot totals</li>
+  <li>JS <code>fetch()</code> call to the API endpoint</li>
+  <li><code>exitBtn</code> postMessage handler</li>
+</ul>
+
+<h3>Step 3 — Add Routes</h3>
+<p>In <code>routes/web.php</code>, add the <code>use</code> statement and routes:</p>
+<div class="code"><span class="kw">use</span> App\Http\Controllers\MyNewReportController;
+
+Route::get(<span class="str">'/my-report'</span>, [MyNewReportController::class, <span class="str">'index'</span>]);
+Route::get(<span class="str">'/api/my-report/data'</span>, [MyNewReportController::class, <span class="str">'data'</span>]);</div>
+
+<h3>Step 4 — Add to Dashboard moduleConfigMap</h3>
+<p>In <code>dashboard.blade.php</code>, add to the <code>moduleConfigMap</code> object:</p>
+<div class="code"><span class="str">'my-new-report'</span>: { mode: <span class="str">'iframe'</span>, url: <span class="str">'{{ url("/my-report?module=my-new-report") }}'</span> },</div>
+
+<h3>Step 5 — Add to Menu</h3>
+<p>Find the appropriate menu section in <code>dashboard.blade.php</code> and add:</p>
+<div class="code">m(<span class="str">'My New Report'</span>, <span class="str">'my-new-report'</span>, <span class="str">'fa-file-lines'</span>)</div>
+
+<h3>Step 6 — Clear Config Cache</h3>
+<div class="code">php artisan config:clear
+php artisan route:clear
+php artisan view:clear</div>
+
+<hr>
+
+<!-- 11. REPORT PATTERN -->
+<h1 id="reports">11. Report Pattern</h1>
+<p>All report views follow this standard pattern:</p>
+
+<h3>Controller Data Method</h3>
+<div class="code"><span class="kw">public function</span> <span class="fn">data</span>(Request $request): JsonResponse
+{
+    <span class="kw">if</span> (!$request->session()->has(<span class="str">'user_code'</span>)) {
+        <span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">false</span>], 401);
+    }
+    <span class="kw">if</span> (!Schema::hasTable(<span class="str">'mytable'</span>)) {
+        <span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">true</span>, <span class="str">'rows'</span> => []]);
+    }
+
+    $date1 = $this->date($request, <span class="str">'date1'</span>);
+    $date2 = $this->date($request, <span class="str">'date2'</span>);
+
+    $rows = DB::table(<span class="str">'mytable as m'</span>)
+        ->whereBetween(<span class="str">'m.tdate'</span>, [$date1, $date2])
+        ->orderBy(<span class="str">'m.tdate'</span>)
+        ->get()->map(fn($r) => (array) $r)->values()->all();
+
+    $totals = [
+        <span class="str">'amount'</span> => array_sum(array_column($rows, <span class="str">'amount'</span>)),
+    ];
+
+    <span class="kw">return</span> response()->json([<span class="str">'ok'</span> => <span class="kw">true</span>, <span class="str">'rows'</span> => $rows, <span class="str">'totals'</span> => $totals]);
+}</div>
+
+<h3>View JS Fetch Block</h3>
+<div class="code">document.getElementById(<span class="str">'filterForm'</span>).addEventListener(<span class="str">'submit'</span>, async e => {
+    e.preventDefault();
+    <span class="kw">const</span> p = <span class="kw">new</span> URLSearchParams({
+        date1: document.getElementById(<span class="str">'date1'</span>).value,
+        date2: document.getElementById(<span class="str">'date2'</span>).value,
+    });
+    <span class="kw">const</span> res = await fetch(`${API}?${p}`, { headers: { Accept: <span class="str">'application/json'</span> } });
+    <span class="kw">const</span> d = await res.json();
+    <span class="kw">if</span> (!d.ok) <span class="kw">throw new</span> Error(d.message || <span class="str">'Error'</span>);
+    <span class="cm">// render rows...</span>
+});</div>
+
+<hr>
+
+<!-- 12. TROUBLESHOOTING -->
+<h1 id="troubleshoot">12. Troubleshooting</h1>
+
+<table>
+  <tr><th>Problem</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>SQL Error 1055 (GROUP BY)</td><td>MySQL ONLY_FULL_GROUP_BY — column in SELECT not in GROUP BY</td><td>Use <code>MAX()</code> for non-key columns, only GROUP BY the primary key column</td></tr>
+  <tr><td>Unknown column 'x' in field list</td><td>Column referenced is on detail table (d), not master (m)</td><td>Change <code>m.colname</code> → <code>d.colname</code></td></tr>
+  <tr><td>App connects to SQLite / wrong DB</td><td>Stale <code>bootstrap/cache/config.php</code></td><td><code>php artisan config:clear</code></td></tr>
+  <tr><td>Route not found (404)</td><td>Route missing or controller use statement missing</td><td>Add route + <code>use App\Http\Controllers\...</code> to web.php</td></tr>
+  <tr><td>Module not opening in dashboard</td><td>moduleConfigMap entry missing</td><td>Add entry to <code>moduleConfigMap</code> in dashboard.blade.php</td></tr>
+  <tr><td>401 on API call</td><td>Session expired or not logged in</td><td>User must re-login; check session timeout config</td></tr>
+  <tr><td>vendor/ folder 3+ GB</td><td>Normal — Composer dependencies</td><td>Normal. Never delete. Run <code>composer install</code> to restore if missing.</td></tr>
+</table>
+
+<h3>Useful Artisan Commands</h3>
+<div class="code">php artisan config:clear       <span class="cm"># Clear config cache (fix DB connection issues)</span>
+php artisan cache:clear        <span class="cm"># Clear application cache</span>
+php artisan route:clear        <span class="cm"># Clear route cache</span>
+php artisan view:clear         <span class="cm"># Clear compiled views</span>
+php artisan route:list         <span class="cm"># List all registered routes</span>
+php artisan route:list --path=remake-reports  <span class="cm"># Filter routes by path</span>
+php -l app/Http/Controllers/MyController.php  <span class="cm"># Syntax check a PHP file</span></div>
+
+<hr>
+<p style="text-align:center; color:#7a9ab8; font-size:9pt; margin-top:40px;">GoldApp Developer Documentation — Version 1.0 — March 2026</p>
+</div>
+</body>
+</html>

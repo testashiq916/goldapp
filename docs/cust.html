@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GoldApp — Complete User Guide</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 20mm; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Segoe UI',Calibri,Arial,sans-serif; font-size:10.5pt; color:#1a1a1a; margin:0; padding:0; background:#fff; }
+  .page{ max-width:780px; margin:0 auto; padding:10px 30px 40px; }
+  /* Cover */
+  .cover{ text-align:center; padding:100px 0 80px; border-bottom:3px solid #173b63; margin-bottom:50px; page-break-after:always; }
+  .cover .logo{ font-size:56pt; font-weight:900; color:#173b63; letter-spacing:-2px; }
+  .cover .tagline{ font-size:15pt; color:#1e5799; margin-top:6px; }
+  .cover .sub{ font-size:12pt; color:#5b7088; margin-top:4px; }
+  .cover .date{ font-size:9pt; color:#8fa8c4; margin-top:40px; border-top:1px solid #d7e4f0; padding-top:16px; }
+  .cover .dot{ display:inline-block; width:60px; height:4px; background:#1e5799; border-radius:2px; margin:18px auto; }
+  /* Headings */
+  h1{ font-size:20pt; color:#173b63; border-bottom:2.5px solid #1e5799; padding-bottom:6px; margin:36px 0 14px; page-break-after:avoid; }
+  h2{ font-size:14pt; color:#1e5799; margin:28px 0 10px; border-left:5px solid #1e5799; padding-left:10px; page-break-after:avoid; }
+  h3{ font-size:11.5pt; color:#2a6398; margin:18px 0 8px; page-break-after:avoid; }
+  h4{ font-size:10.5pt; color:#375b84; margin:12px 0 6px; font-style:italic; }
+  /* Text */
+  p{ line-height:1.75; margin:5px 0 8px; }
+  ul,ol{ line-height:1.85; padding-left:22px; margin:4px 0 10px; }
+  li{ margin-bottom:2px; }
+  strong{ color:#173b63; }
+  /* TOC */
+  .toc{ background:#f4f8fd; border:1px solid #cdd9ec; border-radius:8px; padding:18px 24px; margin:16px 0 30px; }
+  .toc h2{ border:none; margin:0 0 12px; font-size:13pt; }
+  .toc ol{ margin:0; padding-left:20px; }
+  .toc li{ padding:2px 0; }
+  .toc a{ color:#1e5799; text-decoration:none; }
+  .toc a:hover{ text-decoration:underline; }
+  .toc .sub-toc{ list-style:disc; padding-left:18px; font-size:9.5pt; color:#48627c; }
+  /* Tables */
+  table{ width:100%; border-collapse:collapse; margin:10px 0 14px; font-size:10pt; }
+  th{ background:#1e5799; color:#fff; padding:6px 10px; text-align:left; font-weight:700; }
+  td{ padding:5px 10px; border-bottom:1px solid #dde6f0; vertical-align:top; }
+  tr:nth-child(even) td{ background:#f4f8fd; }
+  /* Callouts */
+  .note{ background:#e8f4fd; border-left:4px solid #2a6398; padding:9px 13px; margin:10px 0; border-radius:4px; font-size:10pt; }
+  .warn{ background:#fff8e1; border-left:4px solid #f59e0b; padding:9px 13px; margin:10px 0; border-radius:4px; font-size:10pt; }
+  .tip { background:#e6f8ec; border-left:4px solid #2a7a42; padding:9px 13px; margin:10px 0; border-radius:4px; font-size:10pt; }
+  .danger{ background:#fee2e2; border-left:4px solid #dc2626; padding:9px 13px; margin:10px 0; border-radius:4px; font-size:10pt; }
+  /* Badges */
+  .badge{ display:inline-block; padding:1px 8px; border-radius:10px; font-size:8.5pt; font-weight:700; }
+  .b-blue{ background:#dbeafe; color:#1e40af; }
+  .b-green{ background:#d1fae5; color:#065f46; }
+  .b-orange{ background:#fff3cd; color:#856404; }
+  .b-red{ background:#fee2e2; color:#991b1b; }
+  /* Dividers */
+  hr{ border:none; border-top:1px solid #d7e4f0; margin:26px 0; }
+  .section-break{ page-break-before:always; }
+  .keep-together{ page-break-inside:avoid; }
+  /* Keyboard shortcut */
+  kbd{ background:#f1f5f9; border:1px solid #cbd5e1; border-radius:3px; padding:1px 5px; font-family:Consolas,monospace; font-size:9pt; }
+  code{ background:#f1f5f9; padding:1px 5px; border-radius:3px; font-family:Consolas,monospace; font-size:9pt; color:#1e3a5f; }
+  /* Workflow */
+  .workflow{ display:flex; gap:0; margin:12px 0; flex-wrap:wrap; }
+  .wf-step{ flex:1; min-width:100px; background:#edf4fc; border:1px solid #bfd0e6; padding:10px 8px; text-align:center; font-size:9.5pt; position:relative; }
+  .wf-step:not(:last-child)::after{ content:"→"; position:absolute; right:-10px; top:50%; transform:translateY(-50%); color:#1e5799; font-size:14pt; z-index:1; }
+  .wf-step strong{ display:block; color:#173b63; margin-bottom:3px; font-size:10pt; }
+  /* Footer */
+  .footer{ text-align:center; color:#8fa8c4; font-size:8.5pt; margin-top:50px; border-top:1px solid #d7e4f0; padding-top:14px; }
+  /* Print */
+  @media print{
+    body{ font-size:10pt; }
+    .page{ padding:0 10px; max-width:100%; }
+    a{ color:inherit; text-decoration:none; }
+    .note,.warn,.tip,.danger{ border-radius:0; }
+    h1{ page-break-before:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ══════════ COVER ══════════ -->
+<div class="cover">
+  <div class="logo">GoldApp</div>
+  <div class="dot"></div>
+  <div class="tagline">Complete User Guide</div>
+  <div class="sub">Jewellery Management System</div>
+  <div class="date">
+    Version 2.0 &nbsp;|&nbsp; March 2026<br>
+    <em>Covers all modules including Barcode, Scheme/Kuri, Accounts, Remake, Refinery, Deposits and more</em>
+  </div>
+</div>
+
+<!-- ══════════ TABLE OF CONTENTS ══════════ -->
+<div class="toc">
+<h2>Table of Contents</h2>
+<ol>
+  <li><a href="#intro">Introduction &amp; System Overview</a></li>
+  <li><a href="#login">Login &amp; Dashboard Navigation</a></li>
+  <li><a href="#sales">Sales Bill</a>
+    <ul class="sub-toc"><li>New Bill · Edit · Cancel · Reprint · Bill Confirmation</li></ul></li>
+  <li><a href="#salesreturn">Sales Return</a></li>
+  <li><a href="#purchase">Purchase Bill</a>
+    <ul class="sub-toc"><li>New Bill · Edit · Cancel · Reprint · Confirmation</li></ul></li>
+  <li><a href="#purchasereturn">Purchase Return</a></li>
+  <li><a href="#diamond">Diamond / Precious Stone Purchase</a></li>
+  <li><a href="#order">Order Management</a>
+    <ul class="sub-toc"><li>New Order · Edit · Advance · Order Sale · Block/Unblock · Rate Fix · Cancel · Reprint</li></ul></li>
+  <li><a href="#goldsmith">Goldsmith Transactions</a></li>
+  <li><a href="#refinery">Refinery Module</a></li>
+  <li><a href="#remake">Remake / Repair Module</a>
+    <ul class="sub-toc"><li>Receipt Memo · Issue to Smith · Receipt from Smith · Issue to Party · Repair Return</li></ul></li>
+  <li><a href="#barcode">Barcode Management</a>
+    <ul class="sub-toc"><li>Single Entry · Multi Entry · Counter Issue · Stock Verification · Settings</li></ul></li>
+  <li><a href="#stock">Stock &amp; Item Management</a>
+    <ul class="sub-toc"><li>Item Master · Groups · Opening Stock · Adjustments · Stock Reports</li></ul></li>
+  <li><a href="#deposit">Weight Deposit Modules</a>
+    <ul class="sub-toc"><li>Party Weight Deposit · Partners Deposit</li></ul></li>
+  <li><a href="#otheritem">Other Item Transactions &amp; Reports</a></li>
+  <li><a href="#purity">Purity Testing &amp; Certificates</a></li>
+  <li><a href="#scheme">Scheme / Kuri Module</a></li>
+  <li><a href="#accounts">Accounts Module</a>
+    <ul class="sub-toc"><li>Receipt · Payment · Journal · Suspense · PDC · Debit/Credit Notes · Expense Voucher</li></ul></li>
+  <li><a href="#reports">All Reports Reference</a>
+    <ul class="sub-toc"><li>Sales · Purchase · Tax · Goldsmith · Refinery · Jewellery · Customer · Supplier · Financial</li></ul></li>
+  <li><a href="#daybook">Day Book &amp; Financial Statements</a></li>
+  <li><a href="#settings">Settings &amp; Administration</a></li>
+  <li><a href="#tips">Tips, Shortcuts &amp; FAQ</a></li>
+</ol>
+</div>
+
+<hr>
+
+<!-- ══════════ 1. INTRODUCTION ══════════ -->
+<h1 id="intro">1. Introduction &amp; System Overview</h1>
+<p><strong>GoldApp</strong> is a comprehensive web-based jewellery management system built for gold, silver, and platinum jewellery businesses. It manages the full business lifecycle — from buying raw material and manufacturing to selling, repair, and financial reporting.</p>
+
+<h3>What GoldApp Covers</h3>
+<table>
+<tr><th>Module Category</th><th>What You Can Do</th></tr>
+<tr><td><strong>Billing</strong></td><td>Sales bills, purchase bills, sales returns, purchase returns, diamond purchases</td></tr>
+<tr><td><strong>Orders</strong></td><td>Create and manage customer orders, advance collection, rate fixing, order-to-sale conversion</td></tr>
+<tr><td><strong>Goldsmith</strong></td><td>Issue/receive gold to goldsmiths, track weights, making charges, and balances</td></tr>
+<tr><td><strong>Refinery</strong></td><td>Send material for purification, receive back, track loss/wastage per refiner</td></tr>
+<tr><td><strong>Remake/Repair</strong></td><td>Full repair workflow — receive from customer → goldsmith → return to customer</td></tr>
+<tr><td><strong>Barcode</strong></td><td>Tag items with barcodes, scan during sales, manage counter stock, verify stock</td></tr>
+<tr><td><strong>Stock</strong></td><td>Item master, group/subgroup, stock adjustments, ledger, period reports</td></tr>
+<tr><td><strong>Deposits</strong></td><td>Party weight deposits, partners deposit, interest calculation</td></tr>
+<tr><td><strong>Other Items</strong></td><td>Buy/sell non-precious goods (accessories, boxes, covers), maintain stock</td></tr>
+<tr><td><strong>Purity Testing</strong></td><td>Record purity test results, issue purity certificates</td></tr>
+<tr><td><strong>Scheme / Kuri</strong></td><td>Gold savings schemes — registration, collection, draw, interest, passbook</td></tr>
+<tr><td><strong>Accounts</strong></td><td>Receipt, payment, journal, PDC, debit/credit notes, expense vouchers, billwise accounting</td></tr>
+<tr><td><strong>Reports</strong></td><td>200+ reports — sales, purchase, goldsmith, refinery, stock, customer, supplier, financial, tax</td></tr>
+</table>
+
+<div class="note"><strong>Browser Requirement:</strong> Use Google Chrome or Microsoft Edge for best results. The system works entirely in your browser — no software installation needed.</div>
+
+<hr>
+
+<!-- ══════════ 2. LOGIN & DASHBOARD ══════════ -->
+<h1 id="login">2. Login &amp; Dashboard Navigation</h1>
+
+<h3>Logging In</h3>
+<ol>
+  <li>Open your browser and go to: <code>http://localhost/goldapp</code> (or the address given by your IT team)</li>
+  <li>Enter your <strong>User Code</strong> and <strong>Password</strong></li>
+  <li>Click <strong>Login</strong></li>
+</ol>
+<div class="note"><strong>Forgot Password?</strong> Contact your system administrator — passwords cannot be reset from the login screen.</div>
+
+<h3>The Dashboard</h3>
+<p>After login you see the main dashboard. On the <strong>left side</strong> is the navigation menu. On the <strong>right side</strong> modules open as panels. Click any menu item or sub-item to open its module.</p>
+
+<h3>Menu Structure</h3>
+<table>
+<tr><th>Menu</th><th>Contents</th></tr>
+<tr><td><strong>Registration</strong></td><td>Masters — items, customers, suppliers, goldsmiths, accounts, counters, settings</td></tr>
+<tr><td><strong>Transactions</strong></td><td>All day-to-day entries — sales, purchase, remake, goldsmith, accounts, barcode, etc.</td></tr>
+<tr><td><strong>Reports</strong></td><td>All report modules — sales, purchase, stock, financial, tax, goldsmith, customer, supplier</td></tr>
+</table>
+
+<h3>Common Toolbar Buttons (in every module)</h3>
+<table>
+<tr><th>Button</th><th>Action</th></tr>
+<tr><td><kbd>New</kbd></td><td>Start a new entry / bill</td></tr>
+<tr><td><kbd>Edit</kbd></td><td>Search and modify an existing record</td></tr>
+<tr><td><kbd>Cancel</kbd></td><td>Permanently delete/cancel a record</td></tr>
+<tr><td><kbd>Reprint</kbd></td><td>Reprint an existing bill or document</td></tr>
+<tr><td><kbd>Save</kbd></td><td>Save the current entry</td></tr>
+<tr><td><kbd>Print</kbd></td><td>Print the current view</td></tr>
+<tr><td><kbd>Show</kbd></td><td>Load/refresh report data</td></tr>
+<tr><td><kbd>Exit</kbd></td><td>Close the current module</td></tr>
+</table>
+
+<h3>Keyboard Shortcuts</h3>
+<table>
+<tr><th>Shortcut</th><th>Opens</th></tr>
+<tr><td><kbd>Ctrl+G</kbd></td><td>Goldsmith Transaction</td></tr>
+<tr><td><kbd>Ctrl+Y</kbd></td><td>Refinery New Entry</td></tr>
+<tr><td><kbd>Ctrl+Shift+Y</kbd></td><td>Refinery Returns</td></tr>
+<tr><td><kbd>Ctrl+J</kbd></td><td>Jewellery Transaction</td></tr>
+<tr><td><kbd>Ctrl+O</kbd></td><td>New Order</td></tr>
+<tr><td><kbd>Ctrl+A</kbd></td><td>Stock Transfer</td></tr>
+<tr><td><kbd>Ctrl+K</kbd></td><td>Add-Less Stock Entry</td></tr>
+<tr><td><kbd>Ctrl+W</kbd></td><td>Partners Deposit New</td></tr>
+<tr><td><kbd>Ctrl+M</kbd></td><td>Scheme Customer Registration</td></tr>
+<tr><td><kbd>Ctrl+L</kbd></td><td>Scheme Collection</td></tr>
+<tr><td><kbd>Ctrl+D</kbd></td><td>Discount Allocation</td></tr>
+<tr><td><kbd>Ctrl+P</kbd></td><td>Order Process (Print)</td></tr>
+<tr><td><kbd>Alt+F1</kbd></td><td>Customer Billwise Receipt</td></tr>
+<tr><td><kbd>Alt+F2</kbd></td><td>Accounts Receipt</td></tr>
+<tr><td><kbd>Alt+F3</kbd></td><td>Accounts Payment</td></tr>
+<tr><td><kbd>Alt+J</kbd></td><td>Journal Entry</td></tr>
+<tr><td><kbd>Ctrl+F8</kbd></td><td>Stock Suspense New Issue</td></tr>
+</table>
+
+<hr class="section-break">
+
+<!-- ══════════ 3. SALES BILL ══════════ -->
+<h1 id="sales">3. Sales Bill</h1>
+<p>The Sales Bill module records jewellery sales to customers. It automatically updates stock and can handle multiple items, discounts, taxes, making charges, and payments.</p>
+
+<h2>3.1 Creating a New Sales Bill</h2>
+<ol>
+  <li>Go to <strong>Transactions → Sales Bill → Bill</strong></li>
+  <li>The bill number is assigned automatically from the configured sequence</li>
+  <li>Enter or search the <strong>Customer Code / Name</strong> (type a few letters and press Tab to search)</li>
+  <li>Select the <strong>Bill Date</strong> and <strong>Bill Type</strong> (retail, wholesale, etc.)</li>
+  <li>Select <strong>Counter</strong> and <strong>Salesman</strong> if applicable</li>
+  <li>Add item rows one by one:
+    <ul>
+      <li>Enter Item Code or search by name</li>
+      <li>Fill <strong>Quantity</strong>, <strong>Gross Weight</strong>, <strong>Stone Weight</strong></li>
+      <li>Enter <strong>Touch / Purity</strong>, <strong>Rate</strong>, <strong>Making Charge</strong></li>
+      <li>Net Weight = Gross Weight − Stone Weight (auto-calculated)</li>
+      <li>Amount is auto-calculated from weight × rate + making charge</li>
+    </ul>
+  </li>
+  <li>Enter <strong>Discount</strong> amount or percentage if any</li>
+  <li>Enter applicable <strong>Tax / GST</strong> details</li>
+  <li>Enter <strong>Amount Received</strong> (cash / card / cheque)</li>
+  <li>Click <strong>Save</strong> — the bill is printed / saved</li>
+</ol>
+<div class="tip"><strong>Tip:</strong> Press <kbd>Tab</kbd> to move between fields quickly. Amounts auto-calculate as you type weights and rates.</div>
+<div class="warn"><strong>Stock:</strong> Saving a sales bill reduces stock for each item sold. If an item has insufficient stock, the system will warn you.</div>
+
+<h3>Key Weight &amp; Amount Fields</h3>
+<table>
+<tr><th>Field</th><th>Description</th></tr>
+<tr><td>Gross Weight</td><td>Total physical weight of the item including stones</td></tr>
+<tr><td>Stone Weight (St.Wgt)</td><td>Weight of embedded stones (deducted for pricing)</td></tr>
+<tr><td>Net Weight</td><td>Gross Wgt − Stone Wgt — the chargeable gold weight</td></tr>
+<tr><td>Touch</td><td>Gold purity % (e.g., 91.6 for 22 carat, 75.0 for 18 carat)</td></tr>
+<tr><td>Touch Weight</td><td>Net Weight × Touch ÷ 100 — pure gold equivalent</td></tr>
+<tr><td>Making Charge (MC)</td><td>Labour / manufacturing charge per gram or fixed amount</td></tr>
+<tr><td>Stone Price</td><td>Separate charge for the stone value</td></tr>
+<tr><td>Mud / Wastage</td><td>Wastage deduction amount</td></tr>
+<tr><td>Less %</td><td>Percentage discount on the item</td></tr>
+</table>
+
+<h2>3.2 Editing a Sales Bill</h2>
+<ol>
+  <li>Go to <strong>Transactions → Sales Bill → Edit</strong></li>
+  <li>Search by bill number, customer name, or date</li>
+  <li>Select the bill to load it into edit mode</li>
+  <li>Modify fields as needed</li>
+  <li>Click <strong>Save</strong> — the system reverses the original stock entry and applies the corrected values</li>
+</ol>
+<div class="warn"><strong>Important:</strong> Editing reverses the original stock and creates new stock movements. All linked accounting entries are also updated.</div>
+
+<h2>3.3 Cancelling a Sales Bill</h2>
+<ol>
+  <li>Go to <strong>Transactions → Sales Bill → Cancel</strong></li>
+  <li>Search and select the bill</li>
+  <li>Confirm cancellation</li>
+</ol>
+<div class="danger"><strong>Cancellation is permanent.</strong> Stock is reversed, accounting entries are removed. A cancelled bill cannot be recovered.</div>
+
+<h2>3.4 Reprinting a Sales Bill</h2>
+<p>Go to <strong>Transactions → Sales Bill → Reprint</strong>, search the bill, and print.</p>
+
+<h2>3.5 Bill Confirmation</h2>
+<p>If your business workflow requires a second-level approval before a bill is finalised, use <strong>Sales Bill → Bill Confirmation</strong>. Bills pending confirmation are listed; authorised users can confirm or reject them.</p>
+
+<hr>
+
+<!-- ══════════ 4. SALES RETURN ══════════ -->
+<h1 id="salesreturn">4. Sales Return</h1>
+<p>When a customer returns previously sold jewellery, record it as a Sales Return. Stock is added back and the customer's account is credited.</p>
+
+<h3>Creating a Sales Return</h3>
+<ol>
+  <li>Go to <strong>Transactions → Sales Return → Bill</strong></li>
+  <li>Enter the original Sales Bill number to load the bill details</li>
+  <li>Select which items are being returned (partial returns are allowed)</li>
+  <li>Verify the return weights and amounts</li>
+  <li>Enter the amount refunded to the customer</li>
+  <li>Save</li>
+</ol>
+<div class="note"><strong>Stock Update:</strong> Items returned are automatically added back to stock.</div>
+<p>Edit, Cancel, and Reprint work the same way as for Sales Bills — use the corresponding sub-menu items under <strong>Sales Return</strong>.</p>
+
+<hr>
+
+<!-- ══════════ 5. PURCHASE BILL ══════════ -->
+<h1 id="purchase">5. Purchase Bill</h1>
+<p>Use Purchase Bill when buying jewellery, raw gold/silver, or other items from a supplier.</p>
+
+<h2>5.1 Creating a Purchase Bill</h2>
+<ol>
+  <li>Go to <strong>Transactions → Purchase Bill → Bill</strong></li>
+  <li>Enter <strong>Supplier Code / Name</strong></li>
+  <li>Enter <strong>Supplier's Bill Number</strong> (external reference) and <strong>Date</strong></li>
+  <li>Add item rows: Code, Name, Purity, Gross Weight, Stone Weight, Touch, Rate</li>
+  <li>Enter <strong>HMC</strong> (Hallmark charge) if applicable</li>
+  <li>Enter <strong>Discount</strong> and <strong>Tax</strong> details (GST / Tax External / Tax Deduct options)</li>
+  <li>Enter <strong>TCS %</strong> if applicable — TCS Amount is auto-calculated</li>
+  <li>Enter <strong>Amount Paid</strong> (cash / bank)</li>
+  <li>Click <strong>Save</strong></li>
+</ol>
+
+<h3>Purchase Amount Calculation</h3>
+<table>
+<tr><th>Field</th><th>Formula</th></tr>
+<tr><td>Bill Total</td><td>Sum of all item amounts</td></tr>
+<tr><td>Net Total</td><td>Bill Total − Discount − Exchange + HMC ± Tax/Cess</td></tr>
+<tr><td>TCS Amount</td><td>Net Total × TCS% ÷ 100 (rounded)</td></tr>
+<tr><td>Final Net Total</td><td>Net Total + TCS Amount</td></tr>
+<tr><td>Balance</td><td>Final Net Total + Others − Amount Paid</td></tr>
+</table>
+
+<p>Edit, Cancel, Reprint, and Confirmation work the same as Sales Bill — use sub-menu items under <strong>Purchase Bill</strong>.</p>
+
+<hr>
+
+<!-- ══════════ 6. PURCHASE RETURN ══════════ -->
+<h1 id="purchasereturn">6. Purchase Return</h1>
+<p>Use Purchase Return when sending back items to a supplier after purchase.</p>
+<ol>
+  <li>Go to <strong>Transactions → Purchase Return → Bill</strong></li>
+  <li>Load the original Purchase Bill number</li>
+  <li>Select items being returned</li>
+  <li>Enter weights and amounts</li>
+  <li>Save — stock is reduced and supplier's account is debited</li>
+</ol>
+
+<hr>
+
+<!-- ══════════ 7. DIAMOND PURCHASE ══════════ -->
+<h1 id="diamond">7. Diamond / Precious Stone Purchase</h1>
+<p>A dedicated module for purchasing diamonds, precious stones, and similar items that require separate handling from gold/silver.</p>
+<ol>
+  <li>Go to <strong>Transactions → Diamonds/Precious Stones → Purchase → New</strong></li>
+  <li>Enter Supplier, Date, and Supplier Bill Number</li>
+  <li>Add stone items: stone type, weight (carats/grams), rate, amount</li>
+  <li>Enter payment details and Save</li>
+</ol>
+<p>Diamond Purchase Return is available under <strong>Diamonds → Purchase Return</strong>. Edit, Cancel, and Reprint are available as sub-menu items.</p>
+
+<hr class="section-break">
+
+<!-- ══════════ 8. ORDER MANAGEMENT ══════════ -->
+<h1 id="order">8. Order Management</h1>
+<p>Manage customer orders from creation through to delivery. Orders can be tracked, rate-fixed, blocked/unblocked, and converted to sales bills.</p>
+
+<h2>8.1 New Order</h2>
+<ol>
+  <li>Go to <strong>Transactions → Order → New Order</strong> (<kbd>Ctrl+O</kbd>)</li>
+  <li>Enter Customer, Date, and required delivery date</li>
+  <li>Add ordered items: description, weight, design requirements</li>
+  <li>Enter Advance Amount collected from customer</li>
+  <li>Save — an Order Number is generated</li>
+</ol>
+
+<h2>8.2 Order Workflow</h2>
+<table>
+<tr><th>Step</th><th>Module</th><th>Description</th></tr>
+<tr><td>1</td><td>New Order</td><td>Customer places an order; advance collected if applicable</td></tr>
+<tr><td>2</td><td>Advance After</td><td>Collect additional advance payment against an existing order</td></tr>
+<tr><td>3</td><td>Rate Fix</td><td>Lock the gold rate for the customer's order</td></tr>
+<tr><td>4</td><td>Order Sale / Sale W/o Order</td><td>Convert order to a sales bill once item is ready</td></tr>
+</table>
+
+<h2>8.3 Block / Unblock Orders</h2>
+<p>Go to <strong>Order → Block/Unblock</strong> to temporarily put an order on hold (e.g., pending customer confirmation or payment). Blocked orders cannot be converted to sales.</p>
+
+<h2>8.4 Rate Fix</h2>
+<p>Use <strong>Order → Rate Fix</strong> to lock today's gold rate against a specific order. When the order is eventually converted to a sale, this fixed rate is used instead of the current market rate.</p>
+
+<h2>8.5 Order Reports</h2>
+<table>
+<tr><th>Report</th><th>What It Shows</th></tr>
+<tr><td>Order Entries</td><td>All orders placed in the date range</td></tr>
+<tr><td>Pending Register</td><td>Orders not yet converted to sales</td></tr>
+<tr><td>Order Enquiry</td><td>Search a specific order's status and history</td></tr>
+<tr><td>Pending Details</td><td>Item-level breakdown of pending orders</td></tr>
+<tr><td>Order Returns</td><td>Orders cancelled or returned by customers</td></tr>
+<tr><td>Order Advance Report</td><td>Advance amounts collected against orders</td></tr>
+<tr><td>Order Sale Profit Analysis</td><td>Margin on completed order sales</td></tr>
+<tr><td>Sample Stock Register</td><td>Sample items issued against orders</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 9. GOLDSMITH TRANSACTIONS ══════════ -->
+<h1 id="goldsmith">9. Goldsmith Transactions</h1>
+<p>Manage the flow of gold/silver/other metal to and from goldsmiths (karigar). Issue raw material and receive finished jewellery.</p>
+
+<h2>9.1 New Transaction</h2>
+<ol>
+  <li>Go to <strong>Transactions → Goldsmith → Transaction</strong> (<kbd>Ctrl+G</kbd>)</li>
+  <li>Select <strong>Goldsmith</strong> from the list</li>
+  <li>Choose <strong>Transaction Type</strong>: Issue (giving metal out) or Receipt (receiving work back)</li>
+  <li>Enter Date and Document Number</li>
+  <li>Add item rows: Item, Gross Weight, Stone Weight, Touch, Making Charge</li>
+  <li>Save</li>
+</ol>
+
+<h2>9.2 New Work Note</h2>
+<p>Use <strong>Goldsmith → New Work Note</strong> (<kbd>Ctrl+N</kbd>) to issue a work instruction note to a goldsmith without a full transaction entry. This documents the design, weight, and requirements.</p>
+
+<h2>9.3 Goldsmith Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Transactions</td><td>All issue/receipt transactions for a date range; filterable by goldsmith</td></tr>
+<tr><td>Smith Ledger</td><td>Running balance of gold held by each goldsmith</td></tr>
+<tr><td>Weight/Amt Summary (Simple)</td><td>Per-goldsmith totals: total issued, received, balance weight and amount</td></tr>
+<tr><td>Weight/Amt Summary (Details)</td><td>Item-level breakdown per goldsmith</td></tr>
+<tr><td>Ageing Report</td><td>How long gold has been outstanding with each goldsmith</td></tr>
+<tr><td>Transaction Summary</td><td>Month-wise or date-wise transaction counts and weights</td></tr>
+<tr><td>Lot No Report</td><td>Track transactions by lot number</td></tr>
+<tr><td>Fix/Unfix Report</td><td>Fixed vs open goldsmith balances</td></tr>
+<tr><td>Smith List</td><td>Master list of all registered goldsmiths</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 10. REFINERY ══════════ -->
+<h1 id="refinery">10. Refinery Module</h1>
+<p>Manages metal sent to and received from a refinery for purification, melting, or bar conversion.</p>
+
+<h2>10.1 New Refinery Entry (Forward)</h2>
+<ol>
+  <li>Go to <strong>Transactions → Refinery → New Entry</strong> (<kbd>Ctrl+Y</kbd>)</li>
+  <li>Select <strong>Refiner</strong> from the list</li>
+  <li>Enter Date and Document reference number</li>
+  <li>Add item rows: Item description, Gross Weight, Touch (purity)</li>
+  <li>Enter expected loss % (wastage)</li>
+  <li>Save — status is set to <span class="badge b-orange">Forward</span></li>
+</ol>
+
+<h2>10.2 Refinery Return (Receipt)</h2>
+<ol>
+  <li>Go to <strong>Transactions → Refinery → Returns</strong> (<kbd>Ctrl+Shift+Y</kbd>)</li>
+  <li>Load the original forward entry</li>
+  <li>Enter the <strong>Received Weight</strong> and <strong>Touch</strong> of the returned metal</li>
+  <li>The system calculates actual loss vs expected loss</li>
+  <li>Enter Making Charges and Payment details</li>
+  <li>Save — status updates to <span class="badge b-green">Return</span></li>
+</ol>
+
+<div class="tip"><strong>All In One:</strong> Use <strong>Refinery → All In One</strong> to record both forward and return in a single entry when the refinery transaction is settled immediately.</div>
+
+<h2>10.3 Refinery Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Entry Report</td><td>All refinery transactions — item details, forward weight, received weight, status</td></tr>
+<tr><td>Refiner Summary</td><td>Per-refiner totals: total sent, total received, balance outstanding</td></tr>
+<tr><td>Analysis</td><td>Side-by-side comparison of issued vs received with touch difference and loss amount</td></tr>
+<tr><td>A/c Summary</td><td>Refinery charges, amounts paid, and outstanding balance per refiner</td></tr>
+<tr><td>Less Comparison</td><td>Expected wastage vs actual wastage vs variance per entry — identifies over/under-recovery</td></tr>
+</table>
+
+<hr class="section-break">
+
+<!-- ══════════ 11. REMAKE MODULE ══════════ -->
+<h1 id="remake">11. Remake / Repair Module</h1>
+<p>The Remake module handles the complete lifecycle of repair and remake work — receiving jewellery from a customer, sending to a goldsmith, receiving back, and returning to the customer with a final bill.</p>
+
+<h3>Complete Remake Workflow</h3>
+<div class="workflow keep-together">
+  <div class="wf-step"><strong>Step 1</strong>Rcpt Memo<br>from Party</div>
+  <div class="wf-step"><strong>Step 2</strong>Issue Memo<br>to Smith</div>
+  <div class="wf-step"><strong>Step 3</strong>Rcpt Memo<br>from Smith</div>
+  <div class="wf-step"><strong>Step 4</strong>Issue / Return<br>to Party</div>
+  <div class="wf-step"><strong>Step 5</strong>Repair Return<br>(Final Bill)</div>
+</div>
+
+<h2>11.1 Receipt Memo To Party (Step 1)</h2>
+<p>When a customer brings jewellery for repair/remake:</p>
+<ol>
+  <li>Go to <strong>Transactions → Remake → Rcpt Memo To Party → New</strong></li>
+  <li>Enter <strong>Customer Code / Name</strong></li>
+  <li>Set <strong>Receipt Date</strong> and <strong>Due Date</strong> (promised return date)</li>
+  <li>Add item rows:
+    <ul>
+      <li>Item description, Quantity, Gross Weight, Stone Weight</li>
+      <li>Enter the <strong>Complaint / Work description</strong> (what needs to be done)</li>
+    </ul>
+  </li>
+  <li>Save — Receipt Bill Number is generated (e.g. <code>RM1/00001</code>)</li>
+</ol>
+<div class="tip"><strong>Tip:</strong> Always set the Due Date accurately. The Remake Pending report highlights overdue items in red, helping staff follow up with goldsmiths.</div>
+
+<h2>11.2 Issue Memo To Smith (Step 2)</h2>
+<ol>
+  <li>Go to <strong>Transactions → Remake → Issue Memo To Smith → New</strong></li>
+  <li>Select the <strong>Goldsmith</strong></li>
+  <li>Reference the Receipt Memo bill number</li>
+  <li>Add items issued with weights</li>
+  <li>Save</li>
+</ol>
+
+<h2>11.3 Receipt Memo From Smith (Step 3)</h2>
+<ol>
+  <li>Go to <strong>Transactions → Remake → Rcpt Memo From Smith → New</strong></li>
+  <li>Select Goldsmith and reference the Issue Memo</li>
+  <li>Enter the received weights (after work)</li>
+  <li>Save</li>
+</ol>
+
+<h2>11.4 Issue Memo To Party (Step 4)</h2>
+<p>When returning the finished item to the customer without a final bill (interim return):</p>
+<ol>
+  <li>Go to <strong>Transactions → Remake → Issue Memo To Party → New</strong></li>
+  <li>Load the original Receipt Memo</li>
+  <li>Record items being returned</li>
+  <li>Save</li>
+</ol>
+
+<h2>11.5 Repair Return — Final Bill (Step 5)</h2>
+<p>When collecting payment and issuing the final receipt to the customer:</p>
+<ol>
+  <li>Go to <strong>Transactions → Remake → Repair Return → New</strong></li>
+  <li>Load the original Receipt Memo bill number</li>
+  <li>Enter the <strong>new/final weight</strong> of the item after work</li>
+  <li>Enter <strong>Making Charge</strong>, <strong>Bill Amount</strong></li>
+  <li>Enter <strong>Discount</strong> if applicable</li>
+  <li>Enter <strong>Amount Received</strong> from the customer</li>
+  <li>Save — Return Bill Number generated (e.g. <code>RM4/00001</code>)</li>
+</ol>
+
+<h2>11.6 Edit, Cancel, Reprint</h2>
+<p>Each of the 5 sub-modules (Rcpt Memo to Party, Issue to Smith, Rcpt from Smith, Issue to Party, Repair Return) has its own Edit, Cancel, and Reprint sub-menus. Use them the same way as for Sales Bill — search by bill number and select.</p>
+
+<h2>11.7 Remake Reports</h2>
+<p>Go to <strong>Reports → Remake → Remake Reports</strong> and select from the dropdown:</p>
+<table>
+<tr><th>Report Type</th><th>What It Shows</th></tr>
+<tr><td>Remake Entry Details</td><td>All items received from customers in the date range — customer, item, weight, complaint, status (Pending/Returned)</td></tr>
+<tr><td>Goldsmith Issue Details</td><td>All items issued to goldsmiths — goldsmith name, item, weight, making charge, date</td></tr>
+<tr><td>Goldsmith Rcpt Details</td><td>All items received back from goldsmiths — received weight, touch, making charge</td></tr>
+<tr><td>Remake Return to Party Details</td><td>All items returned to customers — original bill reference, final weight, charge, amount collected</td></tr>
+</table>
+
+<h3>Remake Pending Report</h3>
+<p>Go to <strong>Reports → Remake → Remake Pending</strong>. This shows <strong>all items received from customers that have NOT yet been returned</strong>. Items past their Due Date are highlighted in <span style="color:#991b1b;font-weight:bold">red</span>. No date filter is needed — it always shows all open items.</p>
+
+<h3>Remake Returns Report</h3>
+<p>Go to <strong>Reports → Remake → Remake Returns</strong>. Shows all final Repair Return bills in the selected date range — Bill No, Date, Customer, Original Bill, Net Weight, Bill Amount, Discount, Tax, Net Amount, Received, Balance.</p>
+
+<hr class="section-break">
+
+<!-- ══════════ 12. BARCODE ══════════ -->
+<h1 id="barcode">12. Barcode Management</h1>
+<p>GoldApp supports full barcode-based inventory management — from tagging items to scanning during sales and verifying counter stock.</p>
+
+<h2>12.1 Barcode Single Entry</h2>
+<p>Assign a barcode to an individual item:</p>
+<ol>
+  <li>Go to <strong>Transactions → BarcodeAdd → Single Entry</strong></li>
+  <li>Enter or scan the <strong>Barcode Number</strong> (or let the system generate the next one)</li>
+  <li>Select the <strong>Item Code / Name</strong></li>
+  <li>Enter weight, purity, making charge, and other item details</li>
+  <li>Assign to a <strong>Counter</strong> if applicable</li>
+  <li>Save — the barcode is linked to this specific item</li>
+  <li>Click <strong>Print</strong> to print the barcode label on your barcode printer</li>
+</ol>
+
+<h2>12.2 Barcode Multi Entry</h2>
+<p>Assign barcodes to multiple items at once (bulk tagging):</p>
+<ol>
+  <li>Go to <strong>Transactions → BarcodeAdd → Multi Entry</strong></li>
+  <li>Select a source document (e.g., a purchase bill)</li>
+  <li>The system lists all untagged items from that document</li>
+  <li>Assign barcode numbers (auto-generated or manually entered) to each row</li>
+  <li>Save all at once</li>
+  <li>Print labels for all newly tagged items</li>
+</ol>
+<div class="tip"><strong>Tip:</strong> Use Multi Entry after receiving a purchase bill to quickly tag all incoming stock.</div>
+
+<h2>12.3 Counter Issue</h2>
+<p>Transfer tagged items from main stock to a specific display counter:</p>
+<ol>
+  <li>Go to <strong>Transactions → BarcodeAdd → Counter Issue</strong></li>
+  <li>Select the <strong>Counter</strong> you're issuing items to</li>
+  <li>Scan or enter barcode numbers of items to be issued</li>
+  <li>Save — stock moves from main inventory to the counter</li>
+</ol>
+
+<h2>12.4 Stock Verification</h2>
+<p>Verify physical items in a counter against the system's barcode records:</p>
+<ol>
+  <li>Go to <strong>Transactions → BarcodeAdd → Stock Verification</strong></li>
+  <li>Select the <strong>Counter</strong> to verify</li>
+  <li>Scan all items physically present in the counter</li>
+  <li>The system shows which items match and highlights missing or extra items</li>
+</ol>
+
+<h2>12.5 Barcode Settings</h2>
+<p>Configure how barcodes are printed:</p>
+<ol>
+  <li>Go to <strong>Transactions → BarcodeAdd → Single Entry → Settings</strong></li>
+  <li>Select the <strong>Printer</strong> connected to your system</li>
+  <li>Upload a <strong>Label Template image</strong> if a custom design is required</li>
+  <li>Set default fields to print on the label (item name, weight, price, barcode number)</li>
+  <li>Save settings</li>
+</ol>
+
+<h2>12.6 Barcode Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Barcode Register</td><td>All barcoded items — barcode number, item, weight, counter, status (available/sold)</td></tr>
+<tr><td>Barcode Profit Report</td><td>Margin analysis: cost price vs selling price for barcode-tagged items</td></tr>
+<tr><td>Marked List</td><td>Items marked for sale or special attention</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 13. STOCK MANAGEMENT ══════════ -->
+<h1 id="stock">13. Stock &amp; Item Management</h1>
+
+<h2>13.1 Item Master</h2>
+<p>Add or edit items in the inventory:</p>
+<ol>
+  <li>Go to <strong>Registration → Items → Item Add/Edit</strong></li>
+  <li>Enter Item Code, Name, Group, Sub-Group, Purity Type, Stock Type</li>
+  <li>Set default Weight, Rate, and Making Charge if applicable</li>
+  <li>Save</li>
+</ol>
+
+<h3>Supporting Masters</h3>
+<table>
+<tr><th>Master</th><th>Purpose</th></tr>
+<tr><td>Groups</td><td>Top-level category (e.g., Rings, Chains, Bangles)</td></tr>
+<tr><td>Sub Groups</td><td>Sub-category within a group (e.g., Gold Rings, Silver Rings)</td></tr>
+<tr><td>Purity Type</td><td>Define purity levels (22K, 18K, Silver 92.5, etc.)</td></tr>
+<tr><td>Stock Type</td><td>Classify stock for reporting (Own, Consignment, Sample, etc.)</td></tr>
+<tr><td>Models</td><td>Specific design models for jewellery</td></tr>
+<tr><td>MC Table</td><td>Making charge tables — rate slabs by weight</td></tr>
+<tr><td>Party MC Table</td><td>Customer-specific making charge overrides</td></tr>
+<tr><td>Wastage Table</td><td>Wastage percentage slabs</td></tr>
+<tr><td>Reorder Level</td><td>Minimum stock level triggers for re-ordering</td></tr>
+</table>
+
+<h2>13.2 Opening Stock Entry</h2>
+<ol>
+  <li>Go to <strong>Registration → Items → Opening Stock</strong></li>
+  <li>Select the item and enter the opening quantity and weight</li>
+  <li>This is done once when setting up the system or at year start</li>
+</ol>
+
+<h2>13.3 Stock Adjustments</h2>
+<table>
+<tr><th>Type</th><th>Use Case</th></tr>
+<tr><td>Stock Transfer (<kbd>Ctrl+A</kbd>)</td><td>Move stock from one item/counter to another</td></tr>
+<tr><td>Stock Transfer-Barcode</td><td>Transfer stock using barcode scanning</td></tr>
+<tr><td>Multi Entry</td><td>Make multiple small adjustments in one screen</td></tr>
+<tr><td>Add-Less (<kbd>Ctrl+K</kbd>)</td><td>Manually add or reduce stock for corrections</td></tr>
+<tr><td>Stock Adjustment</td><td>General-purpose stock correction entry</td></tr>
+<tr><td>Edit / Cancel</td><td>Modify or undo previous adjustment entries</td></tr>
+</table>
+
+<h2>13.4 Stock Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Stock Period Ledger — Item</td><td>Opening stock + all movements (buy/sell/adjust) + closing stock for one item</td></tr>
+<tr><td>Stock Period Ledger — Group</td><td>Same as above, aggregated by item group</td></tr>
+<tr><td>Stock Period Ledger — Sub Group</td><td>Same as above, aggregated by sub-group</td></tr>
+<tr><td>Stock Item History</td><td>Every bill/transaction that affected a specific item</td></tr>
+<tr><td>Stock Register — Transaction</td><td>All stock movements in date range (buy/sell/adjust)</td></tr>
+<tr><td>Stock Register — Summary</td><td>Summary totals of stock by item or group</td></tr>
+<tr><td>Stock Summary (Cost-wise)</td><td>Stock valuation at cost price</td></tr>
+<tr><td>Stock Summary (Rate-wise)</td><td>Stock valuation at current market rate</td></tr>
+<tr><td>Stock Verification</td><td>Physical count vs system count comparison</td></tr>
+<tr><td>Jewel Summary</td><td>Jewellery-specific aggregated stock overview</td></tr>
+</table>
+
+<hr class="section-break">
+
+<!-- ══════════ 14. WEIGHT DEPOSITS ══════════ -->
+<h1 id="deposit">14. Weight Deposit Modules</h1>
+
+<h2>14.1 Party Weight Deposit</h2>
+<p>Records gold/silver weight deposited by customers, smiths, or parties — and tracks withdrawals. Useful for parties who maintain a running gold balance with the shop.</p>
+
+<h3>Recording a Deposit or Withdrawal</h3>
+<ol>
+  <li>Go to <strong>Transactions → Party Wgt Deposit → Transaction</strong></li>
+  <li>Select the <strong>Party</strong> (customer / goldsmith / depositor)</li>
+  <li>Choose type: <strong>Receipt</strong> (depositing) or <strong>Payment</strong> (withdrawing)</li>
+  <li>Enter Date, Document Number, Metal Type, Weight</li>
+  <li>Save</li>
+</ol>
+
+<h3>Opening Weight Entry</h3>
+<p>To set up a party's opening balance use <strong>Registration → Party Opening Weight</strong>.</p>
+
+<h3>Interest Posting</h3>
+<p>Use <strong>Party Wgt Deposit → Interest Posting</strong> to calculate and post interest on the running balance for all depositors at once.</p>
+
+<h3>Party Weight Deposit Reports</h3>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Transactions</td><td>All deposit/withdrawal transactions in the date range; filter by party</td></tr>
+<tr><td>Depositer Ledger</td><td>Running balance per party — opening + deposits − withdrawals per transaction</td></tr>
+<tr><td>Wgt/Amt Summary</td><td>Per-party summary: total deposited, total withdrawn, balance weight and value</td></tr>
+</table>
+
+<h2>14.2 Partners Deposit (Weight)</h2>
+<p>Manages weight-based financial arrangements between the shop and its business partners (sleeping partners, gold loan providers, etc.).</p>
+
+<h3>New Partners Deposit Entry</h3>
+<ol>
+  <li>Go to <strong>Transactions → Partners Deposit (Wgt) → New</strong> (<kbd>Ctrl+W</kbd>)</li>
+  <li>Select Partner</li>
+  <li>Choose <strong>Receipt (R)</strong> — partner deposits gold — or <strong>Payment (P)</strong> — gold returned to partner</li>
+  <li>Enter Date, Weight, Rate, Amount</li>
+  <li>Save</li>
+</ol>
+
+<h3>Partners Deposit Reports</h3>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Deposit Book</td><td>All R (receipt) and P (payment) transactions per partner in the date range</td></tr>
+<tr><td>Weight Balance Summary</td><td>Per-partner: total receipts, total payments, balance weight and interest accrued</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 15. OTHER ITEMS ══════════ -->
+<h1 id="otheritem">15. Other Item Transactions &amp; Reports</h1>
+<p>Other Items are non-precious goods sold or purchased by the shop — packing materials, accessories, boxes, covers, gift items, etc.</p>
+
+<h2>15.1 Other Item Master</h2>
+<ol>
+  <li>Go to <strong>Registration → Items → Other Items</strong></li>
+  <li>Add item: Code, Name, Group, Unit, Rate</li>
+  <li>Save</li>
+</ol>
+
+<h2>15.2 Other Item Sales &amp; Purchase</h2>
+<ol>
+  <li>Go to <strong>Transactions → Other Items Trans → Sales → New</strong> (or Purchase → New)</li>
+  <li>Enter Party Name / Code</li>
+  <li>Add item rows: Item, Quantity, Rate, Amount</li>
+  <li>Enter payment details</li>
+  <li>Save</li>
+</ol>
+<p>Edit, Cancel, and Reprint are available as sub-menu items for both Sales and Purchase.</p>
+
+<h2>15.3 Other Item Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Sales Book</td><td>Bill-wise list of all other item sales — Bill No, Date, Party, Item Count, Total Qty, Bill Amt, Paid, Balance</td></tr>
+<tr><td>Sales Register</td><td>Item-level detail of all sales — each line shows item name, qty, rate, amount</td></tr>
+<tr><td>Purchase Book</td><td>Bill-wise list of all other item purchases — Supplier, Qty, Bill Amt, Paid, Balance</td></tr>
+<tr><td>Purchase Register</td><td>Item-level purchase detail with cost information</td></tr>
+<tr><td>Stock Ledger</td><td>Running stock history for one item — opening balance, each purchase (In), each sale (Out), closing balance</td></tr>
+<tr><td>Stock List</td><td>Current stock of ALL other items — loads automatically; shows qty, rate, stock value; filter by group; toggle zero-stock items</td></tr>
+</table>
+
+<h3>Using the Stock Ledger</h3>
+<ol>
+  <li>Go to <strong>Reports → Other Item Reports → Stock Ledger</strong></li>
+  <li>Select the <strong>Item</strong> from the dropdown</li>
+  <li>Set From and To dates</li>
+  <li>Click <strong>Show</strong></li>
+  <li>The first row shows opening balance (stock before the period)</li>
+  <li>Each subsequent row shows a purchase (In) or sale (Out) with running balance</li>
+</ol>
+
+<hr>
+
+<!-- ══════════ 16. PURITY TESTING ══════════ -->
+<h1 id="purity">16. Purity Testing &amp; Certificates</h1>
+<p>Record results of physical/chemical purity tests performed on jewellery items and issue official purity certificates to customers.</p>
+
+<h2>16.1 Purity Testing Entry</h2>
+<ol>
+  <li>Go to <strong>Transactions → Purity Testing → New</strong></li>
+  <li>Enter Customer Name</li>
+  <li>Add item rows: Item description, Gross Weight, Tested Touch (purity result)</li>
+  <li>Record testing method and lab reference if applicable</li>
+  <li>Save</li>
+</ol>
+
+<h2>16.2 Purity Certificate</h2>
+<ol>
+  <li>Go to <strong>Transactions → Purity Certificate</strong></li>
+  <li>Load the purity testing record</li>
+  <li>Print the official certificate for the customer</li>
+</ol>
+
+<div class="note">Purity Testing entries can be edited and cancelled with the Edit and Cancel sub-menu options.</div>
+
+<hr class="section-break">
+
+<!-- ══════════ 17. SCHEME / KURI ══════════ -->
+<h1 id="scheme">17. Scheme / Kuri Module</h1>
+<p>Manage gold savings schemes offered to customers. The Kuri/Scheme module handles customer enrolment, monthly collection, interest posting, scheme maturity, and passbook printing.</p>
+
+<h2>17.1 Scheme Types Setup</h2>
+<ol>
+  <li>Go to <strong>Registration → Scheme Type Master</strong></li>
+  <li>Define scheme types — Name, Duration, Monthly Amount, Interest Rules, Tax %</li>
+  <li>Save</li>
+</ol>
+
+<h2>17.2 Customer Enrolment</h2>
+<ol>
+  <li>Go to <strong>Transactions → Scheme Details → Customer Registration</strong> (<kbd>Ctrl+M</kbd>)</li>
+  <li>Enter Customer Code / Name</li>
+  <li>Select <strong>Scheme Type</strong></li>
+  <li>Enter <strong>Start Date</strong> and scheme-specific details</li>
+  <li>Save — scheme account is created for the customer</li>
+</ol>
+
+<h2>17.3 Scheme Workflow</h2>
+<table>
+<tr><th>Step</th><th>Module</th><th>Description</th></tr>
+<tr><td>1</td><td>Customer Registration</td><td>Enrol customer in a scheme</td></tr>
+<tr><td>2</td><td>Scheme Collection</td><td>Record monthly instalment payments (<kbd>Ctrl+L</kbd>)</td></tr>
+<tr><td>3</td><td>Interest Posting</td><td>Post interest earned on the scheme balance</td></tr>
+<tr><td>4</td><td>Scheme Part Refund</td><td>Partial refund if customer withdraws early</td></tr>
+<tr><td>5</td><td>Scheme Finished</td><td>Mark scheme as complete and settle the final amount/gold</td></tr>
+<tr><td>6</td><td>Passbook Print</td><td>Print the customer's scheme passbook with all transactions</td></tr>
+</table>
+
+<h2>17.4 POS Integration</h2>
+<p>If using a Point-of-Sale system:</p>
+<ul>
+  <li><strong>POS Upload:</strong> Send scheme data to the POS system</li>
+  <li><strong>POS Download:</strong> Retrieve collection data recorded at POS back into GoldApp</li>
+</ul>
+
+<h2>17.5 Kuri Details (Chit Fund style)</h2>
+<ol>
+  <li>Go to <strong>Transactions → Kuri Details → Enter Customers</strong> to register customers</li>
+  <li>Use <strong>Kuri Collection</strong> to record monthly payments</li>
+  <li>Use <strong>Interest Posting</strong> for periodic interest credits</li>
+  <li>Use <strong>Kuri Draw</strong> when a member wins the monthly draw</li>
+  <li>Use <strong>Kuri Finish</strong> when the chit cycle completes</li>
+</ol>
+
+<hr>
+
+<!-- ══════════ 18. ACCOUNTS ══════════ -->
+<h1 id="accounts">18. Accounts Module</h1>
+<p>The accounts module handles all financial entries — cash/bank receipts, payments, journal entries, cheque management, and billwise settlements.</p>
+
+<h2>18.1 Cash/Bank Receipt</h2>
+<ol>
+  <li>Go to <strong>Transactions → Accounts → Receipt</strong> (<kbd>Alt+F2</kbd>)</li>
+  <li>Select Account (Cash / Bank)</li>
+  <li>Enter Party Name, Date, Amount, and narration</li>
+  <li>Save — credited to the party's account</li>
+</ol>
+
+<h2>18.2 Cash/Bank Payment</h2>
+<ol>
+  <li>Go to <strong>Transactions → Accounts → Payment</strong> (<kbd>Alt+F3</kbd>)</li>
+  <li>Select Account, Party, Date, Amount</li>
+  <li>Save — debited from the party's account</li>
+</ol>
+
+<h2>18.3 Customer Billwise Receipt</h2>
+<p>Collect payment against specific outstanding bills:</p>
+<ol>
+  <li>Go to <strong>Accounts → Customer Billwise Rcpt</strong> (<kbd>Alt+F1</kbd>)</li>
+  <li>Select Customer — all outstanding bills are listed</li>
+  <li>Enter the amount paid against each bill</li>
+  <li>Save — each bill's balance is reduced accordingly</li>
+</ol>
+
+<h2>18.4 Supplier Billwise Payment</h2>
+<p>Pay against specific outstanding supplier invoices:</p>
+<ol>
+  <li>Go to <strong>Accounts → Supplier Billwise Payment</strong></li>
+  <li>Select Supplier — outstanding bills are listed</li>
+  <li>Enter payment amounts per bill</li>
+  <li>Save</li>
+</ol>
+
+<h2>18.5 Journal Entry</h2>
+<ol>
+  <li>Go to <strong>Accounts → Journal</strong> (<kbd>Alt+J</kbd>)</li>
+  <li>Add debit and credit lines with account codes and amounts</li>
+  <li>Debit total must equal Credit total</li>
+  <li>Save</li>
+</ol>
+
+<h2>18.6 Daily Statement</h2>
+<p>Go to <strong>Accounts → Daily Statement</strong> (<kbd>Ctrl+Alt+F2</kbd>) to record the shop's daily cash position — opening balance, receipts, payments, closing balance.</p>
+
+<h2>18.7 Suspense Entry</h2>
+<p>Use <strong>Accounts → Suspense Entry</strong> (<kbd>Ctrl+Shift+S</kbd>) for transactions that cannot immediately be allocated to a specific account. The Suspense Master manages the temporary accounts used.</p>
+
+<h2>18.8 Post-Dated Cheques (PDC)</h2>
+<ol>
+  <li>Record received PDCs through the normal Receipt entry</li>
+  <li>Go to <strong>Accounts → Cheque Clearance</strong> when the cheque is presented to the bank to clear it from suspense to the bank account</li>
+  <li>View all PDCs via <strong>Reports → General → PDC Report</strong></li>
+</ol>
+
+<h2>18.9 Debit / Credit Notes</h2>
+<p>Use <strong>Accounts → Debit/Credit Note</strong> to record adjustments, price differences, or corrections that are not full returns.</p>
+
+<h2>18.10 Expense Voucher</h2>
+<p>Go to <strong>Accounts → Expense Voucher</strong> to record shop expenses (rent, electricity, salaries, miscellaneous) against the appropriate expense account.</p>
+
+<h2>18.11 Other Account Functions</h2>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>Discount Allocation (<kbd>Ctrl+D</kbd>)</td><td>Allocate discounts given to customers against specific bills</td></tr>
+<tr><td>Rate Diff Adjustment</td><td>Adjust for gold rate differences between booking and billing dates</td></tr>
+<tr><td>Change Due Date</td><td>Modify the due date of outstanding bills</td></tr>
+<tr><td>Group Amt Allocation</td><td>Allocate payments across multiple accounts in a group</td></tr>
+<tr><td>A/c Restart Date</td><td>Set a new start date for account balance calculations (year-start)</td></tr>
+<tr><td>Amt Wgt Transfer</td><td>Transfer amounts or weights between accounts</td></tr>
+<tr><td>Payment Confirmation</td><td>Second-level approval for large payments</td></tr>
+<tr><td>Denomination Entry</td><td>Record cash denominations for cash counting / day-end</td></tr>
+</table>
+
+<h2>18.12 Account Master Setup</h2>
+<table>
+<tr><th>Master</th><th>Purpose</th></tr>
+<tr><td>Account</td><td>Create ledger accounts (customers, suppliers, cash, bank, expense heads)</td></tr>
+<tr><td>Account Groups</td><td>Group accounts for P&amp;L, Balance Sheet, Trial Balance</td></tr>
+<tr><td>B/S Heads</td><td>Assign accounts to Balance Sheet positions</td></tr>
+<tr><td>Position Settings</td><td>Arrange the order of groups in financial statements</td></tr>
+<tr><td>Book Stock</td><td>Set book value of gold stock for accounting</td></tr>
+<tr><td>Opening Stock Value</td><td>Enter opening stock value at year start</td></tr>
+<tr><td>C/o Party Limit</td><td>Set credit limits for customers</td></tr>
+</table>
+
+<hr class="section-break">
+
+<!-- ══════════ 19. REPORTS REFERENCE ══════════ -->
+<h1 id="reports">19. All Reports Reference</h1>
+
+<h2>19.1 Sales Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Sales Book</td><td>Bill-wise sales summary — date, bill no, customer, items count, bill amount, received, balance</td></tr>
+<tr><td>Sales Return Book</td><td>Bill-wise list of all sales returns with return amounts</td></tr>
+<tr><td>Monthly Sales Report</td><td>Month-by-month sales totals — quantity, weight, amount</td></tr>
+<tr><td>Sales Check List</td><td>Detailed verification list of all sales — used for checking/auditing</td></tr>
+<tr><td>Sales Register</td><td>Item-level detail of all sales transactions</td></tr>
+<tr><td>Sales Return Register</td><td>Item-level detail of all sales returns</td></tr>
+<tr><td>Net Sales Report</td><td>Sales minus returns = net sales by item/group/period</td></tr>
+<tr><td>Barcode Register</td><td>All barcode-tagged items — status, location, value</td></tr>
+<tr><td>Barcode Profit Report</td><td>Profit analysis on barcode items: cost vs selling price</td></tr>
+<tr><td>Marked List</td><td>Items specially marked or flagged for follow-up</td></tr>
+<tr><td>MC Profit Report</td><td>Making charge (labour) profit analysis per bill or period</td></tr>
+<tr><td>V/A Check List</td><td>Verification and audit list for value-added transactions</td></tr>
+<tr><td>V/A Check Report</td><td>Detailed V/A verification report</td></tr>
+<tr><td>Delivery Status Report</td><td>Delivery status of sold items — pending/delivered</td></tr>
+<tr><td>Point Card Points</td><td>Points earned by customers through loyalty programme</td></tr>
+</table>
+
+<h2>19.2 Purchase Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Purchase Book</td><td>Bill-wise purchase summary — date, bill, supplier, amount, paid, balance</td></tr>
+<tr><td>Purchase Check List</td><td>Audit/verification list for all purchases</td></tr>
+<tr><td>Purchase Register</td><td>Item-level detail of all purchases</td></tr>
+<tr><td>Purchase Return Register</td><td>Item-level detail of all purchase returns</td></tr>
+</table>
+
+<h2>19.3 Tax Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Tax Stock Register</td><td>GST-applicable stock movements</td></tr>
+<tr><td>Tax Sales Book</td><td>Sales with GST breakdown — CGST, SGST, IGST</td></tr>
+<tr><td>Tax Purchase Book</td><td>Purchases with input GST details</td></tr>
+<tr><td>Smith Book</td><td>Making charge / labour tax summary for goldsmiths</td></tr>
+<tr><td>Jewellery Book</td><td>Tax register for jewellery-party transactions</td></tr>
+<tr><td>Outstanding Tax Report</td><td>Tax amounts due but not yet paid/filed</td></tr>
+<tr><td>TDS Report</td><td>Tax Deducted at Source tracking and summary</td></tr>
+<tr><td>Extra Amt Report</td><td>Extra charges / surcharges collected across transactions</td></tr>
+</table>
+
+<h2>19.4 Customer Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>A/c Receivable</td><td>Total outstanding amount owed by each customer</td></tr>
+<tr><td>Credit Bill Details</td><td>All credit bills with outstanding balances per customer</td></tr>
+<tr><td>Customer Summary</td><td>Summary: total sales, total received, balance per customer</td></tr>
+<tr><td>Billwise Receivable</td><td>Each unpaid bill listed separately with age and amount</td></tr>
+<tr><td>Received Details</td><td>All payments received from customers with bill references</td></tr>
+<tr><td>Payment Details</td><td>Amount-wise payment history per customer</td></tr>
+<tr><td>Customer Sales Summary</td><td>Total sales to each customer by period</td></tr>
+<tr><td>Billwise Details</td><td>Complete detail of each bill — items, amounts, payments</td></tr>
+<tr><td>Bill Collection Details</td><td>How each bill was collected (cash/card/cheque) and on which date</td></tr>
+<tr><td>A/c Summary</td><td>Consolidated account summary per customer</td></tr>
+<tr><td>Due Date Report</td><td>Bills approaching or past due date</td></tr>
+<tr><td>Party History</td><td>Complete transaction history of a specific customer</td></tr>
+<tr><td>Visit Report</td><td>Customer visit log and follow-up records</td></tr>
+<tr><td>Prev Card Point Report</td><td>Historical point card redemption report</td></tr>
+<tr><td>Customer List</td><td>Complete master list of all registered customers</td></tr>
+</table>
+
+<h2>19.5 Supplier Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>A/c Payable</td><td>Total outstanding amounts owed to each supplier</td></tr>
+<tr><td>Credit Bill Details</td><td>All supplier credit bills with outstanding balances</td></tr>
+<tr><td>Supplier Summary</td><td>Total purchases, paid, balance per supplier</td></tr>
+<tr><td>Billwise Payable</td><td>Each unpaid supplier invoice listed separately</td></tr>
+<tr><td>Payment Details</td><td>All payments made to suppliers with bill references</td></tr>
+<tr><td>Supplier Purchase Summary</td><td>Total purchases from each supplier by period</td></tr>
+<tr><td>Bill Payment Details</td><td>How each purchase bill was paid and when</td></tr>
+<tr><td>A/c Summary</td><td>Consolidated account summary per supplier</td></tr>
+<tr><td>Due Date Report</td><td>Supplier invoices approaching due date</td></tr>
+<tr><td>Party History</td><td>Complete transaction history with a specific supplier</td></tr>
+<tr><td>Supplier List</td><td>Complete master list of all registered suppliers</td></tr>
+</table>
+
+<h2>19.6 Goldsmith Reports</h2>
+<p>(See Section 9.3 — Goldsmith Reports)</p>
+
+<h2>19.7 Refinery Reports</h2>
+<p>(See Section 10.3 — Refinery Reports)</p>
+
+<h2>19.8 Jewellery (Jewellery Party) Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Transactions</td><td>All jewellery-party transactions in date range</td></tr>
+<tr><td>Jewellery Ledger</td><td>Running balance account for each jewellery party</td></tr>
+<tr><td>Ageing Report</td><td>How long balances have been outstanding per party</td></tr>
+<tr><td>Weight/Amt Summary</td><td>Total issued/received weight and amount per party</td></tr>
+<tr><td>Weight/Amt Analysis</td><td>Detailed breakdown of wgt/amt movements</td></tr>
+<tr><td>Sales / Purchase Item Report</td><td>Item-wise sales and purchase from jewellery parties</td></tr>
+<tr><td>Profit Report</td><td>Margin analysis on jewellery-party transactions</td></tr>
+<tr><td>Transaction Summary</td><td>Aggregated transaction summary by period</td></tr>
+<tr><td>TDS Report</td><td>TDS deducted on jewellery-party payments</td></tr>
+<tr><td>Extra Amount Report</td><td>Extra charges/fees in jewellery-party transactions</td></tr>
+<tr><td>A/c Summary</td><td>Account-level summary per jewellery party</td></tr>
+<tr><td>Send Mail To Jewl</td><td>Email transaction statements directly to jewellery parties</td></tr>
+</table>
+
+<h2>19.9 Financial Reports</h2>
+<table>
+<tr><th>Report</th><th>Description</th></tr>
+<tr><td>Profit &amp; Loss</td><td>Income and expenses for the period — net profit/loss</td></tr>
+<tr><td>Balance Sheet</td><td>Assets and liabilities as on a date</td></tr>
+<tr><td>Trial Balance</td><td>All account balances in debit/credit columns</td></tr>
+<tr><td>Financial Statements</td><td>Comprehensive P&amp;L and Balance Sheet in a single view</td></tr>
+<tr><td>Account Receivable/Payable</td><td>Combined R/P outstanding report across all parties</td></tr>
+<tr><td>Group A/c Summary</td><td>Summary by account group (Assets, Liabilities, Income, Expense)</td></tr>
+<tr><td>Groupwise Expanded List</td><td>Detailed account listing within each group</td></tr>
+<tr><td>Receipt/Payment Report</td><td>All cash/bank receipts and payments in the period</td></tr>
+<tr><td>Account Ledger</td><td>Complete ledger for a selected account — all debit/credit entries</td></tr>
+<tr><td>Bank Book</td><td>All bank transactions with running balance</td></tr>
+<tr><td>Cash Book</td><td>All cash transactions with running balance</td></tr>
+<tr><td>Yearly Cash Balance</td><td>Month-wise cash balance summary for the year</td></tr>
+<tr><td>PDC Report</td><td>All post-dated cheques — received and issued, status</td></tr>
+<tr><td>Journal Report</td><td>All journal entries in the date range</td></tr>
+<tr><td>All Transactions Report</td><td>Every accounting transaction in chronological order</td></tr>
+<tr><td>Chart of Accounts</td><td>Full hierarchical list of all accounts and groups</td></tr>
+<tr><td>Non-Transactional Days</td><td>Days with no accounting activity (for audit)</td></tr>
+<tr><td>Suspense Ledger</td><td>Ledger of the suspense account</td></tr>
+<tr><td>Cash Flow Report</td><td>Sources and uses of cash in the period</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 20. DAY BOOK ══════════ -->
+<h1 id="daybook">20. Day Book &amp; Daily Summary</h1>
+
+<h2>20.1 Day Book</h2>
+<p>The Day Book shows all financial transactions for a selected day or date range in chronological order — cash receipts, payments, sales, purchases, and other entries.</p>
+<ol>
+  <li>Go to <strong>Reports → General → Day Book</strong></li>
+  <li>Select the <strong>Date</strong> (single day or date range)</li>
+  <li>Click <strong>Show</strong></li>
+  <li>Each row shows: Date, Transaction Type, Document No, Party Name, Amount</li>
+</ol>
+
+<h2>20.2 Day Summary</h2>
+<p>A condensed daily summary that shows totals by transaction type — total sales, purchases, receipts, payments — in a compact view. Use it for end-of-day reconciliation.</p>
+
+<h2>20.3 Daily Statement Entry</h2>
+<p>Use <strong>Accounts → Daily Statement</strong> (<kbd>Ctrl+Alt+F2</kbd>) to record the shop's formal daily cash statement — opening cash, all inflows and outflows, closing cash balance, and denomination count.</p>
+
+<hr class="section-break">
+
+<!-- ══════════ 21. SETTINGS ══════════ -->
+<h1 id="settings">21. Settings &amp; Administration</h1>
+
+<h2>21.1 Application Settings</h2>
+<ol>
+  <li>Go to <strong>Registration → Software Settings → Application</strong></li>
+  <li>Update <strong>Company Name</strong>, <strong>Address</strong>, <strong>Phone</strong>, <strong>GST Number</strong></li>
+  <li>Upload the company <strong>Logo</strong> (shown on printed bills)</li>
+  <li>Save</li>
+</ol>
+
+<h2>21.2 Rate Update</h2>
+<ol>
+  <li>Go to <strong>Registration → Software Settings → Update → Rate</strong></li>
+  <li>Enter today's <strong>Gold Rate</strong>, <strong>Silver Rate</strong>, <strong>Platinum Rate</strong></li>
+  <li>Save — the new rates are used for all subsequent bills</li>
+</ol>
+<div class="note"><strong>Gold Rate Image:</strong> Use <strong>Transactions → Gold Rate Image Set</strong> to upload an image or update the rate shown on any rate-board display.</div>
+
+<h2>21.3 Bill Prefix &amp; Numbering</h2>
+<ol>
+  <li>Go to <strong>Registration → Bill Prefix</strong></li>
+  <li>Set the prefix and starting number for each bill type (Sales, Purchase, Remake, etc.)</li>
+  <li>Save — the system uses these for new bill numbers</li>
+</ol>
+
+<h2>21.4 Counters</h2>
+<ol>
+  <li>Go to <strong>Registration → Counters</strong></li>
+  <li>Add counters (display sections/departments) with Code and Name</li>
+  <li>Assign bills and barcode items to specific counters for separate reporting</li>
+</ol>
+
+<h2>21.5 CRM &amp; Customer Campaigns</h2>
+<ol>
+  <li>Go to <strong>Transactions → CRM Greetings</strong></li>
+  <li>Set up SMS / WhatsApp greeting campaigns for birthdays, anniversaries, festivals</li>
+  <li>Select recipients (filter by customer group, area, or all)</li>
+  <li>Schedule and send</li>
+</ol>
+
+<h2>21.6 User Management</h2>
+<table>
+<tr><th>Function</th><th>Steps</th></tr>
+<tr><td>Change Password</td><td>Registration → Users → Change Password — enter old and new password</td></tr>
+<tr><td>Provide Access</td><td>Registration → Users → Provide Access — set which modules each user can access</td></tr>
+<tr><td>Users History</td><td>Registration → Users → Users History — audit log of user login/action history</td></tr>
+</table>
+
+<h2>21.7 Administration Tools</h2>
+<ol>
+  <li>Go to <strong>Registration → Administration</strong></li>
+  <li><strong>Initialise:</strong> Reset or reinitialise system data (use only when advised by your system provider)</li>
+  <li><strong>Initialise Doc Numbers:</strong> Reset bill sequence numbers for a new financial year</li>
+  <li><strong>Stock Update:</strong> Force-update stock calculations if discrepancies are found</li>
+</ol>
+<div class="danger"><strong>Warning:</strong> Administration tools make irreversible changes to core system data. Only use these functions when explicitly instructed by your system administrator or support team.</div>
+
+<h2>21.8 Integrity Checking</h2>
+<p>Go to <strong>Transactions → BarcodeAdd → Stock Verification</strong> or <strong>Reports → Integrity Checking</strong> to run a data integrity check — identifies orphaned records, weight mismatches, and accounting discrepancies.</p>
+
+<h2>21.9 Staff Management</h2>
+<table>
+<tr><th>Module</th><th>Description</th></tr>
+<tr><td>Staff Transaction</td><td>Record salary advances, loans, and deductions for staff</td></tr>
+<tr><td>Log Update</td><td>Update daily attendance and working hours</td></tr>
+<tr><td>Leave Entry</td><td>Record approved leaves for each staff member</td></tr>
+<tr><td>Wgt Transaction</td><td>Track gold issued to staff for personal work</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════ 22. TIPS & FAQ ══════════ -->
+<h1 id="tips">22. Tips, Shortcuts &amp; Frequently Asked Questions</h1>
+
+<h2>22.1 Data Entry Tips</h2>
+<ul>
+  <li>Press <kbd>Tab</kbd> to move between fields without using the mouse</li>
+  <li>In search fields, type 3–4 characters and press <kbd>Tab</kbd> or <kbd>Enter</kbd> to trigger a popup search</li>
+  <li>Weight fields accept up to 3 decimal places (e.g., 10.750 grams)</li>
+  <li>Amount fields accept up to 2 decimal places</li>
+  <li>Always verify the bill total before saving — check discount and tax settings</li>
+</ul>
+
+<h2>22.2 Printing Tips</h2>
+<ul>
+  <li>Use <kbd>Ctrl+P</kbd> or click <strong>Print</strong> in the module toolbar</li>
+  <li>For best print layout: set margins to <em>Minimum</em>, enable <em>Background graphics</em></li>
+  <li>Use <strong>Reprint</strong> for any previously saved bill — no need to re-enter data</li>
+  <li>Reports can be saved as PDF using the browser's <em>Save as PDF</em> printer option</li>
+</ul>
+
+<h2>22.3 Frequently Asked Questions</h2>
+
+<h4>Q: A bill was saved with wrong weight or amount. What do I do?</h4>
+<p>Go to the module's <strong>Edit</strong> sub-menu, search the bill, correct the values, and save. The system automatically reverses the original entry and applies corrected values.</p>
+
+<h4>Q: I accidentally cancelled a bill. Can I recover it?</h4>
+<p>No — cancellation is permanent and irreversible. Create a new bill with the same details.</p>
+
+<h4>Q: The report shows no data even though bills were entered.</h4>
+<p>Check: (1) the <strong>date range</strong> — it must include the bill dates; (2) you clicked <strong>Show</strong> after setting filters; (3) any party/item filter is not limiting the results unintentionally.</p>
+
+<h4>Q: How do I know if a remake job is overdue?</h4>
+<p>Go to <strong>Reports → Remake → Remake Pending</strong>. Overdue items (past due date) are highlighted in <span style="color:#991b1b;font-weight:bold">red</span>.</p>
+
+<h4>Q: How is Balance calculated in reports?</h4>
+<p>Balance = Net Amount − Amount Received/Paid. Positive balance = customer owes you. Zero balance = fully settled.</p>
+
+<h4>Q: A barcode won't scan during sales. What to check?</h4>
+<p>(1) Ensure the barcode is tagged in <strong>Single Entry</strong> with a valid item. (2) Check the barcode number in <strong>Barcode Register</strong>. (3) Verify the scanner driver is connected and working. (4) Try manually entering the barcode number.</p>
+
+<h4>Q: Gold rate changed during the day. Which bills use which rate?</h4>
+<p>Each bill uses the rate that was active <em>at the time the bill was entered</em>. Updating the rate does not retroactively change saved bills.</p>
+
+<h4>Q: Can I export a report to Excel?</h4>
+<p>Right-click the report table → Select All → Copy → Paste into Excel. Or use Print → Save as PDF for a formatted document.</p>
+
+<h4>Q: The stock balance seems wrong. What to check?</h4>
+<p>(1) Run <strong>Integrity Checking</strong> to identify discrepancies. (2) Check the <strong>Stock Period Ledger</strong> for the item to see every movement. (3) Check if any bills were edited — edits reverse and repost stock. Contact your administrator if the issue persists.</p>
+
+<h4>Q: How do I add a new salesman?</h4>
+<p>Go to <strong>Registration → Account Masters → Sales Man</strong> — add the name and save. The new salesman will then be available in the Sales Bill dropdown.</p>
+
+<h4>Q: How do I set up a gold savings scheme for customers?</h4>
+<p>First create the scheme type in <strong>Registration → Scheme Type Master</strong>. Then enrol customers via <strong>Transactions → Scheme Details → Customer Registration</strong>. Collect monthly payments via <strong>Scheme Collection</strong>.</p>
+
+<h4>Q: Who can change user passwords or access rights?</h4>
+<p>Only users with administrator-level access can manage other users. They can do this via <strong>Registration → Users → Provide Access</strong> and <strong>Change Password</strong>.</p>
+
+<h4>Q: How do I print a customer's scheme passbook?</h4>
+<p>Go to <strong>Transactions → Scheme Details → Pass Book Print</strong>, select the customer and scheme, and print.</p>
+
+<h4>Q: The system says "Insufficient Stock" during a sales bill. What do I do?</h4>
+<p>The item's stock is zero or less than required. Check the <strong>Stock Period Ledger</strong> for the item to understand the current balance. You may need to enter a purchase bill or stock adjustment before proceeding.</p>
+
+<hr>
+
+<div class="footer">
+  GoldApp — Complete User Guide &nbsp;|&nbsp; Version 2.0 &nbsp;|&nbsp; March 2026<br>
+  This document covers all modules including Barcode, Scheme/Kuri, Accounts, Remake, Refinery, Deposits, Other Items, Orders, Purity Testing, and Reports.<br>
+  For technical support, contact your system administrator.
+</div>
+
+</div><!-- .page -->
+</body>
+</html>
