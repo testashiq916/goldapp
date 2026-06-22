@@ -273,10 +273,19 @@ class JournalController extends Controller
             return $this->json(['success' => false, 'error' => 'Entry not found'], 404);
         }
 
+        $dbCols = $this->getColumns('daybook');
+        $hasNarr = in_array('narration', $dbCols, true);
         $rows = DB::table('daybook')
-            ->selectRaw('TRIM(accode) AS accode, amount')
-            ->where('slno', $slno)
-            ->orderBy('accode')
+            ->selectRaw('TRIM(daybook.accode) AS accode, daybook.amount'
+                . ($hasNarr ? ', TRIM(COALESCE(daybook.narration, \'\')) AS rownote' : '')
+                . ($this->hasTable('accountm') ? ', TRIM(COALESCE(accountm.name, \'\')) AS name' : ''))
+            ->when($this->hasTable('accountm'), function ($q) {
+                $q->leftJoin('accountm', function ($j) {
+                    $j->whereRaw('TRIM(daybook.accode) = TRIM(accountm.accode)');
+                });
+            })
+            ->where('daybook.slno', $slno)
+            ->orderBy('daybook.accode')
             ->get()
             ->map(function ($r) {
                 $amt = (float) ($r->amount ?? 0);
@@ -284,6 +293,8 @@ class JournalController extends Controller
                     'particulars' => trim((string) ($r->accode ?? '')),
                     'amountd' => $amt < 0 ? abs($amt) : 0,
                     'amountc' => $amt > 0 ? abs($amt) : 0,
+                    'rownote' => trim((string) ($r->rownote ?? '')),
+                    'name' => trim((string) ($r->name ?? '')),
                 ];
             })->all();
 
@@ -374,6 +385,7 @@ class JournalController extends Controller
                 'particulars' => $particulars,
                 'amountd' => $amountd,
                 'amountc' => $amountc,
+                'rownote' => mb_substr(trim((string) ($r['rownote'] ?? '')), 0, 100),
             ];
         }
 
@@ -437,6 +449,7 @@ class JournalController extends Controller
                     'amount' => $amount,
                     'control' => $control,
                     'opaccode' => $op,
+                    'narration' => $r['rownote'],
                 ];
                 DB::table('daybook')->insert(array_filter($row, fn ($k) => in_array($k, $dbCols, true), ARRAY_FILTER_USE_KEY));
             }

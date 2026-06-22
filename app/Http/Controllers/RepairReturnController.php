@@ -42,17 +42,22 @@ class RepairReturnController extends Controller
             $r = DB::table('stktype')->where('code', 'R')->first(['code']);
             $defstktype = $r ? 'R' : '';
         }
-        if ($defstktype === '' && $this->hasTable('generals')) {
+        if ($defstktype === '' && $this->hasTable('generals') && Schema::hasColumn('generals', 'code') && Schema::hasColumn('generals', 'cvalue')) {
             $defstktype = trim((string) (DB::table('generals')->where('code', 'DEFSTKTYPE')->value('cvalue') ?? ''));
         }
+
+        $cashBanks = $this->cashBankAccounts();
 
         return view('repair-return.index', [
             'title'       => 'Repair Return Details',
             'mode'        => $mode,
             'smen'        => $smen,
+            'salesmen'    => $smen,
             'grate'       => $grate,
             'srate'       => $srate,
             'defstktype'  => $defstktype,
+            'shopInfo'    => $this->shopInfo(),
+            'cashBanks'   => $cashBanks,
         ]);
     }
 
@@ -102,7 +107,6 @@ class RepairReturnController extends Controller
             })
             ->when($tdate, fn ($qb) => $qb->whereDate('tdate', $tdate))
             ->orderByDesc('slno')
-            ->limit(50)
             ->get(['slno', 'billno', 'tdate', 'custname'])
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
@@ -168,6 +172,44 @@ class RepairReturnController extends Controller
     }
 
     // ─── API: Search repair return bills ────────────────────────────────────
+
+    public function navigate(Request $request): JsonResponse
+    {
+        abort_unless($request->session()->has('user_code'), 401);
+
+        if (!$this->hasTable('repairm')) {
+            return response()->json(['ok' => false, 'message' => 'repairm missing'], 500);
+        }
+
+        $direction = strtolower(trim((string) $request->query('direction', 'next')));
+        $slno = (int) $request->query('slno', 0);
+        $billNo = strtoupper(trim((string) $request->query('bill_no', '')));
+
+        if ($slno <= 0 && $billNo !== '') {
+            $slno = (int) (DB::table('repairm')->where('givrec', 'G')->whereRaw('TRIM(billno)=?', [$billNo])->value('slno') ?? 0);
+        }
+
+        $query = DB::table('repairm')->where('givrec', 'G');
+        if ($direction === 'first') {
+            $row = $query->orderBy('slno')->first(['slno', 'billno']);
+        } elseif ($direction === 'previous' || $direction === 'prev') {
+            $row = $query->where('slno', '<', $slno)->orderByDesc('slno')->first(['slno', 'billno']);
+        } elseif ($direction === 'last') {
+            $row = $query->orderByDesc('slno')->first(['slno', 'billno']);
+        } else {
+            $row = $query->where('slno', '>', $slno)->orderBy('slno')->first(['slno', 'billno']);
+        }
+
+        if (!$row) {
+            return response()->json(['ok' => false, 'message' => 'No more records']);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'slno' => (int) ($row->slno ?? 0),
+            'bill_no' => trim((string) ($row->billno ?? '')),
+        ]);
+    }
 
     public function search(Request $request): JsonResponse
     {
@@ -270,6 +312,8 @@ class RepairReturnController extends Controller
                 'tdate'    => (string) ($m->tdate ?? ''),
                 'custcode' => trim((string) ($m->custcode ?? '')),
                 'custname' => trim((string) ($m->custname ?? '')),
+                'addr'     => $this->customerAddress(trim((string) ($m->custcode ?? ''))),
+                'phone'    => $this->customerPhone(trim((string) ($m->custcode ?? ''))),
                 'sman'     => trim((string) ($m->sman ?? '')),
                 'amount'   => (float) ($m->amount ?? 0),
                 'discount' => (float) ($m->discount ?? 0),
@@ -277,6 +321,7 @@ class RepairReturnController extends Controller
                 'taxperc'  => (float) ($m->taxperc ?? 0),
                 'taxamt'   => (float) ($m->taxamt ?? 0),
                 'rbillno'  => $rbillno,
+                'cashbank_code' => $this->cashBankCodeForSlno((int) ($m->slno ?? 0)),
                 'status'   => (int) ($m->status ?? 0),
             ],
             'rows' => $rows,
@@ -301,6 +346,16 @@ class RepairReturnController extends Controller
         $m = DB::table('repairm')->whereRaw('TRIM(billno)=?', [$billno])->first();
         if (!$m) {
             return response()->json(['ok' => false, 'message' => 'Remake receipt not found']);
+        }
+
+        if (Schema::hasColumn('repairm', 'rbillno')) {
+            $alreadyUsed = DB::table('repairm')
+                ->where('givrec', 'G')
+                ->whereRaw('UPPER(TRIM(rbillno)) = ?', [$billno])
+                ->exists();
+            if ($alreadyUsed) {
+                return response()->json(['ok' => false, 'message' => 'This remake receipt is already selected/saved.']);
+            }
         }
 
         // Get gold/silver rates
@@ -348,6 +403,9 @@ class RepairReturnController extends Controller
             'ok'       => true,
             'custcode' => trim((string) ($m->custcode ?? '')),
             'custname' => trim((string) ($m->custname ?? '')),
+            'sman'     => trim((string) ($m->sman ?? '')),
+            'addr'     => $this->customerAddress(trim((string) ($m->custcode ?? ''))),
+            'phone'    => $this->customerPhone(trim((string) ($m->custcode ?? ''))),
             'control'  => (int) ($m->control ?? 1),
             'items'    => $items,
         ]);
@@ -365,8 +423,18 @@ class RepairReturnController extends Controller
             return response()->json(['ok' => true, 'rows' => []]);
         }
 
-        $rows = DB::table('repairm')
-            ->where('givrec', 'R')
+        $query = DB::table('repairm')->where('givrec', 'R');
+
+        if (Schema::hasColumn('repairm', 'rbillno')) {
+            $query->whereNotExists(function ($sub) {
+                $sub->selectRaw('1')
+                    ->from('repairm as used')
+                    ->where('used.givrec', 'G')
+                    ->whereRaw('UPPER(TRIM(used.rbillno)) = UPPER(TRIM(repairm.billno))');
+            });
+        }
+
+        $rows = $query
             ->when($q !== '', function ($qb) use ($q) {
                 $qb->where(function ($w) use ($q) {
                     $w->where('billno', 'like', "%{$q}%")
@@ -412,6 +480,8 @@ class RepairReturnController extends Controller
         $amount   = (float) $request->input('amount', 0);
         $discount = (float) $request->input('discount', 0);
         $rcvd     = (float) $request->input('rcvd', 0);
+        $cashBank = strtoupper(trim((string) $request->input('cashbank_code', '')));
+        if ($cashBank === '') $cashBank = 'CASH';
         $taxperc  = (float) $request->input('taxperc', 0);
         $taxamt   = (float) $request->input('taxamt', 0);
         $rows     = $request->input('rows', []);
@@ -447,6 +517,10 @@ class RepairReturnController extends Controller
             return response()->json(['ok' => false, 'message' => 'No item rows to save'], 422);
         }
 
+        if ($sman === '') {
+            return response()->json(['ok' => false, 'message' => 'Select salesman'], 422);
+        }
+
         if ($amount <= 0) {
             return response()->json(['ok' => false, 'message' => "It is an empty bill. You can't save..."], 422);
         }
@@ -461,14 +535,23 @@ class RepairReturnController extends Controller
                     DB::rollBack();
                     return response()->json(['ok' => false, 'message' => 'Bill not found for edit'], 404);
                 }
-                $oldControl = (int) (DB::table('repairm')->where('slno', $slno)->value('control') ?? 1);
+                $oldMaster = DB::table('repairm')->where('slno', $slno)->first();
+                $oldControl = (int) ($oldMaster->control ?? 1);
+                if ($oldMaster) {
+                    $oldCustCode = trim((string) ($oldMaster->custcode ?? ''));
+                    $oldBalance = round((float) ($oldMaster->amount ?? 0) + (float) ($oldMaster->taxamt ?? 0) - (float) ($oldMaster->discount ?? 0) - (float) ($oldMaster->rcvd ?? 0), 2);
+                    $this->adjustClientBalance($oldCustCode, -$oldBalance);
+                }
                 // Reverse stock (re-add items that were previously decreased)
                 $this->reverseStock($slno, $oldControl, 'increase');
                 DB::table('repaird')->where('slno', $slno)->delete();
                 DB::table('repairm')->where('slno', $slno)->delete();
                 // Remove old daybook entries
                 if ($this->hasTable('daybook')) {
-                    DB::table('daybook')->where('slno', $slno)->where('ttype', 'RM4')->delete();
+                    DB::table('daybook')->where('slno', $slno)->delete();
+                }
+                if ($this->hasTable('daybookpart')) {
+                    DB::table('daybookpart')->where('slno', $slno)->delete();
                 }
             } else {
                 $slno   = $this->incrementGenInt('SERIALNO');
@@ -521,24 +604,9 @@ class RepairReturnController extends Controller
 
             // Update client balance
             $balance = round($amount + $taxamt - $discount - $rcvd, 2);
-            if ($custCode !== '' && $balance != 0 && $this->hasTable('clients')) {
-                DB::table('clients')->whereRaw('TRIM(code)=?', [$custCode])
-                    ->update(['balance' => DB::raw('COALESCE(balance,0) + ' . $balance)]);
-            }
+            $this->adjustClientBalance($custCode, $balance);
 
-            // Insert daybook entry
-            if ($this->hasTable('daybook')) {
-                DB::table('daybook')->insert($this->f('daybook', [
-                    'slno'    => $slno,
-                    'tdate'   => $tdate,
-                    'ttype'   => 'RM4',
-                    'billno'  => $billNo,
-                    'accode'  => $custCode,
-                    'acname'  => $custName,
-                    'amount'  => $amount,
-                    'control' => $gisemi,
-                ]));
-            }
+            $this->insertFinancialEntries($slno, $billNo, $tdate, $custCode, $custName, $amount, $taxamt, $discount, $rcvd, $cashBank, $gisemi);
 
             DB::commit();
             $this->logDelpart($request, 'Repair Return(' . $billNo . ') ' . ($mode === 'edit' ? 'Updated' : 'Saved'), ['utype' => $mode === 'edit' ? 'E' : 'A', 'ttype' => 'T', 'slno' => $slno, 'tdate' => $tdate, 'control' => $gisemi]);
@@ -574,14 +642,14 @@ class RepairReturnController extends Controller
             // Reverse client balance
             $custCode = trim((string) ($m->custcode ?? ''));
             $balance  = round((float) ($m->amount ?? 0) + (float) ($m->taxamt ?? 0) - (float) ($m->discount ?? 0) - (float) ($m->rcvd ?? 0), 2);
-            if ($custCode !== '' && $balance != 0 && $this->hasTable('clients')) {
-                DB::table('clients')->whereRaw('TRIM(code)=?', [$custCode])
-                    ->update(['balance' => DB::raw('COALESCE(balance,0) - ' . $balance)]);
-            }
+            $this->adjustClientBalance($custCode, -$balance);
 
             // Remove daybook
             if ($this->hasTable('daybook')) {
-                DB::table('daybook')->where('slno', $m->slno)->where('ttype', 'RM4')->delete();
+                DB::table('daybook')->where('slno', $m->slno)->delete();
+            }
+            if ($this->hasTable('daybookpart')) {
+                DB::table('daybookpart')->where('slno', $m->slno)->delete();
             }
 
             DB::table('repaird')->where('slno', $m->slno)->delete();
@@ -606,13 +674,15 @@ class RepairReturnController extends Controller
         if ($code === '') return response()->json(['ok' => false], 422);
         if (!$this->hasTable('clients')) return response()->json(['ok' => false, 'message' => 'clients table missing'], 500);
 
-        $c = DB::table('clients')->whereRaw('TRIM(code)=?', [$code])->first(['code', 'name']);
+        $c = DB::table('clients')->whereRaw('TRIM(code)=?', [$code])->first($this->clientSelectColumns(['code', 'name', 'addr1', 'addr2', 'addr3', 'city', 'mobile', 'telephone']));
         if (!$c) return response()->json(['ok' => false, 'message' => 'Invalid customer']);
 
         return response()->json([
             'ok'   => true,
             'code' => trim((string) ($c->code ?? '')),
             'name' => trim((string) ($c->name ?? '')),
+            'addr' => $this->formatClientAddress($c),
+            'phone' => trim((string) (($c->mobile ?? '') ?: ($c->telephone ?? ''))),
         ]);
     }
 
@@ -660,6 +730,124 @@ class RepairReturnController extends Controller
         $updated = DB::table('generali')->where('code', $code)->update(['cvalue' => $next]);
         if ($updated === 0) DB::table('generali')->insert(['code' => $code, 'cvalue' => $next]);
         return $next;
+    }
+
+    private function insertFinancialEntries(int $slno, string $billNo, string $tdate, string $custCode, string $custName, float $amount, float $taxamt, float $discount, float $rcvd, string $cashBank, int $control): void
+    {
+        if ($this->hasTable('daybookpart')) {
+            DB::table('daybookpart')->insert($this->f('daybookpart', [
+                'slno' => $slno,
+                'vchno' => $billNo,
+                'particular' => mb_substr('By Repair Voucher (' . $billNo . ') To ' . $custName, 0, 100),
+                'ic' => '',
+                'uid' => '',
+                'ttime' => date('H:i:s'),
+                'taxamt' => round($taxamt, 2),
+            ]));
+        }
+
+        $netCharge = round($amount + $taxamt - $discount, 2);
+        $repairAc = 'RS';
+        $sno = 1;
+
+        if ($custCode !== '' && $netCharge != 0.0) {
+            $this->insertDaybookRow($slno, $sno++, $tdate, $custCode, -$netCharge, $control, $repairAc);
+        }
+        if ($rcvd != 0.0) {
+            $cashBank = $cashBank !== '' ? $cashBank : 'CASH';
+            $this->insertDaybookRow($slno, $sno++, $tdate, $cashBank, -$rcvd, $control, $custCode ?: $repairAc);
+            if ($custCode !== '') {
+                $this->insertDaybookRow($slno, $sno++, $tdate, $custCode, $rcvd, $control, $cashBank);
+            }
+        }
+        if ($netCharge != 0.0) {
+            $this->insertDaybookRow($slno, $sno++, $tdate, $repairAc, $netCharge, $control, $custCode ?: ($cashBank ?: 'CASH'));
+        }
+
+        if ($this->hasTable('daybook')) {
+            $sum = round((float) (DB::table('daybook')->where('slno', $slno)->sum('amount') ?? 0), 2);
+            if ($sum != 0.0) {
+                $this->insertDaybookRow($slno, $sno, $tdate, 'ROUND', -$sum, $control, $repairAc);
+            }
+        }
+    }
+
+    private function insertDaybookRow(int $slno, int $sno, string $tdate, string $accode, float $amount, int $control, string $opaccode): void
+    {
+        if (!$this->hasTable('daybook')) {
+            return;
+        }
+
+        DB::table('daybook')->insert($this->f('daybook', [
+            'slno' => $slno,
+            'sno' => $sno,
+            'tdate' => $tdate,
+            'accode' => mb_substr($accode, 0, 20),
+            'amount' => round($amount, 2),
+            'control' => $control,
+            'opaccode' => mb_substr($opaccode, 0, 20),
+            'ttype' => 'RM4',
+        ]));
+    }
+
+    private function cashBankAccounts(): array
+    {
+        if (
+            !$this->hasTable('accountm') ||
+            !Schema::hasColumn('accountm', 'accode') ||
+            !Schema::hasColumn('accountm', 'actype2')
+        ) {
+            return [];
+        }
+
+        $select = ['accode as code', 'actype2'];
+        if (Schema::hasColumn('accountm', 'name')) {
+            $select[] = 'name';
+        }
+
+        return DB::table('accountm')
+            ->whereIn('actype2', ['H', 'B'])
+            ->orderByRaw("CASE WHEN actype2='H' THEN 0 ELSE 1 END, accode")
+            ->get($select)
+            ->map(fn ($r) => [
+                'code' => trim((string) ($r->code ?? '')),
+                'name' => trim((string) ($r->name ?? '')),
+                'type' => trim((string) ($r->actype2 ?? '')),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function cashBankCodeForSlno(int $slno): string
+    {
+        if ($slno <= 0 || !$this->hasTable('daybook') || !$this->hasTable('accountm')) {
+            return '';
+        }
+
+        $row = DB::table('daybook')
+            ->where('daybook.slno', $slno)
+            ->join('accountm', 'accountm.accode', '=', 'daybook.accode')
+            ->whereIn('accountm.actype2', ['H', 'B'])
+            ->orderBy('daybook.sno')
+            ->first(['daybook.accode']);
+
+        return $row ? trim((string) ($row->accode ?? '')) : '';
+    }
+
+    private function adjustClientBalance(string $custCode, float $amount): void
+    {
+        $custCode = trim($custCode);
+        if ($custCode === '' || $amount == 0.0) {
+            return;
+        }
+
+        $balanceColumn = $this->clientBalanceColumn();
+        if ($balanceColumn === null) {
+            return;
+        }
+
+        DB::table('clients')->whereRaw('TRIM(code)=?', [$custCode])
+            ->update([$balanceColumn => DB::raw('COALESCE(`' . $balanceColumn . '`,0) + ' . round($amount, 2))]);
     }
 
     private function decreaseItemStock(string $code, float $qty, float $weight, float $stoneWgt, string $stkType, int $control): void
@@ -776,5 +964,129 @@ class RepairReturnController extends Controller
             $cols[$table] = $this->hasTable($table) ? array_map('strtolower', $this->columnList($table)) : [];
         }
         return array_filter($data, fn($k) => in_array(strtolower($k), $cols[$table], true), ARRAY_FILTER_USE_KEY);
+    }
+
+    private function clientBalanceColumn(): ?string
+    {
+        if (!$this->hasTable('clients')) {
+            return null;
+        }
+
+        foreach (['balance', 'clamt', 'opbalance'] as $column) {
+            if (Schema::hasColumn('clients', $column)) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    private function shopInfo(): array
+    {
+        $info = ['name' => '', 'address' => '', 'phone' => '', 'mobile' => '', 'gstin' => ''];
+
+        try {
+            $iniPath = storage_path('app/software-settings.ini');
+            $settings = is_file($iniPath) ? parse_ini_file($iniPath, true, INI_SCANNER_RAW) : [];
+            $company = is_array($settings['Company'] ?? null) ? $settings['Company'] : [];
+            $info['name'] = trim((string) ($company['Name'] ?? ''));
+            $info['phone'] = trim((string) ($company['Phone'] ?? ''));
+            $info['mobile'] = trim((string) ($company['Mobile'] ?? ''));
+            $info['gstin'] = trim((string) ($company['GSTIN'] ?? ($company['KGST'] ?? '')));
+            $info['address'] = implode("\n", array_values(array_filter([
+                trim((string) ($company['Addr'] ?? ($company['Addr1'] ?? ''))),
+                trim((string) ($company['Addr2'] ?? ($company['Address2'] ?? ''))),
+            ], fn ($value) => $value !== '')));
+        } catch (\Throwable $e) {
+            // DB values below can still populate the print header.
+        }
+
+        if ($this->hasTable('generals') && Schema::hasColumn('generals', 'code')) {
+            $valueColumn = Schema::hasColumn('generals', 'cvalue')
+                ? 'cvalue'
+                : (Schema::hasColumn('generals', 'value') ? 'value' : null);
+            if ($valueColumn === null) {
+                return $info;
+            }
+
+            $rows = DB::table('generals')
+                ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE', 'Mobile', 'MOBILE', 'GSTIN', 'GSTNO', 'KGST'])
+                ->get(['code', $valueColumn]);
+
+            foreach ($rows as $row) {
+                $code = strtoupper(trim((string) ($row->code ?? '')));
+                $value = trim((string) ($row->{$valueColumn} ?? ''));
+                if ($value === '') {
+                    continue;
+                }
+
+                if ($code === 'SHOPNM') {
+                    $info['name'] = $value;
+                } elseif ($code === 'SHOPADDR') {
+                    $info['address'] = $value . ($info['address'] !== '' && $info['address'] !== $value ? "\n" . $info['address'] : '');
+                } elseif ($code === 'SHOPPHONE') {
+                    $info['phone'] = $value;
+                } elseif ($code === 'MOBILE') {
+                    $info['mobile'] = $value;
+                } elseif ($info['gstin'] === '' && in_array($code, ['GSTIN', 'GSTNO', 'KGST'], true)) {
+                    $info['gstin'] = $value;
+                }
+            }
+        }
+
+        $addressLines = preg_split('/\R+/', $info['address']) ?: [];
+        $info['address'] = implode("\n", array_values(array_unique(array_filter(
+            array_map(fn ($value) => trim((string) $value), $addressLines),
+            fn ($value) => $value !== ''
+        ))));
+
+        return $info;
+    }
+
+    private function customerAddress(string $code): string
+    {
+        $customer = $this->customerRow($code);
+        return $customer ? $this->formatClientAddress($customer) : '';
+    }
+
+    private function customerPhone(string $code): string
+    {
+        $customer = $this->customerRow($code);
+        return $customer ? trim((string) (($customer->mobile ?? '') ?: ($customer->telephone ?? ''))) : '';
+    }
+
+    private function customerRow(string $code): ?object
+    {
+        $code = trim($code);
+        if ($code === '' || !$this->hasTable('clients')) {
+            return null;
+        }
+
+        return DB::table('clients')
+            ->whereRaw('TRIM(code)=?', [$code])
+            ->first($this->clientSelectColumns(['code', 'name', 'addr1', 'addr2', 'addr3', 'city', 'mobile', 'telephone']));
+    }
+
+    private function formatClientAddress(object $client): string
+    {
+        $parts = [];
+        foreach (['addr1', 'addr2', 'addr3', 'city'] as $column) {
+            $value = trim((string) ($client->{$column} ?? ''));
+            if ($value !== '') {
+                $parts[] = $value;
+            }
+        }
+
+        return implode(', ', array_values(array_unique($parts)));
+    }
+
+    private function clientSelectColumns(array $preferred): array
+    {
+        if (!$this->hasTable('clients')) {
+            return $preferred;
+        }
+
+        $available = array_map('strtolower', $this->columnList('clients'));
+        return array_values(array_filter($preferred, fn ($column) => in_array(strtolower($column), $available, true)));
     }
 }

@@ -60,10 +60,26 @@ class OrderAdvanceAfterController extends Controller
             })->toArray();
         }
 
+        $cashBanks = [];
+        if ($this->hasTable('accountm')) {
+            $cashBanks = DB::table('accountm')
+                ->whereIn('actype2', ['H', 'B'])
+                ->orderByRaw("CASE WHEN actype2='H' THEN 0 ELSE 1 END, accode")
+                ->get(['accode as code', 'name', 'actype2'])
+                ->map(fn ($r) => [
+                    'code' => trim((string) ($r->code ?? '')),
+                    'name' => trim((string) ($r->name ?? '')),
+                    'type' => trim((string) ($r->actype2 ?? '')),
+                ])
+                ->values()
+                ->all();
+        }
+
         return view('order-advance-after.index', [
             'mode'      => $mode,
             'rates'     => $rates,
             'exchItems' => $exchItems,
+            'cashBanks' => $cashBanks,
             'gilevel'   => $this->gilevel,
         ]);
     }
@@ -226,6 +242,7 @@ class OrderAdvanceAfterController extends Controller
         $dateRaw   = trim((string)$request->input('date', ''));
         $rate      = (float)$request->input('rate', 0);
         $amount    = (float)$request->input('amount', 0);
+        $cbcode    = $this->normalizeCashBankCode((string)$request->input('cashbank_code', 'CASH'));
         $amttowgt  = strtoupper(trim((string)$request->input('amttowgt', 'N'))) === 'Y' ? 'Y' : 'N';
         $printobcb = strtoupper(trim((string)$request->input('printobcb', 'Y'))) === 'Y' ? 'Y' : 'N';
         $editSlno  = (int)$request->input('edit_slno', 0);
@@ -251,13 +268,10 @@ class OrderAdvanceAfterController extends Controller
         // Force order advance posting at level 1 (Bill) to keep daybook visibility consistent.
         $icontrol  = 1;
         $custcode  = trim((string)($order->custcode ?? ''));
-        $ichadv    = (int)($order->ichadv ?? 0);
 
-        // Determine account code for daybook
-        $saccode = 'ADVANCE';
-        if ($ichadv === 1 && $custcode !== '') {
-            $saccode = $custcode;
-        }
+        // Always post advance against the customer's A/C so it appears in their ledger.
+        // Falls back to the generic ADVANCE account only when the order has no customer code.
+        $saccode = ($custcode !== '') ? $custcode : 'ADVANCE';
 
         // Calculate cash weight if amttowgt
         $cashwgt = 0;
@@ -446,9 +460,9 @@ class OrderAdvanceAfterController extends Controller
                     };
 
                     // Entry 1: Debit ADVANCE/Customer account
-                    $ins($saccode, $amount, 'CASH');
-                    // Entry 2: Credit CASH
-                    $ins('CASH', -$amount, $saccode);
+                    $ins($saccode, $amount, $cbcode);
+                    // Entry 2: Credit selected cash/bank
+                    $ins($cbcode, -$amount, $saccode);
                 }
             }
 
@@ -529,6 +543,7 @@ class OrderAdvanceAfterController extends Controller
             'wgt'          => (float)($m->wgt ?? 0),
             'amttowgt'     => trim($m->amttowgt ?? 'N'),
             'control'      => (int)($m->control ?? 1),
+            'cashbank_code'=> $this->cashBankCodeForSlno($slno),
             'prev_advance' => round($prevAdvance, 2),
             'items'        => $items,
         ]);
@@ -712,6 +727,120 @@ class OrderAdvanceAfterController extends Controller
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) return $raw;
         return null;
+    }
+
+    private function normalizeCashBankCode(string $raw): string
+    {
+        $code = strtoupper(trim($raw));
+        if ($code === '' || $code === 'CASH IN HAND') {
+            return 'CASH';
+        }
+
+        if ($this->hasTable('accountm')) {
+            $exists = DB::table('accountm')
+                ->whereRaw('UPPER(TRIM(accode)) = ?', [$code])
+                ->whereIn('actype2', ['H', 'B'])
+                ->exists();
+            if ($exists) {
+                return $code;
+            }
+        }
+
+        return 'CASH';
+    }
+
+    // ─── Receipt Print ───────────────────────────────────────────────────────
+
+    public function receipt(Request $request)
+    {
+        if (!$request->session()->has('user_code')) return redirect('/login');
+
+        $slno = (int) $request->query('slno', 0);
+        if ($slno <= 0 || !$this->hasTable('advafter')) {
+            return response('<p style="padding:20px">No advance selected. Usage: ?slno=XXX</p>', 400);
+        }
+
+        $m = DB::table('advafter')->where('slno', $slno)->first();
+        if (!$m) return response('<p style="padding:20px">Advance receipt not found.</p>', 404);
+
+        $ordno = trim((string) ($m->ordno ?? ''));
+        $order = null;
+        $customer = null;
+        $prevAdvance = 0.0;
+        if ($ordno !== '' && $this->hasTable('orderm')) {
+            $order = DB::table('orderm')->where('ordno', $ordno)->first();
+            if ($order) {
+                $advance = (float) ($order->advance ?? 0);
+                $eamt    = (float) ($order->eamt ?? 0);
+                $sretamt = (float) ($order->sretamt ?? 0);
+                $advAfterSum = (float) (DB::table('advafter')
+                    ->where('ordno', $ordno)
+                    ->where('slno', '<', $slno)
+                    ->sum('amount') ?? 0);
+                $prevAdvance = $advance + $eamt + $sretamt + $advAfterSum;
+
+                $custCode = trim((string) ($order->custcode ?? ''));
+                if ($custCode !== '' && $this->hasTable('clients')) {
+                    $customer = DB::table('clients')->where('code', $custCode)->first();
+                }
+            }
+        }
+
+        $items = [];
+        if ($this->hasTable('orderdga')) {
+            $rows = DB::table('orderdga')->where('slno', $slno)->orderBy('sno')->get();
+            foreach ($rows as $r) {
+                $iname = '';
+                if ($this->hasTable('items')) {
+                    $iname = (string) (DB::table('items')->where('code', $r->code ?? '')->value('name') ?? '');
+                }
+                $items[] = [
+                    'code'     => trim((string) ($r->code ?? '')),
+                    'name'     => trim($iname),
+                    'qty'      => (int) ($r->qty ?? 0),
+                    'weight'   => (float) ($r->weight ?? 0),
+                    'stonewgt' => (float) ($r->stonewgt ?? 0),
+                    'lesswgt'  => (float) ($r->lesswgt ?? 0),
+                ];
+            }
+        }
+
+        $cashBankCode = $this->cashBankCodeForSlno($slno);
+        $cashBankName = $cashBankCode;
+        if ($this->hasTable('accountm')) {
+            $cashBankName = (string) (DB::table('accountm')->where('accode', $cashBankCode)->value('name') ?? $cashBankCode);
+        }
+
+        $company = [
+            'name'    => $this->genStr('SHOPNM'),
+            'address' => $this->genStr('SHOPADDR'),
+            'phone'   => $this->genStr('SHOPPHONE'),
+        ];
+
+        return view('order-advance-after.receipt', [
+            'master'        => $m,
+            'order'         => $order,
+            'customer'      => $customer,
+            'items'         => $items,
+            'prev_advance'  => round($prevAdvance, 2),
+            'cashbank_code' => $cashBankCode,
+            'cashbank_name' => trim($cashBankName),
+            'company'       => $company,
+        ]);
+    }
+
+    private function cashBankCodeForSlno(int $slno): string
+    {
+        if ($slno <= 0 || !$this->hasTable('daybook')) {
+            return 'CASH';
+        }
+
+        $row = DB::table('daybook')
+            ->where('slno', $slno)
+            ->where('amount', '<', 0)
+            ->first(['accode']);
+
+        return $this->normalizeCashBankCode((string) ($row->accode ?? 'CASH'));
     }
 
     private function applyItemStockDelta(string $code, int $qtyDelta, float $weightDelta, float $stoneDelta, int $control, string $stktype = ''): void

@@ -33,7 +33,9 @@
         @media (max-width: 1100px) { .toolbar { grid-template-columns: repeat(2, minmax(160px, 1fr)); } .field.span2 { grid-column: span 2; } }
         @media print { .toolbar, .summary { display: none; } body { background: #fff; } .wrap { max-width: none; margin: 0; border: 0; } .table-wrap { max-height: none; overflow: visible; border: 0; } th { position: static; } }
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
     @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">

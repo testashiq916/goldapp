@@ -60,7 +60,9 @@
             .chart-panel, .table-panel { border: none; }
         }
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 

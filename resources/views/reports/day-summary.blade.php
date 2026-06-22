@@ -7,29 +7,29 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .toolbar h1{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;margin-right:4px}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:11px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:17px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus,.tb-select:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .tb-select option{background:#1e3a5f;color:#fff}
 .f-group{display:flex;align-items:center;gap:3px}
 .sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 1px}
-.btn{padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:4px 12px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
 .btn-active{background:#f59e0b;color:#1e293b}
 
-.sub-header{background:#eff6ff;padding:5px 14px;font-size:11px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
+.sub-header{background:#eff6ff;padding:5px 14px;font-size:17px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
 
 .content-wrap{flex:1;overflow:auto;padding:12px}
 
 /* ── Crosstab table (Parts 1 & 2) ── */
 .grid-wrap{overflow:auto;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 table{width:100%;border-collapse:collapse;font-size:11px}
-th{position:sticky;top:0;background:#f1f5f9;border-bottom:2px solid #e2e8f0;padding:5px 8px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;z-index:2;cursor:pointer;user-select:none}
+th{position:sticky;top:0;background:#f1f5f9;border-bottom:2px solid #e2e8f0;padding:5px 8px;font-size:15px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;z-index:2;cursor:pointer;user-select:none}
 th:hover{background:#e2e8f0}
 th.num{text-align:right}
 td{padding:4px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
@@ -50,15 +50,17 @@ tr.total-row td{background:#eff6ff;font-weight:700;border-top:2px solid #3b82f6}
 .panel-lbl{font-size:11px;color:#64748b}
 .panel-val{font-size:12px;font-weight:700;color:#1e293b;font-variant-numeric:tabular-nums}
 
-.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;flex-shrink:0}
+.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:17px;flex-shrink:0}
 .summary span{color:#64748b}.summary b{color:#1e40af}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 
 @media print{.toolbar,.summary,.sub-header{display:none !important}.content-wrap{overflow:visible !important}body{height:auto;overflow:visible}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -108,7 +110,7 @@ function toast(msg,ok=true){
 function headers(){
   return [
     ['Item Name','itemname'],['Type','itype'],
-    ['Qty','qty',1,0],['Weight','weight',1,3]
+    ['Qty','qty',1,0],['Gross Wgt','weight',1,3],['St.Wgt','stonewgt',1,3],['Net Wgt','netwgt',1,3]
   ];
 }
 
@@ -172,6 +174,8 @@ function renderTable(){
     html += '<td><b>TOTAL</b></td><td></td>';
     html += '<td class="num"><b>'+nf(totals.qty,0)+'</b></td>';
     html += '<td class="num"><b>'+nf(totals.weight,3)+'</b></td>';
+    html += '<td class="num"><b>'+nf(totals.stonewgt,3)+'</b></td>';
+    html += '<td class="num"><b>'+nf(totals.netwgt,3)+'</b></td>';
     html += '</tr>';
   }
 
@@ -197,7 +201,9 @@ function renderTable(){
   document.getElementById('summary').innerHTML = [
     '<span>Items: <b>'+nf(t.count,0)+'</b></span>',
     '<span>Qty: <b>'+nf(t.qty,0)+'</b></span>',
-    '<span>Weight: <b>'+nf(t.weight,3)+'</b></span>',
+    '<span>Gross Wgt: <b>'+nf(t.weight,3)+'</b></span>',
+    '<span>St.Wgt: <b>'+nf(t.stonewgt,3)+'</b></span>',
+    '<span>Net Wgt: <b>'+nf(t.netwgt,3)+'</b></span>',
     '<span>G.Wgt: <b>'+nf(t.goldwgt,3)+'</b></span>',
     '<span>S.Wgt: <b>'+nf(t.silverwgt,3)+'</b></span>',
     '<span>O.Wgt: <b>'+nf(t.otherwgt,3)+'</b></span>',
@@ -241,7 +247,7 @@ document.getElementById('btnPrint').onclick = ()=> window.print();
 document.getElementById('btnExit').onclick = ()=> window.parent.postMessage({type:'goldapp:close-module-frame'}, '*');
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.init('btnSaveAs', headers, ()=>rows,
   ()=>'day-summary-part'+document.getElementById('part').value+'-'+document.getElementById('date1').value);

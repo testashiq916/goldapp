@@ -32,6 +32,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 th{background:#f8fafc;text-align:left;padding:8px;border-bottom:1px solid #dbe2ea;white-space:nowrap}
 td{padding:8px;border-bottom:1px solid #edf2f7;vertical-align:top}
 tr:last-child td{border-bottom:none}
+.num{text-align:right;white-space:nowrap}
 .muted{color:#667085}
 .status{margin-top:10px;padding:10px 12px;border-radius:10px;display:none}
 .status.show{display:block}
@@ -93,12 +94,14 @@ tr:last-child td{border-bottom:none}
             <tr>
               <th>User</th>
               <th>Date</th>
-              <th>Time From</th>
-              <th>Time To</th>
+              <th>Login Time</th>
+              <th>Logout Time</th>
+              <th>IP Address</th>
+              <th>Device</th>
             </tr>
           </thead>
           <tbody id="historyBody">
-            <tr><td colspan="4" class="empty">Click Show to load user history.</td></tr>
+            <tr><td colspan="6" class="empty">Click Show to load user history.</td></tr>
           </tbody>
         </table>
       </div>
@@ -113,12 +116,16 @@ tr:last-child td{border-bottom:none}
               <th>Updt Time</th>
               <th>Doc Date</th>
               <th>Description</th>
+              <th>Amount</th>
+              <th>Weight</th>
+              <th>Customer</th>
+              <th>Staff</th>
               <th>User</th>
               <th>IC</th>
             </tr>
           </thead>
           <tbody id="updateBody">
-            <tr><td colspan="6" class="empty">Click Show to load update log.</td></tr>
+            <tr><td colspan="10" class="empty">Click Show to load update log.</td></tr>
           </tbody>
         </table>
       </div>
@@ -158,10 +165,32 @@ function showStatus(kind, text){
   box.textContent = text;
 }
 
+function parseDevice(ua){
+  if(!ua) return '';
+  const s = ua.toLowerCase();
+  let device = '';
+  if(/ipad/.test(s)) device = 'iPad';
+  else if(/iphone/.test(s)) device = 'iPhone';
+  else if(/android.*mobile/.test(s)) device = 'Android Phone';
+  else if(/android/.test(s)) device = 'Android Tablet';
+  else if(/windows phone/.test(s)) device = 'Windows Phone';
+  else if(/macintosh|mac os x/.test(s)) device = 'Mac';
+  else if(/windows/.test(s)) device = 'Windows PC';
+  else if(/linux/.test(s)) device = 'Linux';
+  let browser = '';
+  if(/edg\/|edge\//.test(s)) browser = 'Edge';
+  else if(/opr\/|opera/.test(s)) browser = 'Opera';
+  else if(/chrome\//.test(s)) browser = 'Chrome';
+  else if(/safari\//.test(s) && /version\//.test(s)) browser = 'Safari';
+  else if(/firefox\//.test(s)) browser = 'Firefox';
+  else if(/msie|trident/.test(s)) browser = 'IE';
+  return [device, browser].filter(Boolean).join(' / ');
+}
+
 function renderHistory(rows){
   const body = document.getElementById('historyBody');
   if(!rows.length){
-    body.innerHTML = '<tr><td colspan="4" class="empty">No user history found for the selected period.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty">No user history found for the selected period.</td></tr>';
     return;
   }
   body.innerHTML = rows.map(r => `
@@ -170,6 +199,8 @@ function renderHistory(rows){
       <td>${fmtDate(r.tdate)}</td>
       <td>${fmtTime(r.time1)}</td>
       <td>${fmtTime(r.time2)}</td>
+      <td class="muted">${escapeHtml(r.ip || '')}</td>
+      <td class="muted">${escapeHtml(parseDevice(r.useragent))}</td>
     </tr>
   `).join('');
 }
@@ -177,7 +208,7 @@ function renderHistory(rows){
 function renderUpdates(rows){
   const body = document.getElementById('updateBody');
   if(!rows.length){
-    body.innerHTML = '<tr><td colspan="6" class="empty">No update log found for the selected period.</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" class="empty">No update log found for the selected period.</td></tr>';
     return;
   }
   body.innerHTML = rows.map(r => `
@@ -186,6 +217,10 @@ function renderUpdates(rows){
       <td>${fmtTime(r.updttime)}</td>
       <td>${fmtDate(r.tdate)}</td>
       <td><strong>${escapeHtml(r.part || '')}</strong><div class="muted">${escapeHtml([r.ttype, r.utype, r.slno].filter(Boolean).join(' | '))}</div></td>
+      <td class="num">${fmtMoney(r.amount)}</td>
+      <td class="num">${fmtWeight(r.weight)}</td>
+      <td>${escapeHtml(r.customer || '')}</td>
+      <td>${escapeHtml(r.staff || '')}</td>
       <td>${escapeHtml(r.uid || '')}</td>
       <td>${escapeHtml(r.ic || '')}</td>
     </tr>
@@ -198,8 +233,8 @@ async function loadData(){
     date_to: document.getElementById('dateTo').value,
     sort: document.getElementById('sortBy').value
   });
-  document.getElementById('historyBody').innerHTML = '<tr><td colspan="4" class="empty">Loading...</td></tr>';
-  document.getElementById('updateBody').innerHTML = '<tr><td colspan="6" class="empty">Loading...</td></tr>';
+  document.getElementById('historyBody').innerHTML = '<tr><td colspan="6" class="empty">Loading...</td></tr>';
+  document.getElementById('updateBody').innerHTML = '<tr><td colspan="10" class="empty">Loading...</td></tr>';
   try{
     const res = await fetch(`${API_DATA}?${params}`, {headers:{Accept:'application/json'}});
     const data = await res.json();
@@ -242,6 +277,18 @@ function fmtTime(value){
   const d = new Date();
   d.setHours(Number(h), Number(m), Number(s), 0);
   return d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:true});
+}
+
+function fmtMoney(value){
+  const n = Number(value || 0);
+  if(!Number.isFinite(n) || n === 0) return '';
+  return n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function fmtWeight(value){
+  const n = Number(value || 0);
+  if(!Number.isFinite(n) || n === 0) return '';
+  return n.toFixed(3);
 }
 
 function escapeHtml(value){

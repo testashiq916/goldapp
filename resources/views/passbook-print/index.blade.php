@@ -41,7 +41,9 @@ tbody tr{cursor:pointer}
 tbody tr:hover{background:#edf6ff}
 @media(max-width:900px){.grid,.settings .grid{grid-template-columns:1fr 1fr}.toolbar{flex-wrap:wrap}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="page">
@@ -187,6 +189,8 @@ function openPrintWindow(title, html, margins){
     .meta{margin-bottom:12px}
     .meta h2{margin:0 0 6px;font-size:18px}
   </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head><body>${html}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   w.document.close();
 }

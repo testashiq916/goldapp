@@ -116,9 +116,11 @@ class PurchaseReturnController extends Controller
 
         $q = trim((string) $request->query('q', ''));
         $tdate = $this->parseDate((string) $request->query('tdate', ''));
+        $action = strtolower(trim((string) $request->query('action', 'edit')));
 
         $rows = DB::table('purchaserm')
             ->where('pr', 'R')
+            ->when($action === 'cancel', fn ($query) => $query->whereRaw('COALESCE(status,1) <> 0'))
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('docno', 'like', $q . '%')
@@ -128,7 +130,6 @@ class PurchaseReturnController extends Controller
             ->when($tdate, fn ($query) => $query->whereDate('tdate', $tdate))
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit(50)
             ->get(['slno', 'docno', 'tdate', 'name'])
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
@@ -166,6 +167,9 @@ class PurchaseReturnController extends Controller
 
         if ($tdate) {
             $query->whereDate('tdate', $tdate);
+        }
+        if ($action === 'cancel') {
+            $query->whereRaw('COALESCE(status,1) <> 0');
         }
 
         $row = $query->orderByDesc('slno')->first(['docno', 'tdate']);
@@ -833,12 +837,42 @@ class PurchaseReturnController extends Controller
 
         if (!$this->hasTable('purchaserm')) return response()->json(['ok' => false]);
 
-        $affected = DB::table('purchaserm')
+        $bill = DB::table('purchaserm')
             ->where('docno', $billNo)
-            ->update(['status' => 0, 'note' => ($reason !== '' ? 'CANCELLED: ' . $reason : 'CANCELLED')]);
+            ->where('pr', 'R')
+            ->first(['slno', 'status']);
 
-        if ($affected === 0) return response()->json(['ok' => false, 'message' => 'Bill not found']);
-        $this->logDelpart($request, 'Purchase Return(' . $billNo . ') Cancelled', ['utype' => 'D', 'ttype' => 'T']);
+        if (!$bill) return response()->json(['ok' => false, 'message' => 'Bill not found']);
+        if ((int)($bill->status ?? 1) === 0) {
+            return response()->json(['ok' => false, 'message' => 'Bill already cancelled']);
+        }
+
+        $slno = (int) ($bill->slno ?? 0);
+
+        DB::transaction(function () use ($slno, $billNo, $reason) {
+            if ($slno > 0) {
+                $this->reverseEditStock($slno);
+
+                foreach (['daybook', 'daybookpart', 'pdclist'] as $tbl) {
+                    if ($this->hasTable($tbl)) {
+                        DB::table($tbl)->where('slno', $slno)->delete();
+                    }
+                }
+            }
+
+            $pmCols = array_map('strtolower', $this->columnList('purchaserm'));
+            $cancelData = ['status' => 0];
+            if (in_array('note', $pmCols, true)) {
+                $cancelData['note'] = ($reason !== '' ? 'CANCELLED: ' . $reason : 'CANCELLED');
+            }
+
+            DB::table('purchaserm')
+                ->where('docno', $billNo)
+                ->where('pr', 'R')
+                ->update($cancelData);
+        });
+
+        $this->logDelpart($request, 'Purchase Return(' . $billNo . ') Cancelled', ['utype' => 'D', 'ttype' => 'T', 'slno' => $slno]);
         return response()->json(['ok' => true, 'message' => 'Bill cancelled']);
     }
 

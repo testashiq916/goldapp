@@ -371,10 +371,10 @@ class BarcodeEntryController extends Controller
         }
 
         try {
-            $result = $this->dispatchBarcodePrint($bcode, [
+            $result = $this->dispatchBarcodePrintBatch([$bcode], [
                 'printType' => (string) $request->input('printType', 'TemplateDesigner'),
-                'printMode' => (string) $request->input('printMode', 'windows_image'),
-                'renderAsImage' => (string) $request->input('renderAsImage', 'Y'),
+                'printMode' => (string) $request->input('printMode', 'raw'),
+                'renderAsImage' => (string) $request->input('renderAsImage', 'N'),
                 'printerName' => (string) $request->input('printerName', ''),
                 'printerShareName' => (string) $request->input('printerShareName', ''),
                 'stickerMode' => (string) $request->input('stickerMode', ''),
@@ -400,6 +400,74 @@ class BarcodeEntryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Print failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/barcode-entry/print-pair
+     * Send selected barcode labels as one raw spool file so roll feed stays aligned.
+     */
+    public function printBarcodePair(Request $request): JsonResponse
+    {
+        $debugPrintRequest = function (string $msg) use ($request): void {
+            $line = '[' . date('Y-m-d H:i:s') . '] print-pair ' . $msg
+                . '; bcodes=' . json_encode($request->input('bcodes', []))
+                . PHP_EOL;
+            @file_put_contents(storage_path('logs/barcode-print-debug.log'), $line, FILE_APPEND);
+        };
+
+        if (!$this->isAuthorized($request)) {
+            $debugPrintRequest('unauthorized');
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $bcodes = collect((array) $request->input('bcodes', []))
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->values()
+            ->all();
+
+        if (count($bcodes) < 1) {
+            $debugPrintRequest('no barcodes');
+            return response()->json(['success' => false, 'message' => 'Select at least one barcode to print.'], 400);
+        }
+
+        try {
+            $debugPrintRequest('start');
+            $result = $this->dispatchBarcodePrintBatch($bcodes, [
+                'printType' => (string) $request->input('printType', 'TemplateDesigner'),
+                'printMode' => (string) $request->input('printMode', 'raw'),
+                'renderAsImage' => (string) $request->input('renderAsImage', 'N'),
+                'printerName' => (string) $request->input('printerName', ''),
+                'printerShareName' => (string) $request->input('printerShareName', ''),
+                'stickerMode' => (string) $request->input('stickerMode', ''),
+                'designerColumns' => (string) $request->input('designerColumns', ''),
+                'designerTemplate' => (string) $request->input('designerTemplate', ''),
+                'pxinc' => (int) $request->input('pxinc', 0),
+                'pyinc' => (int) $request->input('pyinc', 0),
+                'density' => (int) $request->input('density', 0),
+            ]);
+
+            if (!(bool) ($result['commandTriggered'] ?? false)) {
+                $debugPrintRequest('command not triggered');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected barcode print command did not execute. Check printer share settings.',
+                    'data' => $result,
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Print job sent for selected barcodes ' . implode(', ', $bcodes),
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            $debugPrintRequest('exception: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Selected barcode print failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -669,6 +737,7 @@ class BarcodeEntryController extends Controller
                 'wastage', 'mcharge', 'vaperc', 'stkinnos', 'nodisc',
                 'stickerwgt', 'defquality', 'minvap', 'touch', 'stktouch',
                 'rate', 'cost', 'itype', 'disabled', 'defstktype',
+                'grpcode', 'subgrpcode', 'qtype',
             ];
             foreach ($optionalColumns as $col) {
                 if (Schema::hasColumn('items', $col)) {
@@ -957,6 +1026,99 @@ class BarcodeEntryController extends Controller
         ];
     }
 
+    private function dispatchBarcodePrintBatch(array $bcodes, array $overrides = []): array
+    {
+        if (!$this->hasTable('barcode')) {
+            throw new \RuntimeException('barcode table not found');
+        }
+
+        $settings = $this->loadSettings();
+        $sw = $settings['Software'] ?? [];
+        $patch = [];
+        foreach ([
+            'printMode' => 'BCPrintMode',
+            'printerName' => 'BCPrinterName',
+            'printerShareName' => 'BCPrinterShareName',
+            'renderAsImage' => 'BCRenderAsImage',
+            'designerTemplate' => 'BCDesignerTemplate',
+            'stickerMode' => 'BCStickerMode',
+            'designerColumns' => 'BCDesignerColumns',
+        ] as $overrideKey => $settingKey) {
+            if (isset($overrides[$overrideKey])) {
+                $patch[$settingKey] = (string) $overrides[$overrideKey];
+            }
+        }
+        $patch['BCPrintMode'] = strtolower(trim((string) ($patch['BCPrintMode'] ?? 'raw'))) === ''
+            ? 'raw'
+            : (string) $patch['BCPrintMode'];
+        if (!empty($patch)) {
+            $settings['Software'] = array_merge($sw, $patch);
+        }
+
+        $targetDir = storage_path('app' . DIRECTORY_SEPARATOR . 'print-cache');
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
+        $prnFile = $targetDir . DIRECTORY_SEPARATOR . 'barcode-print-pair-' . uniqid('', true) . '.prn';
+
+        $printType = strtoupper(trim((string) ($overrides['printType'] ?? '')));
+        if ($printType === '') {
+            $printType = trim((string) ($settings['Software']['BCDesignerTemplate'] ?? '')) !== ''
+                ? 'TEMPLATEDESIGNER'
+                : strtoupper($this->setting('BPrintType', 'DEFAULT', $settings));
+        }
+
+        if ($printType === 'TEMPLATEDESIGNER' && empty($settings['Software']['BCRenderAsImage'])) {
+            $settings['Software']['BCRenderAsImage'] = 'Y';
+        }
+
+        $pxinc = (int) ($overrides['pxinc'] ?? 0) + (int) $this->setting('BCPXINC', '0', $settings);
+        $pyinc = (int) ($overrides['pyinc'] ?? 0) + (int) $this->setting('BCPYINC', '0', $settings);
+        $density = (int) ($overrides['density'] ?? 0);
+        if ($density <= 0) {
+            $density = (int) $this->setting('BCDensity', '14', $settings);
+        }
+        $density = max(1, min(15, $density));
+
+        $allLines = [];
+        foreach ($bcodes as $bcode) {
+            $row = $this->barcodePrintRow((int) $bcode);
+            if (!$row) {
+                throw new \RuntimeException('Barcode not found: ' . $bcode);
+            }
+            $allLines = array_merge($allLines, $this->buildPrinterLines($row, $printType, $pxinc, $pyinc, $density, $settings));
+        }
+
+        @file_put_contents($prnFile, implode('', $allLines));
+        $executed = $this->triggerPrintCommand($settings, $prnFile);
+
+        return [
+            'bcodes' => array_values($bcodes),
+            'prnFile' => $prnFile,
+            'printType' => $printType,
+            'pxinc' => $pxinc,
+            'pyinc' => $pyinc,
+            'density' => $density,
+            'printer' => (string) ($settings['Software']['BCPrinterName'] ?? ''),
+            'printerShareName' => (string) ($settings['Software']['BCPrinterShareName'] ?? ''),
+            'printMode' => (string) ($settings['Software']['BCPrintMode'] ?? 'raw'),
+            'commandTriggered' => $executed,
+        ];
+    }
+
+    private function barcodePrintRow(int $bcode): ?object
+    {
+        $query = DB::table('barcode as b')->where('b.bcode', $bcode);
+        if ($this->hasTable('items')) {
+            $query->leftJoin('items as i', 'i.code', '=', 'b.icode')
+                ->select('b.*', DB::raw('COALESCE(i.name, "") as item_name'));
+        } else {
+            $query->select('b.*', DB::raw('"" as item_name'));
+        }
+
+        return $query->first();
+    }
+
     private function buildPrinterLines(object $row, string $printType, int $pxinc = 0, int $pyinc = 0, int $density = 14, array $settings = []): array
     {
         $cr = "\r\n";
@@ -1003,6 +1165,7 @@ class BarcodeEntryController extends Controller
             $templateMode = 'single';
             $templateColumns = 1;
             $isStructuredTemplate = false;
+            $templateData = [];
             try {
                 $tmp = json_decode($designer, true);
                 if (is_array($tmp)) {
@@ -1011,10 +1174,11 @@ class BarcodeEntryController extends Controller
                         $templateSticker1 = $tmp;
                     } else {
                         $isStructuredTemplate = true;
+                        $templateData = $tmp;
                         $templateSticker1 = is_array($tmp['sticker1'] ?? null) ? $tmp['sticker1'] : [];
                         $templateSticker2 = is_array($tmp['sticker2'] ?? null) ? $tmp['sticker2'] : [];
                         $templateMode = strtolower((string) ($tmp['mode'] ?? 'single'));
-                        $templateColumns = (int) ($tmp['columns'] ?? 1);
+                        $templateColumns = (int) ($tmp['columns'] ?? $tmp['cols'] ?? 1);
                         $parsed = $templateSticker1;
                     }
                 }
@@ -1146,20 +1310,27 @@ class BarcodeEntryController extends Controller
                         ((int) ($templateData['canvasW'] ?? 0) > 420 && (int) ($templateData['canvasH'] ?? 0) <= 120)
                     )
                 ) {
-                    $templateData['canvasW'] = 320;
-                    $templateData['canvasH'] = 92;
+                    $templateData['canvasW'] = 628;
+                    $templateData['canvasH'] = 96;
                     $templateData['cols'] = 1;
                     $templateData['rows'] = 1;
                     $templateSticker1 = [
-                        ['type' => 'text', 'value' => 'GW:[Weight]', 'x' => 44, 'y' => 8, 'fs' => 10, 'rot' => 0],
-                        ['type' => 'text', 'value' => 'ST:[StWgt]', 'x' => 44, 'y' => 25, 'fs' => 10, 'rot' => 0],
-                        ['type' => 'text', 'value' => 'NW:[NetWgt]', 'x' => 44, 'y' => 42, 'fs' => 10, 'rot' => 0],
-                        ['type' => 'text', 'value' => 'RS:[MetalRate]', 'x' => 44, 'y' => 59, 'fs' => 10, 'rot' => 0],
-                        ['type' => 'barcode128', 'value' => '[BarCode]', 'x' => 148, 'y' => 8, 'w' => 138, 'h' => 42],
-                        ['type' => 'text', 'value' => '[BarCode]', 'x' => 178, 'y' => 55, 'fs' => 8, 'rot' => 0],
-                        ['type' => 'text', 'value' => '[ItemCode]', 'x' => 174, 'y' => 69, 'fs' => 8, 'rot' => 0],
+                        ['type' => 'text', 'value' => '[VA]', 'x' => 342, 'y' => 52, 'fs' => 11, 'rot' => 1],
+                        ['type' => 'barcode128', 'value' => '[BarCode]', 'x' => 398, 'y' => 31, 'w' => 86, 'h' => 28, 'bars' => true],
+                        ['type' => 'text', 'value' => '[BarCode]', 'x' => 408, 'y' => 64, 'fs' => 8, 'rot' => 0],
+                        ['type' => 'text', 'value' => 'GW:[Weight]', 'x' => 240, 'y' => 27, 'fs' => 10, 'rot' => 0],
+                        ['type' => 'text', 'value' => 'SW:[StWgt]', 'x' => 240, 'y' => 46, 'fs' => 10, 'rot' => 0],
+                        ['type' => 'text', 'value' => 'NW:[NetWgt]', 'x' => 240, 'y' => 65, 'fs' => 10, 'rot' => 0],
                     ];
                     $templateSticker2 = [];
+                    $settings['Software']['BCRenderAsImage'] = 'N';
+                    @file_put_contents(
+                        storage_path('logs/barcode-print-debug.log'),
+                        '[' . date('Y-m-d H:i:s') . '] honeywell compact layout applied; bcode=' . (string) ($row->bcode ?? '')
+                            . '; elements=' . json_encode($templateSticker1)
+                            . PHP_EOL,
+                        FILE_APPEND
+                    );
                 }
 
                 $canvasWidth = max(80, (int) ($templateData['canvasW'] ?? 380));
@@ -1195,13 +1366,14 @@ class BarcodeEntryController extends Controller
                 // on-screen design canvas. Keep the actual stock size fixed so
                 // one print maps to one label, while still drawing the slim
                 // design inside it.
-                $labelWidthMm = $stickerMode === 'double' ? '151.00' : '75.50';
-                $labelHeightMm = '25.00';
+                $labelWidthMm = $stickerMode === 'double' ? '157.00' : '78.50';
+                $labelHeightMm = '12.00';
+                $labelGapMm = '3';
 
                 $lines = [
                     $cr,
                     'SIZE ' . $labelWidthMm . ' mm,' . $labelHeightMm . " mm{$cr}",
-                    "GAP 0 mm,0 mm{$cr}",
+                    'GAP ' . $labelGapMm . " mm,0 mm{$cr}",
                     "OFFSET 0 mm{$cr}",
                     "SPEED 2{$cr}",
                     'DENSITY ' . $density . $cr,
@@ -1219,7 +1391,7 @@ class BarcodeEntryController extends Controller
                     $renderAsImage = false;
                 }
                 if ($renderAsImage) {
-                    $renderStickerImage = function (array $elements, int $xShift) use (&$lines, $replace, $pxinc, $pyinc, $cr): void {
+                    $renderStickerImage = function (array $elements, int $xShift) use (&$lines, $replace, $pxinc, $pyinc, $cr, $canvasWidth, $canvasHeight): void {
                         $bitmap = $this->renderTemplateElementsToBitmap($elements, $replace, $canvasWidth, $canvasHeight);
                         if ($bitmap === null) {
                             return;
@@ -1294,7 +1466,7 @@ class BarcodeEntryController extends Controller
                         $type = strtolower((string) ($el['type'] ?? 'text'));
                         $x = ((int) ($el['x'] ?? 0)) + $pxinc + $xShift;
                         $y = ((int) ($el['y'] ?? 0)) + $pyinc;
-                        $rotation = max(0, min(3, (int) ($el['r'] ?? 0)));
+                        $rotation = max(0, min(3, (int) ($el['rot'] ?? $el['r'] ?? 0)));
                         $deg = $rotation * 90;
                         $v = (string) ($el['value'] ?? '');
                         foreach ($replace as $tag => $tagVal) {
@@ -1308,7 +1480,16 @@ class BarcodeEntryController extends Controller
                         if ($type === 'qrcode' || $type === 'qr') {
                             $lines[] = 'QRCODE ' . $x . ',' . $y . ',L,2,A,' . $deg . ',M2,S7,"' . $v . '"' . $cr;
                         } elseif ($type === 'barcode' || $type === 'barcode128') {
-                            $lines[] = 'BARCODE ' . $x . ',' . $y . ',"128M",46,0,' . $deg . ',2,2,"' . $v . '"' . $cr;
+                            $h = max(18, min(60, (int) ($el['h'] ?? 36)));
+                            if (!empty($el['bars'])) {
+                                foreach ($this->buildCode128BTsplBars($x, $y, $v, $h, $cr) as $barLine) {
+                                    $lines[] = $barLine;
+                                }
+                                continue;
+                            }
+                            $narrow = max(1, min(3, (int) ($el['narrow'] ?? 1)));
+                            $wide = max($narrow, min(3, (int) ($el['wide'] ?? 1)));
+                            $lines[] = 'BARCODE ' . $x . ',' . $y . ',"128",' . $h . ',0,' . $deg . ',' . $narrow . ',' . $wide . ',"' . $v . '"' . $cr;
                         } elseif ($type === 'image') {
                             $w = (int) ($el['w'] ?? 96);
                             $h = (int) ($el['h'] ?? 96);
@@ -1316,7 +1497,9 @@ class BarcodeEntryController extends Controller
                                 $lines[] = $imgLine;
                             }
                         } else {
-                            $lines[] = 'TEXT ' . $x . ',' . $y . ',"ROMAN.TTF",' . $deg . ',1,7,"' . $v . '"' . $cr;
+                            $fs = max(6, min(16, (int) ($el['fs'] ?? 10)));
+                            $fontMul = $fs >= 11 ? 8 : 7;
+                            $lines[] = 'TEXT ' . $x . ',' . $y . ',"ROMAN.TTF",' . $deg . ',1,' . $fontMul . ',"' . $v . '"' . $cr;
                         }
                     }
                 };
@@ -1458,7 +1641,7 @@ class BarcodeEntryController extends Controller
                 continue;
             }
 
-            $rot = (int) ($el['r'] ?? 0);
+            $rot = (int) ($el['rot'] ?? $el['r'] ?? 0);
             if ($rot === 1) {
                 imagestringup($img, 2, $x, min($canvasH - 1, $y + (int) strlen($v) * 6), $v, $black);
             } else {
@@ -1546,6 +1729,61 @@ class BarcodeEntryController extends Controller
                 $bar = !$bar;
             }
         }
+    }
+
+    /**
+     * Build CODE128-B as fixed-width TSPL BAR commands.
+     */
+    private function buildCode128BTsplBars(int $x, int $y, string $value, int $height, string $cr, int $scale = 1): array
+    {
+        $patterns = [
+            '212222','222122','222221','121223','121322','131222','122213','122312','132212','221213',
+            '221312','231212','112232','122132','122231','113222','123122','123221','223211','221132',
+            '221231','213212','223112','312131','311222','321122','321221','312212','322112','322211',
+            '212123','212321','232121','111323','131123','131321','112313','132113','132311','211313',
+            '231113','231311','112133','112331','132131','113123','113321','133121','313121','211331',
+            '231131','213113','213311','213131','311123','311321','331121','312113','312311','332111',
+            '314111','221411','431111','111224','111422','121124','121421','141122','141221','112214',
+            '112412','122114','122411','142112','142211','241211','221114','413111','241112','134111',
+            '111242','121142','121241','114212','124112','124211','411212','421112','421211','212141',
+            '214121','412121','111143','111341','131141','114113','114311','411113','411311','113141',
+            '114131','311141','411131','211412','211214','211232','2331112'
+        ];
+
+        $value = substr($value, 0, 32);
+        $startB = 104;
+        $codes = [$startB];
+        $sum = $startB;
+        $len = strlen($value);
+        for ($i = 0; $i < $len; $i++) {
+            $ord = ord($value[$i]);
+            if ($ord < 32 || $ord > 126) {
+                $ord = 32;
+            }
+            $code = $ord - 32;
+            $codes[] = $code;
+            $sum += $code * ($i + 1);
+        }
+        $codes[] = $sum % 103;
+        $codes[] = 106;
+
+        $lines = [];
+        $cx = $x;
+        foreach ($codes as $code) {
+            $pat = $patterns[$code] ?? '';
+            $bar = true;
+            $patLen = strlen($pat);
+            for ($i = 0; $i < $patLen; $i++) {
+                $w = max(1, ((int) $pat[$i]) * $scale);
+                if ($bar) {
+                    $lines[] = 'BAR ' . $cx . ',' . $y . ',' . $w . ',' . $height . $cr;
+                }
+                $cx += $w;
+                $bar = !$bar;
+            }
+        }
+
+        return $lines;
     }
 
     /**
@@ -1726,6 +1964,9 @@ class BarcodeEntryController extends Controller
 
         $printer = trim($this->setting('BCPrinterName', '', $settings));
         $printerShare = trim($this->setting('BCPrinterShareName', '', $settings));
+        if (is_file($prnFile)) {
+            @copy($prnFile, storage_path('app' . DIRECTORY_SEPARATOR . 'print-cache' . DIRECTORY_SEPARATOR . 'barcode-last-debug.prn'));
+        }
         $runRawSharePrint = function () use ($printer, $printerShare, $prnFile): bool {
             $debugLog = function (string $msg) use ($printer, $printerShare, $prnFile): void {
                 $line = '[' . date('Y-m-d H:i:s') . '] ' . $msg
@@ -1743,6 +1984,12 @@ class BarcodeEntryController extends Controller
 
             $computerName = trim((string) getenv('COMPUTERNAME'));
             $targets = [];
+            if (str_starts_with($printerShare, '\\\\')) {
+                $targets[] = $printerShare;
+            }
+            if (str_starts_with($printer, '\\\\')) {
+                $targets[] = $printer;
+            }
             if ($computerName !== '') {
                 $targets[] = '\\\\' . $computerName . '\\' . $printerShare;
             }

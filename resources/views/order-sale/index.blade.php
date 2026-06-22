@@ -110,10 +110,11 @@ input,select,button{font-family:inherit;transition:border-color .15s,box-shadow 
 /* Items Table */
 .table-wrap{flex:1;overflow:hidden;margin:0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface)}
 table.items{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
-table.items thead th{background:linear-gradient(180deg,var(--pri),#2a4a78);color:#fff;padding:7px 5px;border-right:1px solid rgba(255,255,255,.12);font-weight:600;font-size:10.5px;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:2}
-table.items tbody{display:block;overflow-y:auto;flex:1}
-table.items thead,table.items tbody tr{display:table;width:100%;table-layout:fixed}
-table.items tbody td{border-bottom:1px solid #e8eef7;border-right:1px solid #edf2f9;padding:1px 3px;text-align:center;height:24px;background:var(--surface);vertical-align:middle}
+table.items thead th{background:linear-gradient(180deg,var(--pri),#2a4a78);color:#fff;padding:4px 2px;border-right:1px solid rgba(255,255,255,.12);font-weight:600;font-size:9px;text-align:center;white-space:normal;line-height:1.1;position:sticky;top:0;z-index:2}
+table.items thead{display:table-header-group}
+table.items tbody{display:table-row-group}
+table.items tbody tr{display:table-row}
+table.items tbody td{border-bottom:1px solid #e8eef7;border-right:1px solid #edf2f9;padding:1px 2px;text-align:center;height:24px;background:var(--surface);vertical-align:middle}
 table.items tbody tr:nth-child(even) td{background:#f8fafc}
 table.items tbody tr.sel td{background:#dbeafe;color:#1e40af;font-weight:600}
 table.items tbody input{font-size:11px;border:none;background:transparent;text-align:center;width:100%;height:100%;color:var(--text);outline:none;font-family:inherit}
@@ -142,14 +143,29 @@ table.items tbody input.num{text-align:right}
 .bot-row input.highlight{background:#fef9c3;font-weight:700;color:#92400e}
 
 /* Summary Model (4-col grid) */
-.summary-model{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:8px}
-.sm-col{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:8px 10px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 3px rgba(30,58,95,.06)}
+.summary-model{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:8px;align-items:start}
+.sm-col{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:8px 10px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 3px rgba(30,58,95,.06);align-self:start}
+.sm-section-title{margin:-2px -2px 4px;padding:0 2px 7px;border-bottom:1px solid var(--border);color:var(--pri);font-size:12px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
 .sm-row{display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:6px}
 .sm-row label{text-align:right;color:var(--muted);font-weight:600;font-size:11.5px}
 .sm-row input,.sm-row select{width:100%;font-variant-numeric:tabular-nums;height:28px;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);padding:2px 10px;color:var(--text);font-size:11.5px;outline:none;font-family:inherit}
 .sm-row input:focus,.sm-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .sm-row input.readonly,.sm-row input[readonly]{background:var(--surf2);color:var(--muted)}
 #fNetTotal{background:#fff7ed;border-color:#fdba74;color:#9a3412;font-weight:700}
+.payment-method .pm-received-row{display:grid;grid-template-columns:96px 110px 20px 58px;align-items:center;gap:6px}
+.payment-method .pm-account-row{display:grid;grid-template-columns:96px 1fr 110px;align-items:center;gap:6px}
+.payment-method .pm-check-row{display:grid;grid-template-columns:96px 1fr 110px;align-items:center;gap:6px}
+.payment-method .pm-received-row label,
+.payment-method .pm-account-row label,
+.payment-method .pm-check-row label{text-align:right;color:var(--muted);font-weight:600;font-size:11.5px}
+.payment-method .pm-received-row input:not([type="checkbox"]),
+.payment-method .pm-account-row input,
+.payment-method .pm-account-row select{width:100%;height:28px;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);padding:2px 10px;color:var(--text);font-size:11.5px;outline:none;font-family:inherit;font-variant-numeric:tabular-nums}
+.payment-method .pm-amount{text-align:right}
+.payment-method .pm-received-row input[type="checkbox"]{width:18px;height:18px;margin:0}
+.payment-method .pm-check{display:inline-flex;align-items:center;gap:5px;color:var(--text);font-weight:600;white-space:nowrap}
+.payment-method .pm-check-row .pm-check{justify-self:start}
+.payment-method .pm-check-row input[type="checkbox"]{width:18px;height:18px;margin:0}
 .sm-row .pair{display:grid;grid-template-columns:44px 1fr;gap:6px;align-items:center}
 .sm-row .pair-2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .sm-inline{display:inline-flex;align-items:center;gap:5px;color:var(--text);font-weight:600;font-size:11.5px}
@@ -211,7 +227,30 @@ table.items tbody input.num{text-align:right}
 @media(max-width:1400px){.summary-model{grid-template-columns:repeat(2,minmax(200px,1fr))}}
 @media(max-width:1100px){.top-section{grid-template-columns:1fr 1fr}.top-section>.top-block:last-child{grid-column:1/-1}}
 @media(max-width:900px){.summary-model{grid-template-columns:1fr}.top-section{grid-template-columns:1fr}body{overflow:auto;height:auto}.main-window{height:auto}}
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .os-row{min-height:30px}
+.top-section .os-row label{font-size:14px}
+.top-section .os-row input,.top-section .os-row select{font-size:14px;height:30px}
+.top-section .os-row .nav-btns button,.top-section .os-row .mini-btn{font-size:13px;height:30px}
+.top-section .os-row .inline-check{font-size:13px}
+table.items{font-size:13px}
+table.items thead th{font-size:11px;padding:5px 2px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:13px}
+.table-footer{font-size:14px}
+.table-footer button{font-size:13px;height:28px}
+.info-bar{font-size:14px}
+.bot-row label{font-size:14px}
+.bot-row input,.bot-row select{font-size:14px;height:28px}
+.sm-section-title{font-size:13px}
+.sm-row label{font-size:14px}
+.sm-row input,.sm-row select{font-size:14px;height:30px}
+.action-panel button{font-size:14px;height:38px}
+.inline-check{font-size:13px}
+.secondary-sync-inline{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="main-window" id="mainWindow">
@@ -293,9 +332,10 @@ table.items tbody input.num{text-align:right}
         <span class="inline-check"><input type="checkbox" id="fCopart" style="width:16px;height:16px;"><span>copart</span></span>
       </div>
       <div class="os-row ob-row">
-        <label class="ob-label">OB</label>
-        <input type="text" id="fOB" class="sm readonly" style="text-align:right" readonly value="0.00">
-        <button type="button" id="btnLedger" title="View Account Ledger" style="font-size:10px;padding:1px 7px;border:1px solid #7f9db9;border-radius:3px;background:#f0f4ff;cursor:pointer;margin-left:4px;">Ledger</button>
+        {{-- OB is hidden on Order Sale: the customer's advance is already shown as the Exchange amount, so showing OB/CB would be misleading. Inputs remain in the DOM so server-side calc keeps working. --}}
+        <label class="ob-label" style="display:none">OB</label>
+        <input type="hidden" id="fOB" value="0.00" title="Opening Balance">
+        <button type="button" id="btnLedger" title="View Account Ledger" style="font-size:10px;padding:1px 7px;border:1px solid #7f9db9;border-radius:3px;background:#f0f4ff;cursor:pointer;">Ledger</button>
         <label class="sm-label">SM Name</label>
         <select id="fSalesman">
           <option value="">--</option>
@@ -312,19 +352,26 @@ table.items tbody input.num{text-align:right}
     <table class="items" id="itemsTable">
       <thead>
         <tr>
-          <th style="width:70px">Item<br>code</th>
-          <th style="width:150px">Item Name</th>
-          <th style="width:65px">Model</th>
-          <th style="width:40px">Qty</th>
-          <th style="width:85px">Weight<br>in Gm.</th>
-          <th style="width:70px">Stone<br>Weight</th>
-          <th style="width:85px">Net Wgt<br>in Gm.</th>
-          <th style="width:75px">Stone<br>Price</th>
-          <th style="width:65px">Wastage</th>
-          <th style="width:45px">MC%</th>
-          <th style="width:85px">Making<br>Charge</th>
-          <th style="width:75px">Rate<br>Rs.</th>
-          <th style="width:90px">Amount</th>
+          <th style="width:55px">Item<br>Code</th>
+          <th style="width:120px">Item Name</th>
+          <th style="width:52px">Purity</th>
+          <th style="width:62px">Barcode</th>
+          <th style="width:52px">HSN</th>
+          <th style="width:58px">HUID</th>
+          <th style="width:38px">Qty</th>
+          <th style="width:74px">Weight</th>
+          <th style="width:70px">Stone<br>Wgt</th>
+          <th style="width:72px">Net<br>Wgt</th>
+          <th style="width:68px">Stone<br>Price</th>
+          <th style="width:72px">Diamond<br>Wgt</th>
+          <th style="width:72px">Diamond<br>Amt</th>
+          <th style="width:68px">Wastage</th>
+          <th style="width:42px">MC%</th>
+          <th style="width:62px">VA Disc %</th>
+          <th style="width:72px">Disc VA<br>Amt</th>
+          <th style="width:82px">Making<br>Charge</th>
+          <th style="width:80px">Amount</th>
+          <th style="width:64px">Rate</th>
         </tr>
       </thead>
       <tbody id="itemsTbody"></tbody>
@@ -345,11 +392,15 @@ table.items tbody input.num{text-align:right}
     <span id="ftStoneWgt" class="tfv" style="width:55px">.00</span>
     <span id="ftNetWgt" class="tfv" style="width:60px">.000</span>
     <span id="ftStonePrice" class="tfv" style="width:55px">0.00</span>
+    <span id="ftDmdWgt" class="tfv" style="width:55px">0.000</span>
+    <span id="ftDmdAmt" class="tfv" style="width:55px">0.00</span>
     <span id="ftWastage" class="tfv" style="width:50px">0.000</span>
     <span class="tfv" style="width:35px">%</span>
+    <span id="ftVaDiscPerc" class="tfv" style="width:50px">0.00</span>
+    <span id="ftVaDiscAmt" class="tfv" style="width:55px">0.00</span>
     <span id="ftMcAmt" class="tfv" style="width:60px">0.00</span>
-    <span id="ftRate" class="tfv" style="width:55px">0.00</span>
     <span id="ftAmount" class="tfv" style="width:70px">0.00</span>
+    <span id="ftRate" class="tfv" style="width:55px">0.00</span>
   </div>
 
   <!-- EVA / TVA bar -->
@@ -366,23 +417,16 @@ table.items tbody input.num{text-align:right}
   <!-- ============ BOTTOM SECTION + ACTION BUTTONS ============ -->
   <div class="bottom-wrap">
     <div class="bottom-section">
+      <input type="hidden" id="fGoldAdv" value="0.000">
+      <input type="hidden" id="fCessAmt" value="0">
+      <input type="hidden" id="fSupplyPlace" value="">
       <div class="summary-model">
         <div class="sm-col">
-          <div class="sm-row"><label>Gold Adv</label><input id="fGoldAdv" class="readonly" readonly value="0.000"></div>
-          <div class="sm-row"><label>Cess</label><input id="fCessAmt" value=".00"></div>
-          <div class="sm-row"><label>Cash Adv</label><input id="fCashAdv" class="readonly" readonly value="0.00"></div>
+          <div class="sm-row" style="display:none"><label>Cash Adv</label><input id="fCashAdv" class="readonly" readonly value="0.00"></div>
           <div class="sm-row"><label>Scheme Less</label><input id="fSchemeAmt" value=".00"></div>
-          <div class="sm-row"><label>Received</label><input id="fReceived" value=".00"></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fCredit"> Credit</label></div>
-          <div class="sm-row"><label>Cash/Bank</label>
-            <select id="fCashBank">
-              <option value="">--</option>
-              @foreach($cashBanks as $cb)
-                <option value="{{ $cb['code'] }}">{{ $cb['code'] }} - {{ $cb['name'] }}</option>
-              @endforeach
-            </select>
-          </div>
-          <select id="fChqBank" style="display:none"></select>
+          <div class="sm-row"><label>Rate</label><input id="fAdvRate" class="readonly" readonly value=".00"></div>
+          <div class="sm-row"><label>Cash Less</label><input id="fCashLess" value=".00"></div>
+          <div class="sm-row" style="display:none"><label>Tot Adv</label><input id="fTotAdv" class="readonly" readonly value=".00"></div>
           <div class="sm-row" style="display:none"><label>Agent</label>
             <select id="fAgent">
               <option value="">--</option>
@@ -401,29 +445,40 @@ table.items tbody input.num{text-align:right}
           </div>
         </div>
 
-        <div class="sm-col">
-          <div class="sm-row"><label>Rate</label><input id="fAdvRate" class="readonly" readonly value=".00"></div>
+        <div class="sm-col payment-method">
+          <div class="sm-section-title">Payment Method</div>
+          <div class="pm-received-row"><label>Received Amt</label><input id="fReceived" class="pm-amount" value=".00"><input type="checkbox" id="fCredit"><span class="pm-check">Credit</span></div>
+          <div class="pm-account-row"><label>Cash/Bank</label>
+            <select id="fCashBank">
+              <option value="">--</option>
+              @foreach($cashBanks as $cb)
+                <option value="{{ $cb['code'] }}">{{ $cb['code'] }} - {{ $cb['name'] }}</option>
+              @endforeach
+            </select>
+            <input id="fCashAmt" class="pm-amount" value=".00">
+          </div>
+          <div class="pm-account-row"><label>Chq Bank</label>
+            <select id="fChqBank">
+              <option value="">--</option>
+              @foreach($cashBanks as $cb)
+                <option value="{{ $cb['code'] }}">{{ $cb['code'] }} - {{ $cb['name'] }}</option>
+              @endforeach
+            </select>
+            <input id="fChqAmt" class="pm-amount" value=".00" oninput="syncCashAmt()">
+          </div>
+          <input type="hidden" id="fCcardAmt" value=".00">
           <div class="sm-row" style="display:none"><label>Repair</label><input id="fRepair" value=".00"></div>
           <div class="sm-row" style="display:none"><label>HMC</label><input id="fHmc" value=".00"></div>
-          <div class="sm-row"><label>Cash Less</label><input id="fCashLess" value=".00"></div>
-          <div class="sm-row"><label>Tot Adv</label><input id="fTotAdv" class="readonly" readonly value=".00"></div>
           <div class="sm-row"><label>BC</label>
             <div class="pair-2">
               <input id="fBcPerc" value=".00">
               <input id="fBcAmt" value=".00">
             </div>
           </div>
-          <div class="sm-row"><label>ChqAmt/Dt</label>
-            <div class="pair-2">
-              <input id="fChqAmt" value=".00">
-              <input id="fChqDate" placeholder="dd/mm/yyyy">
-            </div>
-          </div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fPdc"> PDC</label></div>
-          <div class="sm-row"><label>CCardAmt</label><input id="fCcardAmt" value=".00"></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fInterstate"> Interstate</label></div>
+          <div class="sm-row"><label>Chq. Date</label><input id="fChqDate" placeholder="dd/mm/yyyy"></div>
           <div class="sm-row"><label>Chq. No</label><input id="fChqNo"></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fCcardPdc"> CCard PDC ?</label></div>
+          <div class="pm-check-row"><label></label><label class="pm-check"><input type="checkbox" id="fPdc"> PDC</label><label class="pm-check"><input type="checkbox" id="fInterstate"> Interstate</label></div>
+          <div class="pm-check-row"><label></label><span></span><label class="pm-check"><input type="checkbox" id="fCcardPdc"> CCard PDC ?</label></div>
         </div>
 
         <div class="sm-col">
@@ -432,10 +487,6 @@ table.items tbody input.num{text-align:right}
           <div class="sm-row"><label>Net Total</label><input id="fNetTotal" class="readonly" readonly value="0.00"></div>
           <div class="sm-row"><label>Balance</label><input id="fBalance" class="readonly" readonly value="0.00"></div>
           <div class="sm-row"><label>Note</label><input id="fNote"></div>
-          <div class="sm-row"><label>Supply Place</label><input id="fSupplyPlace"></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fRateFromOrder"> Rate from order</label></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fAllRateFromOrder"> All Rate from order</label></div>
-          <div class="sm-row sm-full"><label></label><label class="sm-inline"><input type="checkbox" id="fShowWgtInLedger"> Show Wgt in Ledger</label></div>
         </div>
 
         <div class="sm-col">
@@ -448,14 +499,15 @@ table.items tbody input.num{text-align:right}
           <div class="sm-row"><label>S.Return</label><input id="fSretAmt" class="readonly" readonly value="0.00"></div>
           <div class="sm-row" style="display:none"><label>RDDisc</label><input id="fRddiscAmt" value=".00"></div>
           <input type="hidden" id="fRddisc" value="">
-          <div class="sm-row"><label>Discount</label>
-            <div class="pair-2">
-              <input id="fDiscountPerc" value=".0">
-              <input id="fDiscountAmt" value=".00">
+            <div class="sm-row"><label>Discount</label>
+              <div class="pair-2">
+                <input id="fDiscountAmt" value=".00">
+                <input id="fDiscountPerc" value=".0">
+              </div>
             </div>
-          </div>
-          <div class="sm-row"><label>CB</label><input id="fCB" class="readonly" readonly value="0.00"></div>
-          <div class="sm-row"><label>DDate</label><input id="fDueDate" placeholder="dd/mm/yyyy"></div>
+          {{-- CB hidden on Order Sale (advance is shown as Exchange). --}}
+          <div class="sm-row" style="display:none"><label>CB</label><input id="fCB" class="readonly" readonly value="0.00"></div>
+          <div class="sm-row"><label>DDate</label><input id="fDueDate" type="date"></div>
           <div class="sm-row"><label>State</label>
             <select id="fState">
               <option value="">--</option>
@@ -501,7 +553,7 @@ table.items tbody input.num{text-align:right}
       </div>
     </div>
     <div style="padding:8px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;display:flex;gap:24px;flex-shrink:0;">
-      <span>Opening Balance: <b id="ledgerOB"></b></span>
+      <span style="display:none">Opening Balance: <b id="ledgerOB"></b></span>
       <span>Total Debit: <b id="ledgerTotDr"></b></span>
       <span>Total Credit: <b id="ledgerTotCr"></b></span>
       <span>Closing Balance: <b id="ledgerCB"></b></span>
@@ -739,6 +791,7 @@ let currentOrderNo = '';
 let currentOrderSlno = 0;
 let isEditMode = false;
 let orderAdvance = 0;
+let orderCredit = 0;
 let orderGoldAdvWgt = 0;
 let orderAmtToWgt = 0;
 let itemSearchTargetRow = -1;
@@ -793,6 +846,8 @@ function newItemRow() {
   return {
     item_code:'', item_name:'', model:'', qty:0, weight:0, stone_wgt:0,
     net_wgt:0, stone_price:0, wastage:0, vaperc:0, making_charge:0,
+    dmdwgt:0, dmdamt:0, dmdnos:0, dmdunit:'', display_category:'', is_diamond:false,
+    purity:'', hsn:'', va_disc_perc:0, va_disc_amt:0,
     rate: toNum($('fRatePerGm').value), amount:0,
     stktype:'', stktouch:0, bcode:0, huid:'', iqtype:'', cost:0, item_type:'G'
   };
@@ -807,19 +862,26 @@ function renderItemsTable() {
     tr.dataset.idx = idx;
     if (idx === selectedRow) tr.classList.add('sel');
     tr.innerHTML = `
-      <td><input data-col="item_code" value="${row.item_code}" style="text-transform:uppercase"></td>
+      <td><input data-col="item_code" value="${row.item_code}" style="text-transform:uppercase;width:48px"></td>
       <td style="text-align:left;font-size:10px;padding-left:4px">${row.item_name||''}</td>
-      <td><input data-col="model" value="${row.model||''}"></td>
-      <td><input data-col="qty" class="num" value="${row.qty||0}"></td>
-      <td><input data-col="weight" class="num" value="${fmt(row.weight,3)}"></td>
-      <td><input data-col="stone_wgt" class="num" value="${fmt(row.stone_wgt,3)}"></td>
+      <td>${row.purity||row.iqtype||''}</td>
+      <td><input data-col="bcode" value="${row.bcode && row.bcode !== '0' ? row.bcode : ''}" style="width:56px;text-align:left"></td>
+      <td><input data-col="hsn" value="${row.hsn||''}" style="width:46px"></td>
+      <td><input data-col="huid" value="${row.huid||''}" style="width:50px"></td>
+      <td><input data-col="qty" class="num" value="${row.qty||0}" style="width:28px"></td>
+      <td><input data-col="weight" class="num" value="${fmt(row.weight,3)}" style="width:52px"></td>
+      <td><input data-col="stone_wgt" class="num" value="${fmt(row.stone_wgt,3)}" style="width:52px"></td>
       <td style="text-align:right;padding-right:4px;font-size:10px">${fmt(row.net_wgt,3)}</td>
-      <td><input data-col="stone_price" class="num" value="${fmt(row.stone_price,2)}"></td>
-      <td><input data-col="wastage" class="num" value="${fmt(row.wastage,3)}"></td>
-      <td><input data-col="vaperc" class="num" value="${fmt(row.vaperc,2)}"></td>
-      <td><input data-col="making_charge" class="num" value="${fmt(row.making_charge,2)}"></td>
-      <td><input data-col="rate" class="num" value="${fmt(row.rate,2)}"></td>
-      <td><input data-col="amount" class="num" value="${fmt(row.amount,2)}"></td>
+      <td><input data-col="stone_price" class="num" value="${fmt(row.stone_price,2)}" style="width:52px"></td>
+      <td><input data-col="dmdwgt" class="num" value="${fmt(row.dmdwgt||0,3)}" style="width:52px"></td>
+      <td><input data-col="dmdamt" class="num" value="${fmt(row.dmdamt||0,2)}" style="width:52px"></td>
+      <td><input data-col="wastage" class="num" value="${fmt(row.wastage,3)}" style="width:52px"></td>
+      <td><input data-col="vaperc" class="num" value="${fmt(row.vaperc,2)}" style="width:34px"></td>
+      <td><input data-col="va_disc_perc" class="num" value="${fmt(row.va_disc_perc||0,2)}" style="width:42px"></td>
+      <td><input data-col="va_disc_amt" class="num" value="${fmt(row.va_disc_amt||0,2)}" style="width:50px"></td>
+      <td><input data-col="making_charge" class="num" value="${fmt(row.making_charge,2)}" style="width:58px"></td>
+      <td><input data-col="amount" class="num" value="${fmt(row.amount,2)}" style="width:58px"></td>
+      <td><input data-col="rate" class="num" value="${fmt(row.rate,2)}" style="width:52px"></td>
     `;
     tbody.appendChild(tr);
   });
@@ -835,16 +897,21 @@ function markSelectedRow() {
 }
 
 function updateTableFooter() {
-  let tQty=0, tWgt=0, tStwgt=0, tNetwgt=0, tStprice=0, tWastage=0, tMc=0, tAmt=0;
+  let tQty=0, tWgt=0, tStwgt=0, tNetwgt=0, tStprice=0, tDmdWgt=0, tDmdAmt=0, tWastage=0, tVDP=0, tVDA=0, tMc=0, tAmt=0, tRate=0;
   itemRows.forEach(r => {
     tQty += toNum(r.qty);
     tWgt += toNum(r.weight);
     tStwgt += toNum(r.stone_wgt);
     tNetwgt += toNum(r.net_wgt);
     tStprice += toNum(r.stone_price);
+    tDmdWgt += toNum(r.dmdwgt);
+    tDmdAmt += toNum(r.dmdamt);
     tWastage += toNum(r.wastage);
+    tVDP += toNum(r.va_disc_perc);
+    tVDA += toNum(r.va_disc_amt);
     tMc += toNum(r.making_charge);
     tAmt += toNum(r.amount);
+    tRate += toNum(r.rate);
   });
   $('ftItemCount').textContent = itemRows.filter(r => r.item_code).length;
   $('ftQty').textContent = tQty;
@@ -852,9 +919,14 @@ function updateTableFooter() {
   $('ftStoneWgt').textContent = fmt(tStwgt,2);
   $('ftNetWgt').textContent = fmt(tNetwgt,3);
   $('ftStonePrice').textContent = fmt(tStprice,2);
+  $('ftDmdWgt').textContent = fmt(tDmdWgt,3);
+  $('ftDmdAmt').textContent = fmt(tDmdAmt,2);
   $('ftWastage').textContent = fmt(tWastage,3);
+  if ($('ftVaDiscPerc')) $('ftVaDiscPerc').textContent = fmt(tVDP,2);
+  if ($('ftVaDiscAmt')) $('ftVaDiscAmt').textContent = fmt(tVDA,2);
   $('ftMcAmt').textContent = fmt(tMc,2);
   $('ftAmount').textContent = fmt(tAmt,2);
+  if ($('ftRate')) $('ftRate').textContent = fmt(tRate,2);
   $('fBillTotal').value = fmt(tAmt,2);
   recomputeVaInfo();
   triggerRecalc();
@@ -880,10 +952,13 @@ function recalcItemRow(idx, changedCol, rerender = true) {
   let wgt = toNum(r.weight);
   let stwgt = toNum(r.stone_wgt);
   let stprice = toNum(r.stone_price);
+  let dmdamt = toNum(r.dmdamt);
   let rate = toNum(r.rate);
   let wastage = toNum(r.wastage);
   let vaperc = toNum(r.vaperc);
   let mc = toNum(r.making_charge);
+  let vaDiscPerc = toNum(r.va_disc_perc);
+  let vaDiscAmt = toNum(r.va_disc_amt);
   let netwgt = Math.max(wgt - stwgt, 0);
 
   // MC% logic: recalc MC when MC% or base factors change.
@@ -893,13 +968,25 @@ function recalcItemRow(idx, changedCol, rerender = true) {
     r.making_charge = Math.round(mc * 100) / 100;
   }
 
+  const vaDiscBase = netwgt * rate;
+  if (changedCol === 'va_disc_perc' && vaDiscPerc > 0 && vaDiscBase > 0) {
+    vaDiscAmt = (vaDiscBase * vaDiscPerc) / 100;
+    r.va_disc_amt = Math.round(vaDiscAmt * 100) / 100;
+  } else if (changedCol === 'va_disc_amt' && vaDiscAmt > 0 && vaDiscBase > 0) {
+    vaDiscPerc = (vaDiscAmt * 100) / vaDiscBase;
+    r.va_disc_perc = Math.round(vaDiscPerc * 1000) / 1000;
+  } else if (changedCol !== 'va_disc_amt' && vaDiscPerc > 0 && vaDiscBase > 0) {
+    vaDiscAmt = (vaDiscBase * vaDiscPerc) / 100;
+    r.va_disc_amt = Math.round(vaDiscAmt * 100) / 100;
+  }
+
   // If wastage changed and wastage is in weight, add to mc
   if (changedCol === 'wastage') {
     // wastage is already stored as-is
   }
 
-  // Amount = (netwgt * rate) + stprice + mc
-  let amt = (netwgt * rate) + stprice + mc;
+  // Amount = (netwgt * rate) + stprice + diamond amount + mc
+  let amt = (netwgt * rate) + stprice + dmdamt + mc - vaDiscAmt;
 
   r.net_wgt = Math.round(netwgt * 1000) / 1000;
   r.amount = Math.round(amt * 100) / 100;
@@ -908,12 +995,14 @@ function recalcItemRow(idx, changedCol, rerender = true) {
   } else {
     const tr = document.querySelector(`#itemsTbody tr[data-idx="${idx}"]`);
     if (tr) {
-      const netCell = tr.children[6];
+      const netCell = tr.children[9];
       if (netCell) netCell.textContent = fmt(r.net_wgt, 3);
       const amtInput = tr.querySelector('input[data-col="amount"]');
       if (amtInput) amtInput.value = fmt(r.amount, 2);
       const mcInput = tr.querySelector('input[data-col="making_charge"]');
       if (mcInput && mcPercDrivenCols.includes(changedCol)) mcInput.value = fmt(r.making_charge, 2);
+      const vdaInput = tr.querySelector('input[data-col="va_disc_amt"]');
+      if (vdaInput && changedCol !== 'va_disc_amt') vdaInput.value = fmt(r.va_disc_amt || 0, 2);
     }
     updateTableFooter();
   }
@@ -944,11 +1033,20 @@ function itemLookup(idx) {
         r.stktype = d.stktype || '';
         r.stktouch = d.stktouch || 0;
         r.bcode = d.bcode || 0;
+        r.purity = d.purity || d.iqtype || '';
+        r.iqtype = d.purity || d.iqtype || '';
+        r.hsn = d.hsn || '';
+        r.dmdwgt = d.dmdwgt || 0;
+        r.dmdamt = d.dmdamt || 0;
+        r.dmdnos = d.dmdnos || 0;
+        r.dmdunit = d.dmdunit || '';
+        r.display_category = d.display_category || '';
+        r.is_diamond = !!d.is_diamond;
         r.huid = d.huid || '';
         r.cost = d.cost || 0;
         renderItemsTable();
         setTimeout(() => {
-          const input = document.querySelector(`#itemsTbody tr[data-idx="${idx}"] input[data-col="model"]`);
+          const input = document.querySelector(`#itemsTbody tr[data-idx="${idx}"] input[data-col="bcode"]`);
           if (input) { input.focus(); input.select(); }
         }, 50);
         return;
@@ -968,7 +1066,7 @@ function itemLookup(idx) {
         if (!toNum(r.qty)) r.qty = 1;
         recalcItemRow(idx, 'item_code', true);
         setTimeout(() => {
-          const input = document.querySelector(`#itemsTbody tr[data-idx="${idx}"] input[data-col="model"]`);
+          const input = document.querySelector(`#itemsTbody tr[data-idx="${idx}"] input[data-col="bcode"]`);
           if (input) { input.focus(); input.select(); }
         }, 50);
       });
@@ -995,12 +1093,21 @@ $('itemsTbody').addEventListener('blur', function(e) {
   if (isNaN(idx) || !col) return;
   const r = itemRows[idx];
   if (!r) return;
-  const numCols = ['qty','weight','stone_wgt','stone_price','wastage','vaperc','making_charge','rate','amount'];
+  const numCols = ['qty','weight','stone_wgt','stone_price','dmdwgt','dmdamt','wastage','vaperc','va_disc_perc','va_disc_amt','making_charge','rate','amount'];
   if (col === 'item_code') {
     const code = inp.value.trim().toUpperCase();
     inp.value = code;
     if (code && code !== String(r.item_code || '').toUpperCase()) {
       r.item_code = code;
+      itemLookup(idx);
+    }
+    return;
+  }
+  if (col === 'bcode') {
+    const barcode = inp.value.trim();
+    r.bcode = barcode;
+    if (barcode) {
+      r.item_code = barcode;
       itemLookup(idx);
     }
     return;
@@ -1040,7 +1147,7 @@ $('itemsTbody').addEventListener('keydown', function(e) {
   const idx = parseInt(tr.dataset.idx);
   const col = inp.dataset.col;
 
-  const editOrder = ['item_code','model','qty','weight','stone_wgt','stone_price','wastage','vaperc','making_charge','rate','amount'];
+  const editOrder = ['item_code','bcode','hsn','huid','qty','weight','stone_wgt','stone_price','dmdwgt','dmdamt','wastage','vaperc','va_disc_perc','va_disc_amt','making_charge','amount','rate'];
   const moveOrdered = (forward = true) => {
     const pos = editOrder.indexOf(col);
     if (pos < 0) return false;
@@ -1097,7 +1204,7 @@ $('itemsTbody').addEventListener('keydown', function(e) {
         itemRows[idx].item_code = code;
         itemLookup(idx);
       } else {
-        const ni = tr.querySelector('input[data-col="model"]');
+        const ni = tr.querySelector('input[data-col="bcode"]');
         if (ni) { ni.focus(); ni.select(); }
       }
       return;
@@ -1115,7 +1222,7 @@ $('itemsTbody').addEventListener('keydown', function(e) {
         itemRows[idx].item_code = code;
         itemLookup(idx);
       }
-      // After lookup/fill, continue ordered flow from model.
+      // After lookup/fill, continue ordered flow from barcode.
       return;
     }
     e.preventDefault();
@@ -1182,12 +1289,13 @@ function loadOrder(ordno) {
 
       // Advance values
       orderAdvance = toNum(d.advance);
+      orderCredit = toNum(d.order_credit);
       orderGoldAdvWgt = toNum(d.gold_advance_wgt);
       orderAmtToWgt = toNum(d.amttowgt_total);
       $('fCashAdv').value = fmt(orderAdvance, 2);
       $('fSchemeAmt').value = '.00';
       $('fGoldAdv').value = fmt(orderGoldAdvWgt, 3);
-      $('fTotAdv').value = fmt(orderAdvance, 2);
+      $('fTotAdv').value = fmt(orderAdvance + orderCredit, 2);
       $('fAdvRate').value = fmt(d.gold_rate, 2);
       $('fExchangeAmt').value = fmt(d.exchange_amt, 2);
       $('fSretAmt').value = fmt(d.sret_amt, 2);
@@ -1198,11 +1306,22 @@ function loadOrder(ordno) {
         item_code: it.item_code || '',
         item_name: it.item_name || '',
         model: '',
+        purity: it.purity || it.iqtype || '',
+        hsn: it.hsn || '',
+        huid: it.huid || '',
         qty: toNum(it.qty),
         weight: toNum(it.weight),
         stone_wgt: toNum(it.stone_wgt),
         net_wgt: Math.max(toNum(it.weight) - toNum(it.stone_wgt), 0),
         stone_price: toNum(it.stone_price),
+        dmdwgt: toNum(it.dmdwgt),
+        dmdamt: toNum(it.dmdamt),
+        dmdnos: toNum(it.dmdnos),
+        dmdunit: it.dmdunit || '',
+        display_category: it.display_category || '',
+        is_diamond: !!it.is_diamond,
+        va_disc_perc: toNum(it.va_disc_perc),
+        va_disc_amt: toNum(it.va_disc_amt),
         wastage: toNum(it.wastage),
         vaperc: toNum(it.vaperc),
         making_charge: toNum(it.making_charge),
@@ -1232,7 +1351,7 @@ function loadOrder(ordno) {
         stone_wgt: toNum(sr.stone_wgt),
         net_wgt: Math.max(toNum(sr.weight) - toNum(sr.stone_wgt), 0),
         stone_price: toNum(sr.stone_price), wastage: toNum(sr.wastage),
-        vaperc: 0, making_charge: toNum(sr.making_charge),
+        vaperc: toNum(sr.vaperc), making_charge: toNum(sr.making_charge),
         rate: toNum(sr.rate), amount: toNum(sr.amount), stktype: sr.stktype||''
       }));
     });
@@ -1260,7 +1379,7 @@ function formatDateForDisplay(dateStr) {
 }
 function parseDateToISO(dateStr) {
   if (!dateStr) return '';
-  const m = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const m = dateStr.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   return dateStr;
 }
@@ -1311,7 +1430,7 @@ function doOrderSearch() {
 // ── Order Details button ───────────────────────────────────
 $('btnOrderDetails').addEventListener('click', () => {
   if (!currentOrderNo) { showMsg('Info', 'Load an order first.'); return; }
-  showMsg('Order Details', `Order No: ${currentOrderNo}\nAdvance: ${fmt(orderAdvance,2)}\nGold Adv Wgt: ${fmt(orderGoldAdvWgt,3)}`);
+  showMsg('Order Details', `Order No: ${currentOrderNo}\nGold Adv Wgt: ${fmt(orderGoldAdvWgt,3)}`);
 });
 
 // ── Bill Search ────────────────────────────────────────────
@@ -1862,7 +1981,10 @@ function srItemLookup(idx) {
       if (!d.ok) return;
       r.item_name = d.item_name || '';
       r.rate = d.rate || goldRate;
+      r.vaperc = d.vaperc || 0;
+      r.making_charge = d.making_charge || d.mc || 0;
       r.stktype = d.stktype || '';
+      recalcSrRow(idx, 'vaperc', false);
       renderSrTable();
     });
 }
@@ -1946,6 +2068,7 @@ function doRecalc(rparm = 0, source = '') {
   let dccamt = toNum($('fCcardAmt').value);
   let dchqamt = toNum($('fChqAmt').value);
   let dcashloss = toNum($('fCashLess').value);
+  let dordercredit = 0;
   let dround = toNum((CFG.software && CFG.software.AmtRoundTo) || 0);
 
   let dnetamt = dbamt - dadvance - dexamt - dsretamt + dtax + dast + dhmc + drcamt - drddisc - dschmamt;
@@ -1973,13 +2096,28 @@ function doRecalc(rparm = 0, source = '') {
       drcvd = 0;
       $('fReceived').value = '.00';
     } else {
-      drcvd = dnetamt - ddisc - dccamt - dchqamt - dcashloss;
+      const exactDue = dnetamt - ddisc - dccamt - dchqamt - dordercredit;
+      if (source !== 'fCashLess') {
+        if (exactDue > 0) {
+          const roundedReceived = Math.floor(exactDue);
+          dcashloss = Math.round((exactDue - roundedReceived) * 100) / 100;
+          drcvd = roundedReceived;
+        } else {
+          dcashloss = 0;
+          drcvd = 0;
+        }
+        $('fCashLess').value = dcashloss ? fmt(dcashloss, 2) : '.00';
+      } else {
+        drcvd = exactDue - dcashloss;
+        if (drcvd < 0) drcvd = 0;
+      }
       if (Math.abs(drcvd) < 0.005) drcvd = 0;
       $('fReceived').value = fmt(drcvd, 2);
     }
   }
 
-  const dbal = dnetamt - ddisc - drcvd - dccamt - dchqamt - dcashloss;
+  let dbal = dnetamt - ddisc - drcvd - dccamt - dchqamt - dcashloss - dordercredit;
+  if (Math.abs(dbal) < 0.5) dbal = 0;
   $('fBalance').value = fmt(dbal, 2);
   $('fCB').value = fmt(toNum($('fOB').value) - dbal, 2);
 
@@ -1989,6 +2127,16 @@ function doRecalc(rparm = 0, source = '') {
   if (bcperc > 0 && ccamt > 0 && source !== 'bc_amt') {
     $('fBcAmt').value = fmt((ccamt * bcperc) / 100, 2);
   }
+  syncCashAmt();
+}
+
+function syncCashAmt() {
+  if (document.activeElement && document.activeElement.id === 'fCashAmt') return;
+  const selected = $('fCashBank')?.selectedOptions?.[0];
+  const cashBankText = String((selected?.textContent || '') + ' ' + ($('fCashBank')?.value || '')).toUpperCase();
+  const isDigitalPay = /(GPAY|G PAY|GOOGLE PAY|UPI|PHONEPE|PAYTM)/.test(cashBankText);
+  const amount = isDigitalPay ? Math.max(toNum($('fReceived').value) - toNum($('fChqAmt').value), 0) : 0;
+  $('fCashAmt').value = fmt(amount, 2);
 }
 
 // ── Build payload for save/recalc ──────────────────────────
@@ -2000,7 +2148,7 @@ function buildPayload() {
     order_no: orderNo,
     without_order_mode: CFG.mode === 'without-order',
     bill_date: $('fDate').value.trim(),
-    due_date: $('fDueDate').value.trim(),
+    due_date: formatDateForDisplay($('fDueDate').value.trim()),
     bill_type: $('fBillType').value,
     customer_name: $('fCustName').value.trim(),
     customer_code: $('fCustomerCode').value.trim(),
@@ -2018,11 +2166,16 @@ function buildPayload() {
     approved_by: $('fApprovedBy').value,
     items: itemRows.filter(r => r.item_code).map(r => ({
       item_code: r.item_code, item_name: r.item_name, model: r.model||'',
+      purity: r.purity || r.iqtype || '', hsn: r.hsn || '', huid: r.huid || '',
       qty: r.qty, weight: r.weight, stone_wgt: r.stone_wgt,
       stone_price: r.stone_price, making_charge: r.making_charge,
+      dmdwgt: r.dmdwgt || 0, dmdamt: r.dmdamt || 0,
+      dmdnos: r.dmdnos || 0, dmdunit: r.dmdunit || '',
+      display_category: r.display_category || '', is_diamond: !!r.is_diamond,
+      va_disc_perc: r.va_disc_perc || 0, va_disc_amt: r.va_disc_amt || 0,
       wastage: r.wastage, rate: r.rate, amount: r.amount,
       vaperc: r.vaperc, stktype: r.stktype, iqtype: r.iqtype||'',
-      stktouch: r.stktouch||0, bcode: r.bcode||0, huid: r.huid||'', cost: r.cost||0
+      stktouch: r.stktouch||0, bcode: r.bcode||0, cost: r.cost||0
     })),
     exchange: exchRows.filter(r => r.item_code).map(r => ({
       item_code: r.item_code, item_name: r.item_name,
@@ -2036,7 +2189,7 @@ function buildPayload() {
       qty: r.qty, weight: r.weight, rate: r.rate,
       stone_wgt: r.stone_wgt, stone_price: r.stone_price,
       making_charge: r.making_charge, wastage: r.wastage,
-      amount: r.amount, stktype: r.stktype||''
+      vaperc: r.vaperc, amount: r.amount, stktype: r.stktype||''
     })),
       extra: {
       discount: toNum($('fDiscountAmt').value),
@@ -2048,6 +2201,7 @@ function buildPayload() {
         hallmark_charge: toNum($('fHmc').value),
         carry_exchange_amount: toNum($('fExchangeAmt').value),
         advance: orderAdvance,
+        order_credit: orderCredit,
       fancy_amt: 0,
       scheme_amt: toNum($('fSchemeAmt').value),
       bank_charge: toNum($('fBcAmt').value),
@@ -2221,13 +2375,14 @@ function loadBill(billNo) {
       $('fApprovedBy').value = d.approved_by || '';
       if (d.state_code) $('fState').value = d.state_code;
       $('fSupplyPlace').value = d.supply_place || '';
-      $('fDueDate').value = d.due_date || '';
+      $('fDueDate').value = parseDateToISO(d.due_date || '');
 
       const ex = d.extra || {};
       $('fOB').value = fmt(ex.opening_balance, 2);
       orderAdvance = toNum(ex.advance);
+      orderCredit = toNum(ex.order_credit);
       $('fCashAdv').value = fmt(ex.advance, 2);
-      $('fTotAdv').value = fmt(ex.advance, 2);
+      $('fTotAdv').value = fmt(orderAdvance + orderCredit, 2);
       $('fSchemeAmt').value = fmt(ex.scheme_amt, 2);
       $('fDiscountAmt').value = fmt(ex.discount, 2);
       $('fDiscountPerc').value = fmt(ex.discount_perc, 3);
@@ -2240,12 +2395,13 @@ function loadBill(billNo) {
       $('fBcAmt').value = fmt(ex.bank_charge, 2);
       $('fBcPerc').value = fmt(ex.bc_perc, 2);
       $('fCashLess').value = fmt(ex.cash_less, 2);
-      $('fCcardAmt').value = fmt(ex.ccard_amt, 2);
+      $('fCcardAmt').value = '0.00';
       $('fChqAmt').value = fmt(ex.chq_amt, 2);
       $('fChqDate').value = ex.chq_date || '';
       $('fChqNo').value = ex.chq_no || '';
       $('fPdc').checked = !!ex.pdc;
       $('fCcardPdc').checked = !!ex.ccard_pdc;
+      syncCashAmt();
       $('fInterstate').checked = !!ex.interstate;
       $('fNote').value = ex.note || '';
       $('fCredit').checked = !!ex.credit;
@@ -2260,16 +2416,20 @@ function loadBill(billNo) {
 
       // Items
       itemRows = (d.items || []).map(it => ({
-        item_code: it.item_code||'', item_name: it.item_name||'',
-        model: it.model||'', qty: toNum(it.qty), weight: toNum(it.weight),
+      item_code: it.item_code||'', item_name: it.item_name||'',
+        model: it.model||'', purity: it.purity || it.iqtype || '', hsn: it.hsn||'', qty: toNum(it.qty), weight: toNum(it.weight),
         stone_wgt: toNum(it.stone_wgt),
         net_wgt: Math.max(toNum(it.weight) - toNum(it.stone_wgt), 0),
         stone_price: toNum(it.stone_price), wastage: toNum(it.wastage),
+        dmdwgt: toNum(it.dmdwgt), dmdamt: toNum(it.dmdamt),
+        dmdnos: toNum(it.dmdnos), dmdunit: it.dmdunit||'',
+        display_category: it.display_category || '', is_diamond: !!it.is_diamond,
+        va_disc_perc: toNum(it.va_disc_perc), va_disc_amt: toNum(it.va_disc_amt),
         vaperc: toNum(it.vaperc), making_charge: toNum(it.making_charge),
         rate: toNum(it.rate), amount: toNum(it.amount),
         stktype: it.stktype||'', stktouch: toNum(it.stktouch),
         bcode: toNum(it.bcode), huid: it.huid||'', iqtype: it.iqtype||'',
-        cost: toNum(it.cost), item_type: 'G'
+        cost: toNum(it.cost), item_type: it.item_type || 'G'
       }));
       if (itemRows.length === 0) itemRows.push(newItemRow());
       selectedRow = 0;
@@ -2293,13 +2453,14 @@ function loadBill(billNo) {
         stone_wgt: toNum(sr.stone_wgt),
         net_wgt: Math.max(toNum(sr.weight) - toNum(sr.stone_wgt), 0),
         stone_price: toNum(sr.stone_price), wastage: toNum(sr.wastage),
-        vaperc: 0, making_charge: toNum(sr.making_charge),
+        vaperc: toNum(sr.vaperc), making_charge: toNum(sr.making_charge),
         rate: toNum(sr.rate), amount: toNum(sr.amount), stktype: sr.stktype||''
       }));
 
       // Recalc balance
       let balance = toNum(d.net_total) - toNum(ex.discount) - toNum(ex.received)
         - toNum(ex.ccard_amt) - toNum(ex.chq_amt) - toNum(ex.cash_less);
+      if (Math.abs(balance) < 0.5) balance = 0;
       $('fBalance').value = fmt(balance, 2);
       $('fCB').value = fmt(toNum(ex.opening_balance) - balance, 2);
       receivedTouched = true;
@@ -2316,6 +2477,7 @@ function resetForm() {
   currentOrderNo = '';
   currentOrderSlno = 0;
   orderAdvance = 0;
+  orderCredit = 0;
   orderGoldAdvWgt = 0;
   orderAmtToWgt = 0;
   $('fBillNo').value = '';
@@ -2373,7 +2535,19 @@ function resetForm() {
 }
 
 // ── Navigation (Prev/Next) ─────────────────────────────────
+function hasUnsavedDraft() {
+  if (isEditMode) return false;
+  const hasItems = (itemRows || []).some(r => r && String(r.item_code || '').trim() !== '');
+  const hasExch  = (exchRows  || []).some(r => r && String(r.item_code || '').trim() !== '');
+  const hasSr    = (srRows    || []).some(r => r && String(r.item_code || '').trim() !== '');
+  const hasCust  = String($('fCustomerCode').value || '').trim() !== '';
+  return hasItems || hasExch || hasSr || hasCust;
+}
 function navBill(dir) {
+  if (hasUnsavedDraft() &&
+      !confirm('You have an unsaved bill in progress. Navigating will discard it. Continue?')) {
+    return;
+  }
   const current = $('fBillNo').value.trim();
   const url = dir === 'prev' ? '/api/order-sale/prev' : '/api/order-sale/next';
   api(`${url}?bill_no=${encodeURIComponent(current)}`)
@@ -2413,6 +2587,15 @@ $('fBillType').addEventListener('change', () => {
   $('fTaxPerc').value = defaultTaxPercText();
   $('fTaxAmt').value = '.00';
   doRecalc(1, 'bill_type');
+  // Refresh Bill No to match the new BType's prefix series (BillTypewiseBillNo=Y).
+  // Skip when editing an existing saved bill — we don't want to overwrite a real bill number.
+  if (currentSlno && currentSlno > 0) return;
+  const bt = $('fBillType').value;
+  if (!bt) return;
+  fetch(BASE + '/api/order-sale/peek-billno?btype=' + encodeURIComponent(bt))
+    .then(r => r.json())
+    .then(d => { if (d && d.ok && d.bill_no) $('fBillNo').value = d.bill_no; })
+    .catch(() => {});
 });
 
 $('fDiscountPerc').addEventListener('change', () => {
@@ -2427,6 +2610,14 @@ $('fDiscountAmt').addEventListener('change', () => {
 $('fReceived').addEventListener('change', () => {
   receivedTouched = true;
   doRecalc(1, 'received');
+});
+$('fCashAmt').addEventListener('blur', () => {
+  $('fCashAmt').value = fmt(toNum($('fCashAmt').value), 2);
+});
+$('fCashBank').addEventListener('change', syncCashAmt);
+$('fOB').addEventListener('change', () => {
+  $('fOB').value = fmt(toNum($('fOB').value), 2);
+  doRecalc(1, 'ob');
 });
 
 $('fCredit').addEventListener('change', () => {
@@ -2500,14 +2691,19 @@ if (CFG.software.DefStateCode) $('fState').value = CFG.software.DefStateCode;
 const initialCashBank = getDefaultCashBankCode();
 if (initialCashBank) $('fCashBank').value = initialCashBank;
 
+const initialParams = new URLSearchParams(window.location.search);
+const initialBillNo = String(initialParams.get('bill_no') || initialParams.get('billno') || '').trim();
+
 // If edit mode, show bill search
-if (CFG.mode === 'edit') {
+if (initialBillNo) {
+  loadBill(initialBillNo);
+} else if (CFG.mode === 'edit') {
   $('billSearchModal').classList.add('active');
   $('billSearchQ').focus();
   doBillSearch();
 }
 
-if (CFG.mode === 'without-order') {
+if (!initialBillNo && CFG.mode === 'without-order') {
   $('fOrderNo').value = 'AUTO';
   $('fOrderNo').readOnly = true;
   $('fOrderNo').classList.add('readonly');

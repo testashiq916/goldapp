@@ -103,6 +103,12 @@ class PurchaseRegisterController extends Controller
                 'd.code', 'd.rate', 'd.qty', 'd.weight', 'd.lesswgt',
                 'd.stwgt', 'd.stprice', 'd.amount', 'd.stktype'
             );
+        $q->selectRaw($this->partyGstExpr('purchasem', 'm', 'suppcode', 'gstno', ['tin', 'tinno']));
+        if (Schema::hasColumn('purchasem', 'billno')) {
+            $q->addSelect('m.billno');
+        } else {
+            $q->selectRaw("'' as billno");
+        }
 
         if ($this->hasTable('sman') && Schema::hasColumn('sman', 'name')) {
             $q->addSelect('s.name as smname');
@@ -116,6 +122,9 @@ class PurchaseRegisterController extends Controller
         if ($hasBtype)  $q->addSelect('m.billtype');   else $q->selectRaw("'' as billtype");
         if ($hasTouch)  $q->addSelect('d.touch');      else $q->selectRaw('0 as touch');
         if ($hasMud)    $q->addSelect('d.mud');        else $q->selectRaw('0 as mud');
+        $q->selectRaw(Schema::hasColumn('purchasem', 'sgst') ? 'm.sgst as sgst' : '0 as sgst');
+        $q->selectRaw(Schema::hasColumn('purchasem', 'cgst') ? 'm.cgst as cgst' : '0 as cgst');
+        $q->selectRaw(Schema::hasColumn('purchasem', 'taxamt') ? 'm.taxamt as taxamt' : '0 as taxamt');
 
         // Optional: purchased.name
         if (Schema::hasColumn('purchased', 'name')) {
@@ -155,6 +164,7 @@ class PurchaseRegisterController extends Controller
         if ($type2 !== '' && $hasDmdplt) {
             $q->where('i.dmdplt', $type2);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.docno');
 
         // Order by reptype
         if ($reptype === 'itemwise' || $reptype === 'smanwise_summary') {
@@ -167,6 +177,8 @@ class PurchaseRegisterController extends Controller
 
         $rows = $q->get()->map(function ($r) {
             $row = (array) $r;
+            $billNo = trim((string) ($row['billno'] ?? ''));
+            $row['billno'] = $billNo !== '' ? $billNo : trim((string) ($row['docno'] ?? ''));
             $row['smcode']  = trim((string) ($row['smcode'] ?? ''));
             $row['smname']  = trim((string) ($row['smname'] ?? ''));
             if ($row['smname'] === '') {
@@ -185,6 +197,13 @@ class PurchaseRegisterController extends Controller
             $row['pamt']    = (float) ($row['pamt'] ?? 0);
             $row['eamt']    = (float) ($row['eamt'] ?? 0);
             $row['addamt']  = (float) ($row['addamt'] ?? 0);
+            $row['sgst']    = (float) ($row['sgst'] ?? 0);
+            $row['cgst']    = (float) ($row['cgst'] ?? 0);
+            $row['taxamt']  = (float) ($row['taxamt'] ?? 0);
+            if (abs($row['sgst']) < 0.0001 && abs($row['cgst']) < 0.0001 && abs($row['taxamt']) > 0.0001) {
+                $row['sgst'] = round($row['taxamt'] / 2, 2);
+                $row['cgst'] = round($row['taxamt'] - $row['sgst'], 2);
+            }
 
             // Computed columns
             $row['netwgt'] = round($row['weight'] - $row['lesswgt'] - $row['stwgt'], 3);
@@ -266,6 +285,7 @@ class PurchaseRegisterController extends Controller
               'stwgt' => 0, 'stprice' => 0, 'netwgt' => 0, 'amount' => 0,
               'goldwgt' => 0, 'silverwgt' => 0, 'otherwgt' => 0,
               'billamt' => 0, 'pamt' => 0, 'eamt' => 0, 'addamt' => 0,
+              'sgst' => 0, 'cgst' => 0, 'taxamt' => 0,
               'purewgt' => 0, 'touchless' => 0, 'touchprof' => 0,
               'billcount' => 0, 'mud' => 0];
 
@@ -296,9 +316,31 @@ class PurchaseRegisterController extends Controller
                 $t['pamt']    += (float) ($row['pamt'] ?? 0);
                 $t['eamt']    += (float) ($row['eamt'] ?? 0);
                 $t['addamt']  += (float) ($row['addamt'] ?? 0);
+                $t['sgst']    += (float) ($row['sgst'] ?? 0);
+                $t['cgst']    += (float) ($row['cgst'] ?? 0);
+                $t['taxamt']  += (float) ($row['taxamt'] ?? 0);
             }
         }
 
         return $t;
+    }
+
+    private function partyGstExpr(string $table, string $alias, string $codeColumn, string $as, array $sourceColumns = []): string
+    {
+        $sources = [];
+        foreach ($sourceColumns as $column) {
+            if (Schema::hasColumn($table, $column)) {
+                $sources[] = "NULLIF(TRIM(COALESCE({$alias}.{$column}, \"\")), \"\")";
+            }
+        }
+        if ($this->hasTable('clients') && Schema::hasColumn($table, $codeColumn) && Schema::hasColumn('clients', 'code')) {
+            foreach (['tin', 'tinno'] as $column) {
+                if (Schema::hasColumn('clients', $column)) {
+                    $sources[] = "(select NULLIF(TRIM(COALESCE(c.{$column}, \"\")), \"\") from clients c where TRIM(COALESCE(c.code, \"\")) = TRIM(COALESCE({$alias}.{$codeColumn}, \"\")) limit 1)";
+                }
+            }
+        }
+
+        return ($sources ? 'COALESCE(' . implode(', ', $sources) . ', "")' : '""') . " as {$as}";
     }
 }

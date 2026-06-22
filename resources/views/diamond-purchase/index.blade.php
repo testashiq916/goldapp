@@ -26,16 +26,18 @@ window.DPB_CONFIG = {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:hidden;height:100vh;
+html,body{width:100%}
+body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:auto;min-height:100vh;
   background:radial-gradient(circle at 10% -10%,#eef3ff 0%,#f4f7fb 40%,#edf2f8 100%)}
 input,select,button{transition:all .15s ease}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:#f7fafc}
-::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#eef1f5}
+::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#8fa0b5}
 
 /* ── Main window ── */
 .main-window{background:#fff;border:1px solid #d6dcea;border-radius:12px;
-  box-shadow:0 10px 30px rgba(33,52,89,.10);margin:8px;overflow:hidden;position:relative}
+  box-shadow:0 10px 30px rgba(33,52,89,.10);margin:8px;overflow:hidden;position:relative;min-width:1180px}
 
 .title-bar{background:linear-gradient(135deg,#312e81,#4338ca);color:#fff;
   padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
@@ -68,8 +70,12 @@ input,select,button{transition:all .15s ease}
 /* ── Items table ── */
 .table-container{margin:0 8px;border:1px solid #d6dcea;border-radius:10px;
   background:#fff;overflow:hidden;box-shadow:0 3px 10px rgba(32,55,92,.05)}
-.table-scroll{max-height:calc(100vh - 390px);overflow-y:auto;overflow-x:auto}
-table.items{width:100%;border-collapse:collapse;font-size:10px}
+.table-scroll{max-height:calc(100vh - 390px);overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-scroll::-webkit-scrollbar{height:8px;width:8px}
+.table-scroll::-webkit-scrollbar-track{background:#f0f3f7}
+.table-scroll::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:4px}
+.table-scroll::-webkit-scrollbar-thumb:hover{background:#8fa0b5}
+table.items{width:100%;min-width:1130px;border-collapse:collapse;font-size:10px}
 table.items thead th{background:linear-gradient(180deg,#4338ca,#3730a3);color:#eef2ff;
   padding:4px 3px;border:1px solid #5b52c9;font-weight:600;font-size:9px;
   text-align:center;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;z-index:2}
@@ -185,6 +191,7 @@ table.exch tbody input.num{text-align:right}
 .srch-tbl td{padding:3px 8px;border-bottom:1px solid #edf1f7;cursor:pointer}
 .srch-tbl tr:hover td{background:#dbeafe}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>

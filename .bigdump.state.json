@@ -10,13 +10,13 @@
         "skip_duplicates": true,
         "truncate_before_import": true
     },
-    "offset": 64025035,
-    "line": 112579,
-    "queries_executed": 109759,
+    "offset": 84161005,
+    "line": 190858,
+    "queries_executed": 186367,
     "duplicate_rows_skipped": 1,
     "tables_truncated": true,
-    "started_at": "2026-03-12T12:56:12+01:00",
+    "started_at": "2026-06-11T10:57:27+02:00",
     "last_error": null,
     "completed": true,
-    "completed_at": "2026-03-12T13:00:31+01:00"
+    "completed_at": "2026-06-11T11:06:43+02:00"
 }

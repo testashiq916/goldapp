@@ -67,7 +67,6 @@ class OrderBillController extends Controller
         $rows = $query
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit(50)
             ->get()
             ->map(fn ($r) => [
                 'slno'     => (int) ($r->slno ?? 0),
@@ -528,8 +527,8 @@ class OrderBillController extends Controller
         if ($docNo === '' && !$manualBNo) {
             return response()->json(['ok' => false, 'message' => 'Order No. empty. You cannot save.']);
         }
-        if ($smCode === '' && strtoupper($sw('SMCompulsary', 'N')) === 'Y') {
-            return response()->json(['ok' => false, 'message' => 'SM Code empty. You cannot save.']);
+        if ($smCode === '') {
+            return response()->json(['ok' => false, 'message' => 'Please select Sales Man.']);
         }
         if ($exchAmt > 0 && strtoupper($sw('OrderExToCust', 'Y')) === 'Y' && $custCode === '') {
             return response()->json(['ok' => false, 'message' => 'Please enter customer code for exchange amount.']);
@@ -904,11 +903,14 @@ class OrderBillController extends Controller
             // Model rows
             if (!empty($modelItems) && $this->hasTable('ordermodel')) {
                 $mdCols = $this->getColumns('ordermodel');
+                $modelSno = 0;
                 foreach ($modelItems as $mri) {
                     $mcode = strtoupper(trim((string)($mri['code'] ?? $mri['itemcode'] ?? '')));
                     if ($mcode === '') continue;
+                    $modelSno++;
                     $row = [
                         'slno' => $lslno,
+                        'sno' => (int)($mri['sno'] ?? $modelSno),
                         'code' => $mcode,
                         'qty' => (int)($mri['qty'] ?? 0),
                         'weight' => (float)($mri['weight'] ?? 0),
@@ -1164,7 +1166,12 @@ class OrderBillController extends Controller
         // PB: Check if a sales bill exists against this order
         $saleBillNo = trim((string)($order->salebill ?? ''));
         if ($saleBillNo !== '' && $this->hasTable('salesm')) {
-            $salesSlno = (int)(DB::table('salesm')->where('billno', $saleBillNo)->max('slno') ?? 0);
+            $salesSlno = (int)(DB::table('salesm')
+                ->where('billno', $saleBillNo)
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '<>', 0);
+                })
+                ->max('slno') ?? 0);
             if ($salesSlno > 0) {
                 return response()->json([
                     'ok'      => false,
@@ -1486,14 +1493,39 @@ class OrderBillController extends Controller
             }
         }
 
+        $iniCompany = $this->loadIniCompanySettings();
+
         return [
-            'name' => $this->genStr('SHOPNM') ?: $this->genStr('Name'),
-            'addr' => $this->genStr('SHOPADDR') ?: $this->genStr('Addr'),
-            'phone' => $this->genStr('SHOPPHONE') ?: $this->genStr('Phone'),
-            'mobile' => $this->genStr('Mobile'),
-            'gstin' => trim((string) ($software['KGST'] ?? '')),
+            'name' => $this->genStr('SHOPNM') ?: ($iniCompany['Name'] ?? '') ?: $this->genStr('Name'),
+            'addr' => $this->genStr('SHOPADDR') ?: ($iniCompany['Addr'] ?? '') ?: ($iniCompany['Addr1'] ?? '') ?: $this->genStr('Addr'),
+            'addr2' => $iniCompany['Addr2'] ?? '',
+            'phone' => $this->genStr('SHOPPHONE') ?: ($iniCompany['Phone'] ?? '') ?: $this->genStr('Phone'),
+            'mobile' => $this->genStr('Mobile') ?: ($iniCompany['Mobile'] ?? ''),
+            'gstin' => trim((string) (
+                $this->genStr('GSTIN')
+                ?: $this->genStr('GSTNO')
+                ?: $this->genStr('KGST')
+                ?: ($software['KGST'] ?? '')
+                ?: ($iniCompany['GSTIN'] ?? '')
+                ?: ($iniCompany['KGST'] ?? '')
+            )),
             'logo_url' => $logoUrl,
         ];
+    }
+
+    private function loadIniCompanySettings(): array
+    {
+        $path = storage_path('app/software-settings.ini');
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $settings = parse_ini_file($path, true, INI_SCANNER_RAW);
+        if (!is_array($settings)) {
+            return [];
+        }
+
+        return is_array($settings['Company'] ?? null) ? $settings['Company'] : [];
     }
 
     private function loadOrderPayload(string $billNo): ?array
@@ -1592,9 +1624,14 @@ class OrderBillController extends Controller
         $goldAdvanceItems = $this->hasTable('orderdga')
             ? DB::table('orderdga')->where('slno', $m->slno)->orderBy('sno')->get()->toArray()
             : [];
-        $modelItems = $this->hasTable('ordermodel')
-            ? DB::table('ordermodel')->where('slno', $m->slno)->get()->toArray()
-            : [];
+        $modelItems = [];
+        if ($this->hasTable('ordermodel')) {
+            $modelQuery = DB::table('ordermodel')->where('slno', $m->slno);
+            if (Schema::hasColumn('ordermodel', 'sno')) {
+                $modelQuery->orderBy('sno');
+            }
+            $modelItems = $modelQuery->get()->toArray();
+        }
 
         $salesmanName = '';
         if ($this->hasTable('sman') && trim((string) ($m->smcode ?? '')) !== '') {

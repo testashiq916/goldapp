@@ -97,7 +97,6 @@ class DiamondPurchaseReturnController extends Controller
             ->when($tdate, fn ($query) => $query->whereDate('tdate', $tdate))
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit(50)
             ->get(['slno', 'docno', 'tdate', 'name'])
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),

@@ -68,6 +68,8 @@ class SalesCheckListController extends Controller
             ->selectRaw($this->colExpr('salesm', 'billamt', 'm', 'billamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'eamt', 'm', 'eamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'sretamt', 'm', 'sretamt', '0'))
+            ->selectRaw($this->colExpr('salesm', 'sgst', 'm', 'sgst', '0'))
+            ->selectRaw($this->colExpr('salesm', 'cgst', 'm', 'cgst', '0'))
             ->selectRaw($this->colExpr('salesm', 'staxamt', 'm', 'staxamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'astamt', 'm', 'astamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'discount', 'm', 'discount', '0'))
@@ -99,6 +101,13 @@ class SalesCheckListController extends Controller
 
         $bills = $q->orderBy('m.tdate')->orderBy('m.slno')->get()->map(function ($r) {
             $row = (array) $r;
+            $row['sgst'] = (float) ($row['sgst'] ?? 0);
+            $row['cgst'] = (float) ($row['cgst'] ?? 0);
+            $row['staxamt'] = (float) ($row['staxamt'] ?? 0);
+            if (abs($row['sgst']) < 0.0001 && abs($row['cgst']) < 0.0001 && abs($row['staxamt']) > 0.0001) {
+                $row['sgst'] = round($row['staxamt'] / 2, 2);
+                $row['cgst'] = round($row['staxamt'] - $row['sgst'], 2);
+            }
             // PB formula: tnetamt1 = billamt + staxamt - eamt - sretamt + round
             $tnetamt1 = (float)($row['billamt']??0) + (float)($row['staxamt']??0) - (float)($row['eamt']??0) - (float)($row['sretamt']??0) + (float)($row['round_amt']??0);
             // tnetamt2 = tnetamt1 - discount - advance + staxamt + astamt

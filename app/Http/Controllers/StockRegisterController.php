@@ -130,6 +130,7 @@ class StockRegisterController extends Controller
                 ->where('m.control', '<=', $rlevel)
                 ->select('d.code')
                 ->selectRaw('SUM(d.qty) as qty, SUM(d.weight) as weight');
+            $this->applyTransferShadowDocFilter($sq, 'm.billno');
             if ($stktype !== '') {
                 if (Schema::hasColumn('salesd', 'stktype')) {
                     $sq->where('d.stktype', $stktype);
@@ -148,6 +149,7 @@ class StockRegisterController extends Controller
                 ->where('m.control', '<=', $rlevel)
                 ->select('d.code')
                 ->selectRaw('SUM(d.qty) as qty, SUM(d.weight) as weight');
+            $this->applyTransferShadowDocFilter($pq, 'm.docno');
             if ($stktype !== '') {
                 if (Schema::hasColumn('purchased', 'stktype')) {
                     $pq->where('d.stktype', $stktype);
@@ -166,6 +168,7 @@ class StockRegisterController extends Controller
                 ->where('m.control', '<=', $rlevel)
                 ->select('d.code')
                 ->selectRaw('SUM(d.qty) as qty, SUM(d.weight) as weight');
+            $this->applyTransferShadowDocFilter($srq, 'm.billno');
             $srq->groupBy('d.code');
             foreach ($srq->get() as $r) {
                 $sretByItem[trim($r->code)] = ['qty' => (int) $r->qty, 'weight' => (float) $r->weight];
@@ -179,6 +182,7 @@ class StockRegisterController extends Controller
                 ->where('m.control', '<=', $rlevel)
                 ->select('d.code')
                 ->selectRaw('SUM(d.qty) as qty, SUM(d.weight) as weight');
+            $this->applyTransferShadowDocFilter($prq, 'm.docno');
             $prq->groupBy('d.code');
             foreach ($prq->get() as $r) {
                 $pretByItem[trim($r->code)] = ['qty' => (int) $r->qty, 'weight' => (float) $r->weight];
@@ -348,8 +352,7 @@ class StockRegisterController extends Controller
         $gross -= $this->movementBeforeDate('salesd', 'salesm', $date1, $rlevel, $grpcode, $includeCp, false, true);
         $gross += $this->movementBeforeDate('smithd', 'smithm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'R');
         $gross -= $this->movementBeforeDate('smithd', 'smithm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'G');
-        $gross += $this->movementBeforeDate('repaird', 'repairm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'R');
-        $gross -= $this->movementBeforeDate('repaird', 'repairm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'G');
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
         $gross -= $this->refineryIssuedBeforeDate($date1, $rlevel, $grpcode, $includeCp);
         $gross += $this->refineryReceivedBeforeDate($date1, $rlevel, $grpcode, $includeCp);
         $gross += $this->orderAdvanceBeforeDate($date1, $rlevel, $grpcode, $includeCp, false);
@@ -362,8 +365,7 @@ class StockRegisterController extends Controller
         $net -= $this->movementBeforeDate('salesd', 'salesm', $date1, $rlevel, $grpcode, $includeCp, false, true, null, true);
         $net += $this->movementBeforeDate('smithd', 'smithm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'R', true);
         $net -= $this->movementBeforeDate('smithd', 'smithm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'G', true);
-        $net += $this->movementBeforeDate('repaird', 'repairm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'R', true);
-        $net -= $this->movementBeforeDate('repaird', 'repairm', $date1, $rlevel, $grpcode, $includeCp, true, false, 'G', true);
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
         $net -= $this->refineryIssuedBeforeDate($date1, $rlevel, $grpcode, $includeCp, true);
         $net += $this->refineryReceivedBeforeDate($date1, $rlevel, $grpcode, $includeCp, true);
         $net += $this->orderAdvanceBeforeDate($date1, $rlevel, $grpcode, $includeCp, true);
@@ -451,6 +453,7 @@ class StockRegisterController extends Controller
             ->join('items as i', 'i.code', '=', 'd.code')
             ->whereBetween('m.tdate', [$date1, $date2])
             ->where('m.control', '<=', $rlevel);
+        $this->applyTransferShadowDocFilter($query, 'm.docno');
 
         $this->applySummaryItemFilter($query, 'i', $grpcode, $includeCp);
 
@@ -493,6 +496,7 @@ class StockRegisterController extends Controller
             ->join('items as i', 'i.code', '=', 'd.code')
             ->whereBetween('m.tdate', [$date1, $date2])
             ->where('m.control', '<=', $rlevel);
+        $this->applyTransferShadowDocFilter($query, 'm.billno');
 
         $this->applySummaryItemFilter($query, 'i', $grpcode, $includeCp);
 
@@ -536,6 +540,7 @@ class StockRegisterController extends Controller
             ->leftJoin('clients as c', 'c.code', '=', 'm.smithcode')
             ->whereBetween('m.tdate', [$date1, $date2])
             ->where('m.control', '<=', $rlevel);
+        $this->applyTransferShadowDocFilter($query, 'm.docno');
 
         $this->applySummaryItemFilter($query, 'i', $grpcode, $includeCp);
 
@@ -588,6 +593,7 @@ class StockRegisterController extends Controller
             ->where(function ($q) {
                 $q->whereNull('d.jcode')->orWhereRaw("TRIM(COALESCE(d.jcode, '')) = ''");
             });
+        $this->applyTransferShadowDocFilter($query, 'm.billno');
 
         $this->applySummaryItemFilter($query, 'i', $grpcode, $includeCp);
 
@@ -629,6 +635,7 @@ class StockRegisterController extends Controller
             ->join('items as i', 'i.code', '=', 'd.code')
             ->whereBetween('m.tdate', [$date1, $date2])
             ->where('m.control', '<=', $rlevel);
+        $this->applyTransferShadowDocFilter($query, 'm.docno');
 
         $this->applySummaryItemFilter($query, 'i', $grpcode, $includeCp);
 

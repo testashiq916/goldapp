@@ -377,14 +377,32 @@ class OrderSaleController extends Controller
                 $itemRow = $itemCode !== '' && $this->hasTable('items')
                     ? DB::table('items')->where('code', $itemCode)->first()
                     : null;
+                $displayCategory = strtoupper(trim((string) ($itemRow->display ?? '')));
+                $itemName = strtoupper(trim((string) ($itemRow->name ?? $r->name ?? '')));
+                $itemGroup = strtoupper(trim((string) ($itemRow->grpcode ?? '')));
+                $isDiamondItem = str_contains($displayCategory, 'DIAM')
+                    || str_contains($itemName, 'DIAM')
+                    || $itemGroup === 'DD'
+                    || strtoupper(trim((string) ($itemRow->dmdplt ?? ''))) === 'D'
+                    || $this->toNum($itemRow->opdmdwgt ?? 0) != 0.0
+                    || $this->toNum($itemRow->opstoneamt ?? 0) > 0;
                 $items[] = [
                     'item_code' => $itemCode,
                     'item_name' => trim((string) ($itemRow->name ?? $r->name ?? '')),
                     'item_type' => strtoupper(trim((string) ($itemRow->itype ?? 'G'))),
+                    'display_category' => $displayCategory,
+                    'is_diamond' => $isDiamondItem,
+                    'purity' => trim((string) ($r->iqtype ?? $itemRow->defquality ?? '')),
+                    'hsn' => trim((string) ($r->note ?? $itemRow->hsncode ?? $itemRow->hsnvat ?? $itemRow->vatcode ?? $itemRow->hsn ?? '')),
+                    'huid' => trim((string) ($r->huid ?? '')),
                     'qty' => (int) ($r->qty ?? 0),
                     'weight' => round((float) ($r->weight ?? 0), 3),
                     'stone_wgt' => round((float) ($r->stonewgt ?? 0), 3),
                     'stone_price' => round((float) ($r->stoneprice ?? 0), 2),
+                    'dmdwgt' => round($this->toNum($r->dmdwgt ?? 0), 3),
+                    'dmdamt' => round($this->toNum($r->dmdamt ?? 0), 2),
+                    'va_disc_perc' => round($this->toNum($r->va_disc_perc ?? $r->vadiscperc ?? 0), 3),
+                    'va_disc_amt' => round($this->toNum($r->va_disc_amt ?? $r->vadiscamt ?? 0), 2),
                     'making_charge' => round((float) ($r->mcharge ?? 0), 2),
                     'wastage' => round((float) ($r->wastage ?? 0), 3),
                     'rate' => round((float) ($r->rate ?? 0), 2),
@@ -450,6 +468,7 @@ class OrderSaleController extends Controller
                     'stone_price' => round((float) ($r->stoneprice ?? 0), 2),
                     'making_charge' => round((float) ($r->mcharge ?? 0), 2),
                     'wastage' => round((float) ($r->wastage ?? 0), 3),
+                    'vaperc' => round((float) ($r->vaperc ?? 0), 2),
                     'amount' => round((float) ($r->amount ?? 0), 2),
                     'stktype' => trim((string) ($r->stktype ?? '')),
                 ];
@@ -510,10 +529,15 @@ class OrderSaleController extends Controller
             $amttowgt_total += $advance;
         }
 
-        // Customer OB
+        // Customer OB. Exclude this order's own cash advance because it is
+        // already shown and deducted separately as Tot Adv on the sale.
         $ob = 0.0;
+        $orderCredit = 0.0;
         if ($custCode !== '' && $this->hasTable('daybook')) {
-            $ob = round((float) (DB::table('daybook')->where('accode', $custCode)->sum('amount') ?? 0), 2);
+            $ledgerOb = round((float) (DB::table('daybook')->where('accode', $custCode)->sum('amount') ?? 0), 2);
+            $postedOrderAdvance = $this->postedOrderCashAdvanceForCustomer($ordno, (int) $slno, $custCode);
+            $orderCredit = round(max($postedOrderAdvance - max($dadvance, 0), 0), 2);
+            $ob = round($ledgerOb - min($postedOrderAdvance, max($dadvance, 0)), 2);
         }
 
         return response()->json([
@@ -534,6 +558,7 @@ class OrderSaleController extends Controller
             'control' => $control,
             'ob' => $ob,
             'advance' => round($dadvance, 2),
+            'order_credit' => $orderCredit,
             'gold_advance_wgt' => round($dgadvwgt, 3),
             'exchange_amt' => round($eamt, 2),
             'sret_amt' => round($sretamt, 2),
@@ -729,6 +754,10 @@ class OrderSaleController extends Controller
         $huid = '';
         $model = '';
         $qtype = trim((string) ($itemDb->defquality ?? ''));
+        $dmdWgt = 0.0;
+        $dmdAmt = 0.0;
+        $dmdNos = 0;
+        $dmdUnit = '';
 
         if ($barcodeRow) {
             $bcode = (int) ($barcodeRow->bcode ?? 0);
@@ -746,6 +775,15 @@ class OrderSaleController extends Controller
             $qtype = trim((string) ($barcodeRow->qtype ?? $qtype));
             $vapFromBarcode = $this->toNum($barcodeRow->vap ?? 0);
             if ($vapFromBarcode > 0) $vaperc = $vapFromBarcode;
+            if ($this->hasTable('barcodedmd')) {
+                $dmd = DB::table('barcodedmd')->where('bcode', $bcode)->first();
+                if ($dmd) {
+                    $dmdWgt = $this->toNum($dmd->dmdwgt ?? 0);
+                    $dmdAmt = $this->toNum($dmd->dmdamt ?? 0);
+                    $dmdNos = (int) $this->toNum($dmd->dmdnos ?? 0);
+                    $dmdUnit = trim((string) ($dmd->dmdunit ?? ''));
+                }
+            }
         }
 
         if ($vaperc > 0 && $rate > 0) {
@@ -757,17 +795,37 @@ class OrderSaleController extends Controller
             $mcAmt = $netWgt * $mcRate;
         }
 
+        $displayCategory = strtoupper(trim((string) ($itemDb->display ?? '')));
+        $itemNameForDiamond = strtoupper(trim((string) ($itemDb->name ?? '')));
+        $itemGroup = strtoupper(trim((string) ($itemDb->grpcode ?? '')));
+        $dmdPlate = strtoupper(trim((string) ($itemDb->dmdplt ?? '')));
+        $itemOpDmdWgt = $this->toNum($itemDb->opdmdwgt ?? 0);
+        $itemOpStoneAmt = $this->toNum($itemDb->opstoneamt ?? 0);
+        $diamondTypeCodes = ['D', 'DM', 'DMD', 'DIA', 'DIAMOND'];
+        $isDiamondItem = in_array($itype, $diamondTypeCodes, true)
+            || str_contains($displayCategory, 'DIAM')
+            || str_contains($itemNameForDiamond, 'DIAM')
+            || $itemGroup === 'DD'
+            || $dmdPlate === 'D'
+            || $itemOpDmdWgt != 0.0
+            || $itemOpStoneAmt > 0
+            || $dmdWgt > 0
+            || $dmdAmt > 0;
+
         $amount = $stkinnos === 'Y'
-            ? round(($qty * $rate) + $stonePrice + $mcAmt, 2)
-            : round(($netWgt * $rate) + $stonePrice + $mcAmt, 2);
+            ? round(($qty * $rate) + $stonePrice + $mcAmt + $dmdAmt, 2)
+            : round(($netWgt * $rate) + $stonePrice + $mcAmt + $dmdAmt, 2);
 
         return response()->json([
             'ok' => true,
             'item_code' => $itemCode,
             'item_name' => trim((string) ($itemDb->name ?? '')),
             'item_type' => $itype,
+            'display_category' => $displayCategory,
+            'is_diamond' => $isDiamondItem,
             'purity' => $qtype,
             'model' => $model,
+            'hsn' => trim((string) ($itemDb->hsncode ?? $itemDb->hsnvat ?? $itemDb->vatcode ?? $itemDb->hsn ?? '')),
             'qty' => $qty ?: 1,
             'weight' => round($weight, 3),
             'stone_wgt' => round($stoneWgt, 3),
@@ -783,6 +841,10 @@ class OrderSaleController extends Controller
             'stkinnos' => $stkinnos,
             'huid' => $huid,
             'bcode' => $bcode,
+            'dmdwgt' => round($dmdWgt, 3),
+            'dmdamt' => round($dmdAmt, 2),
+            'dmdnos' => $dmdNos,
+            'dmdunit' => $dmdUnit,
             'cost' => round($this->toNum($itemDb->cost ?? 0), 2),
         ]);
     }
@@ -898,17 +960,31 @@ class OrderSaleController extends Controller
                 $stoneWgt = $this->toNum($row['stone_wgt'] ?? 0);
                 $stonePrice = $this->toNum($row['stone_price'] ?? 0);
                 $mc = $this->toNum($row['making_charge'] ?? 0);
+                $dmdWgt = $this->toNum($row['dmdwgt'] ?? 0);
+                $dmdAmt = $this->toNum($row['dmdamt'] ?? 0);
+                $vaDiscPerc = $this->toNum($row['va_disc_perc'] ?? 0);
+                $vaDiscAmt = $this->toNum($row['va_disc_amt'] ?? 0);
                 $rate = $this->toNum($row['rate'] ?? 0);
+                $vaDiscBase = max($weight - $stoneWgt, 0) * $rate;
+                if ($vaDiscAmt == 0.0 && $vaDiscPerc > 0 && $vaDiscBase > 0) {
+                    $vaDiscAmt = round(($vaDiscBase * $vaDiscPerc) / 100, 2);
+                } elseif ($vaDiscPerc == 0.0 && $vaDiscAmt > 0 && $vaDiscBase > 0) {
+                    $vaDiscPerc = round(($vaDiscAmt * 100) / $vaDiscBase, 3);
+                }
                 $amount = $this->toNum($row['amount'] ?? 0);
                 if ($amount == 0.0) {
                     $netWgt = max($weight - $stoneWgt, 0);
-                    $amount = ($netWgt * $rate) + $stonePrice + $mc;
+                    $amount = ($netWgt * $rate) + $stonePrice + $mc + $dmdAmt - $vaDiscAmt;
                 }
                 $row['qty'] = $qty;
                 $row['weight'] = $weight;
                 $row['stone_wgt'] = $stoneWgt;
                 $row['stone_price'] = $stonePrice;
                 $row['making_charge'] = $mc;
+                $row['dmdwgt'] = $dmdWgt;
+                $row['dmdamt'] = $dmdAmt;
+                $row['va_disc_perc'] = $vaDiscPerc;
+                $row['va_disc_amt'] = round($vaDiscAmt, 2);
                 $row['rate'] = $rate;
                 $row['amount'] = round($amount, 2);
                 return $row;
@@ -1076,10 +1152,11 @@ class OrderSaleController extends Controller
             DB::table('salesd')->where('slno', $slno)->delete();
             $insRows = [];
             $sno = 1;
+            $salesdCols = $this->getColumns('salesd');
             foreach ($items as $it) {
                 $code = trim((string) ($it['item_code'] ?? ''));
                 if ($code === '') continue;
-                $insRows[] = [
+                $salesdRow = [
                     'slno' => $slno,
                     'sno' => $sno++,
                     'code' => $code,
@@ -1092,27 +1169,66 @@ class OrderSaleController extends Controller
                     'mcharge' => $this->toNum($it['making_charge'] ?? 0),
                     'wastage' => $this->toNum($it['wastage'] ?? 0),
                     'amount' => round($this->toNum($it['amount'] ?? 0), 2),
+                    'dmdwgt' => $this->toNum($it['dmdwgt'] ?? 0),
+                    'dmdamt' => $this->toNum($it['dmdamt'] ?? 0),
                     'model' => trim((string) ($it['model'] ?? '')),
-                    'note' => trim((string) ($it['note'] ?? '')),
+                    'note' => trim((string) ($it['hsn'] ?? $it['note'] ?? '')),
                     'huid' => trim((string) ($it['huid'] ?? '')),
-                    'iqtype' => trim((string) ($it['qtype'] ?? $it['iqtype'] ?? '')),
+                    'iqtype' => trim((string) ($it['purity'] ?? $it['qtype'] ?? $it['iqtype'] ?? '')),
                     'stktype' => trim((string) ($it['stktype'] ?? '')),
                     'stktouch' => $this->toNum($it['stktouch'] ?? 0),
                     'vaperc' => $this->toNum($it['vaperc'] ?? 0),
                     'bcode' => (int) $this->toNum($it['bcode'] ?? 0),
                 ];
+                if (in_array('va_disc_perc', $salesdCols, true)) {
+                    $salesdRow['va_disc_perc'] = $this->toNum($it['va_disc_perc'] ?? 0);
+                }
+                if (in_array('va_disc_amt', $salesdCols, true)) {
+                    $salesdRow['va_disc_amt'] = $this->toNum($it['va_disc_amt'] ?? 0);
+                }
+                if (in_array('vadiscperc', $salesdCols, true)) {
+                    $salesdRow['vadiscperc'] = $this->toNum($it['va_disc_perc'] ?? 0);
+                }
+                if (in_array('vadiscamt', $salesdCols, true)) {
+                    $salesdRow['vadiscamt'] = $this->toNum($it['va_disc_amt'] ?? 0);
+                }
+                $insRows[] = $salesdRow;
             }
             // Filter salesd rows
-            $salesdCols = $this->getColumns('salesd');
             $insRows = array_map(fn($r) => $this->fitLegacyRowToSchema('salesd', array_filter($r, fn($k) => in_array($k, $salesdCols, true), ARRAY_FILTER_USE_KEY)), $insRows);
             if (!empty($insRows)) {
                 DB::table('salesd')->insert($insRows);
             }
 
             // Clean dependent tables for this slno
-            foreach (['purchasem', 'purchased', 'salesrm', 'salesrd', 'daybook', 'daybookpart', 'daybookratewgt', 'stkandprofit', 'pdclist'] as $tbl) {
+            foreach (['purchasem', 'purchased', 'salesrm', 'salesrd', 'daybook', 'daybookpart', 'daybookratewgt', 'spdmddet', 'stkandprofit', 'pdclist'] as $tbl) {
                 if ($this->hasTable($tbl)) {
                     DB::table($tbl)->where('slno', $slno)->delete();
+                }
+            }
+
+            if ($this->hasTable('spdmddet')) {
+                $sno = 1;
+                foreach ($items as $it) {
+                    $dw = $this->toNum($it['dmdwgt'] ?? 0);
+                    $da = $this->toNum($it['dmdamt'] ?? 0);
+                    $dn = (int) $this->toNum($it['dmdnos'] ?? 0);
+                    if ($dw <= 0 && $da <= 0 && $dn <= 0) {
+                        $sno++;
+                        continue;
+                    }
+                    $spDmdRow = $this->fitLegacyRowToSchema('spdmddet', [
+                        'slno' => $slno,
+                        'sno' => $sno++,
+                        'dmdwgt' => $dw,
+                        'dmdunit' => trim((string) ($it['dmdunit'] ?? '')),
+                        'dmdamt' => $da,
+                        'dmdnos' => $dn,
+                        'brand' => '',
+                        'purity' => '',
+                        'centrate' => 0,
+                    ]);
+                    DB::table('spdmddet')->insert($spDmdRow);
                 }
             }
 
@@ -1417,6 +1533,21 @@ class OrderSaleController extends Controller
         if ($this->hasTable('salesd') && $slno > 0) {
             $sdRows = DB::table('salesd')->where('slno', $slno)->orderBy('sno')->get();
             $nameByCode = [];
+            $dmdBySno = [];
+            if ($this->hasTable('spdmddet')) {
+                $dmdBySno = DB::table('spdmddet')
+                    ->where('slno', $slno)
+                    ->get()
+                    ->mapWithKeys(fn($d) => [
+                        (int) ($d->sno ?? 0) => [
+                            'dmdwgt' => $this->toNum($d->dmdwgt ?? 0),
+                            'dmdamt' => $this->toNum($d->dmdamt ?? 0),
+                            'dmdnos' => (int) $this->toNum($d->dmdnos ?? 0),
+                            'dmdunit' => trim((string) ($d->dmdunit ?? '')),
+                        ],
+                    ])
+                    ->toArray();
+            }
             if ($this->hasTable('items')) {
                 $codes = $sdRows->pluck('code')->filter()->map(fn($c) => trim((string) $c))->unique()->values()->all();
                 if ($codes !== []) {
@@ -1427,19 +1558,47 @@ class OrderSaleController extends Controller
                         ->toArray();
                 }
             }
-            $items = $sdRows->map(function ($r) use ($nameByCode) {
+            $items = $sdRows->map(function ($r) use ($nameByCode, $dmdBySno) {
                 $itemCode = trim((string) ($r->code ?? ''));
                 $itemName = trim((string) ($r->name ?? ''));
                 if ($itemName === '' && isset($nameByCode[$itemCode])) {
                     $itemName = $nameByCode[$itemCode];
                 }
+                $itemDb = $itemCode !== '' && $this->hasTable('items')
+                    ? DB::table('items')->where('code', $itemCode)->first()
+                    : null;
+                $displayCategory = strtoupper(trim((string) ($itemDb->display ?? '')));
+                $itemNameForDiamond = strtoupper(trim((string) ($itemName ?: ($itemDb->name ?? ''))));
+                $itemGroup = strtoupper(trim((string) ($itemDb->grpcode ?? '')));
+                $dmd = $dmdBySno[(int) ($r->sno ?? 0)] ?? [];
+                $dmdWgt = $this->toNum($r->dmdwgt ?? ($dmd['dmdwgt'] ?? 0));
+                $dmdAmt = $this->toNum($r->dmdamt ?? ($dmd['dmdamt'] ?? 0));
+                $isDiamondItem = str_contains($displayCategory, 'DIAM')
+                    || str_contains($itemNameForDiamond, 'DIAM')
+                    || $itemGroup === 'DD'
+                    || strtoupper(trim((string) ($itemDb->dmdplt ?? ''))) === 'D'
+                    || $this->toNum($itemDb->opdmdwgt ?? 0) != 0.0
+                    || $this->toNum($itemDb->opstoneamt ?? 0) > 0
+                    || $dmdWgt > 0
+                    || $dmdAmt > 0;
                 return [
                     'item_code' => $itemCode,
                     'item_name' => $itemName,
+                    'item_type' => strtoupper(trim((string) ($itemDb->itype ?? 'G'))),
+                    'display_category' => $displayCategory,
+                    'is_diamond' => $isDiamondItem,
+                    'purity' => trim((string) ($r->iqtype ?? $itemDb->defquality ?? '')),
+                    'hsn' => trim((string) ($r->note ?? $itemDb->hsncode ?? $itemDb->hsnvat ?? $itemDb->vatcode ?? $itemDb->hsn ?? '')),
                     'qty' => $this->toNum($r->qty ?? 0),
                     'weight' => round($this->toNum($r->weight ?? 0), 3),
                     'stone_wgt' => round($this->toNum($r->stonewgt ?? 0), 3),
                     'stone_price' => round($this->toNum($r->stoneprice ?? 0), 2),
+                    'dmdwgt' => round($dmdWgt, 3),
+                    'dmdamt' => round($dmdAmt, 2),
+                    'dmdnos' => (int) ($dmd['dmdnos'] ?? 0),
+                    'dmdunit' => $dmd['dmdunit'] ?? '',
+                    'va_disc_perc' => round($this->toNum($r->va_disc_perc ?? $r->vadiscperc ?? 0), 3),
+                    'va_disc_amt' => round($this->toNum($r->va_disc_amt ?? $r->vadiscamt ?? 0), 2),
                     'making_charge' => round($this->toNum($r->mcharge ?? 0), 2),
                     'wastage' => round($this->toNum($r->wastage ?? 0), 3),
                     'rate' => round($this->toNum($r->rate ?? 0), 2),
@@ -1490,6 +1649,7 @@ class OrderSaleController extends Controller
                 'stone_price' => round($this->toNum($r->stoneprice ?? 0), 2),
                 'making_charge' => round($this->toNum($r->mcharge ?? 0), 2),
                 'wastage' => round($this->toNum($r->wastage ?? 0), 3),
+                'vaperc' => round($this->toNum($r->vaperc ?? 0), 2),
                 'amount' => round($this->toNum($r->amount ?? 0), 2),
                 'stktype' => trim((string) ($r->stktype ?? '')),
             ])->values()->all();
@@ -1497,6 +1657,11 @@ class OrderSaleController extends Controller
 
         $billType = trim((string) ($salesm->billtype ?? ''));
         if ($billType === '') $billType = 'G';
+        $orderCredit = $this->orderCreditForSavedSale($salesm);
+        $displayOpeningBalance = round($this->toNum($salesm->ob ?? 0) - $orderCredit, 2);
+        if (abs($displayOpeningBalance) < 0.5) {
+            $displayOpeningBalance = 0.0;
+        }
 
         $balanceDue = round(
             $this->toNum($salesm->netamt ?? 0)
@@ -1519,7 +1684,8 @@ class OrderSaleController extends Controller
             'bank_charge' => round($this->toNum($salesm->bcharge ?? 0), 2),
             'bc_perc' => round($this->toNum($salesm->bcperc ?? 0), 3),
             'add_bank_charge' => strtoupper(trim((string) ($salesm->addbcharge ?? 'N'))) === 'Y',
-            'opening_balance' => round($this->toNum($salesm->ob ?? 0), 2),
+            'opening_balance' => $displayOpeningBalance,
+            'order_credit' => round($orderCredit, 2),
             'received' => round($this->toNum($salesm->ramt ?? 0), 2),
             'credit' => strtoupper(trim((string) ($salesm->loan ?? 'N'))) === 'Y' || $balanceDue > 0,
             'note' => trim((string) ($salesm->note ?? '')),
@@ -1708,6 +1874,9 @@ class OrderSaleController extends Controller
         if (!$salesm) {
             return response()->json(['ok' => false, 'message' => 'Bill not found.'], 404);
         }
+        if ((int) ($salesm->status ?? 1) === 0) {
+            return response()->json(['ok' => false, 'message' => 'This order sale bill is already cancelled.']);
+        }
 
         $slno = (int) ($salesm->slno ?? 0);
         $control = (int) ($salesm->control ?? 1);
@@ -1730,10 +1899,15 @@ class OrderSaleController extends Controller
             if ($orderno !== '' && $this->hasTable('orderm')) {
                 $update = ['status' => 1];
                 if (in_array('salebill', $this->getColumns('orderm'), true)) {
-                    $update['salebill'] = null;
+                    $update['salebill'] = '';
                 }
                 DB::table('orderm')
-                    ->whereRaw('trim(ordno)=?', [$orderno])
+                    ->where(function ($q) use ($orderno, $billNo) {
+                        $q->whereRaw('trim(ordno)=?', [$orderno]);
+                        if (in_array('salebill', $this->getColumns('orderm'), true)) {
+                            $q->orWhereRaw('trim(salebill)=?', [$billNo]);
+                        }
+                    })
                     ->update($update);
             }
         });
@@ -1787,10 +1961,8 @@ class OrderSaleController extends Controller
                     $prefix = trim((string) ($row->prefix ?? ''));
                     if ($prefix !== '') {
                         $counterCode = 'SALES' . $prefix;
-                        $lbillno = $this->readGeneraliCounter($counterCode);
                         $maxUsed = $this->lastSalesBillNumberForPrefix($prefix);
-                        $next = max($lbillno, $maxUsed) + 1;
-                        $this->incrementGeneraliCounter($counterCode, $next);
+                        $next = $this->reserveGeneraliCounterValue($counterCode, $maxUsed);
                         return $prefix . str_pad((string) $next, 5, '0', STR_PAD_LEFT);
                     }
                 }
@@ -1801,10 +1973,8 @@ class OrderSaleController extends Controller
         $len = (int) $this->toNum($this->readGeneralsValue('SBLEN', '5'));
         if ($len <= 0) $len = 5;
 
-        $lbillno = $this->readGeneraliCounter('SALESB');
         $maxUsed = $this->lastSalesBillNumberForPrefix($prefix);
-        $next = max($lbillno, $maxUsed) + 1;
-        $this->incrementGeneraliCounter('SALESB', $next);
+        $next = $this->reserveGeneraliCounterValue('SALESB', $maxUsed);
 
         return $prefix . str_pad((string) $next, $len, '0', STR_PAD_LEFT);
     }
@@ -1857,6 +2027,15 @@ class OrderSaleController extends Controller
         $maxUsed = $this->lastSalesBillNumberForPrefix($prefix);
         $next = max($lbillno, $maxUsed) + 1;
         return $prefix . str_pad((string) $next, $len, '0', STR_PAD_LEFT);
+    }
+
+    // Public API: peek next bill number for a given BType (used when the BType dropdown changes on the form).
+    public function peekBillNo(Request $request)
+    {
+        if (!$request->session()->has('user_code')) return response()->json(['ok' => false], 401);
+        $btype = trim((string) $request->query('btype', ''));
+        if ($btype === '') return response()->json(['ok' => false, 'message' => 'btype is required']);
+        return response()->json(['ok' => true, 'btype' => $btype, 'bill_no' => $this->peekBillNumber($btype)]);
     }
 
     private function lastSalesBillNumberForPrefix(string $prefix): int
@@ -1926,6 +2105,7 @@ class OrderSaleController extends Controller
         $ccardAmt = $this->toNum($extra['ccard_amt'] ?? 0);
         $chqAmt   = $this->toNum($extra['chq_amt']   ?? 0);
         $cashLoss = $this->toNum($extra['cash_less']  ?? 0);
+        $orderCredit = 0.0;
 
         if ($discount == 0 && $discountPerc > 0) {
             $discount = round(($billTotal * $discountPerc) / 100, 2);
@@ -1956,9 +2136,15 @@ class OrderSaleController extends Controller
 
         if ($autoRcvd && !$credit) {
             $rcvd = $grandToRcvd ? $grandAmt : $netAmt;
+            if ($rcvd < 0) {
+                $rcvd = 0.0;
+            }
         }
 
-        $balance = round($netAmt - $rcvd - $ccardAmt - $chqAmt - $cashLoss, 2);
+        $balance = round($netAmt - $rcvd - $ccardAmt - $chqAmt - $cashLoss - $orderCredit, 2);
+        if (abs($balance) < 0.5) {
+            $balance = 0.0;
+        }
         $netBalance = round($openingBal - $balance, 2);
 
         $extra['discount'] = round($discount, 2);
@@ -1980,6 +2166,7 @@ class OrderSaleController extends Controller
         $extra['ccard_amt'] = round($ccardAmt, 2);
         $extra['chq_amt']   = round($chqAmt, 2);
         $extra['cash_less'] = round($cashLoss, 2);
+        $extra['order_credit'] = round($orderCredit, 2);
         $extra['balance'] = $balance;
         $extra['net_balance'] = $netBalance;
         $extra['net_amt'] = round($netAmt, 2);
@@ -2210,6 +2397,7 @@ class OrderSaleController extends Controller
 
         $extra = (array) ($calc['extra'] ?? []);
         $billNo = trim((string) ($payload['bill_no'] ?? ''));
+        $orderNo = strtoupper(trim((string) ($payload['order_no'] ?? '')));
         $custCode = trim((string) ($payload['customer_code'] ?? ''));
         $coPartyCode = trim((string) ($payload['co_party_code'] ?? ''));
         $cbcode = trim((string) ($payload['cashbank_code'] ?? ''));
@@ -2261,6 +2449,9 @@ class OrderSaleController extends Controller
         $hasOgExchange = collect($exchange)->contains(function ($r) {
             return strtoupper(trim((string) ($r['item_code'] ?? ''))) === 'OG';
         });
+        $isLinkedOrderSale = $orderNo !== ''
+            && $this->hasTable('orderm')
+            && DB::table('orderm')->whereRaw('TRIM(ordno)=?', [$orderNo])->exists();
 
         $entries = [];
         $add = static function (array &$bucket, string $accode, float $amount, string $op = ''): void {
@@ -2365,7 +2556,11 @@ class OrderSaleController extends Controller
         $add($entries, $advanceAc, -$advAmt, $opAcCode);
         $add($entries, 'FANCY', $fancyAmt, $opAcCode);
         if ($schemeAmt != 0.0) {
-            $add($entries, $coPartyCode !== '' ? $coPartyCode : 'APP', -$schemeAmt, $opAcCode);
+            $schemePostAc = $coPartyCode !== '' ? $coPartyCode : 'APP';
+            if ($isLinkedOrderSale && $custCode !== '') {
+                $schemePostAc = $custCode;
+            }
+            $add($entries, $schemePostAc, -$schemeAmt, $opAcCode);
         }
 
         // Tax heads
@@ -2415,6 +2610,54 @@ class OrderSaleController extends Controller
                 $this->insertLegacyDaybookRow($slno, $sno, $billDateSql, 'ROUND', -$sum, $control, 'RS');
             }
         }
+    }
+
+    private function postedOrderCashAdvanceForCustomer(string $ordno, int $orderSlno, string $custCode): float
+    {
+        $custCode = trim($custCode);
+        if ($custCode === '' || !$this->hasTable('daybook')) {
+            return 0.0;
+        }
+
+        $slnos = [];
+        if ($orderSlno > 0) {
+            $slnos[] = $orderSlno;
+        }
+
+        if (trim($ordno) !== '' && $this->hasTable('advafter')) {
+            $slnos = array_merge($slnos, DB::table('advafter')
+                ->whereRaw('TRIM(ordno)=?', [trim($ordno)])
+                ->pluck('slno')
+                ->map(fn($v) => (int) $v)
+                ->filter(fn($v) => $v > 0)
+                ->all());
+        }
+
+        $slnos = array_values(array_unique($slnos));
+        if ($slnos === []) {
+            return 0.0;
+        }
+
+        return round((float) (DB::table('daybook')
+            ->whereIn('slno', $slnos)
+            ->whereRaw('TRIM(accode)=?', [$custCode])
+            ->where('amount', '>', 0)
+            ->sum('amount') ?? 0), 2);
+    }
+
+    private function orderCreditForSavedSale(object $salesm): float
+    {
+        $ordno = trim((string) ($salesm->orderno ?? ''));
+        $custCode = trim((string) ($salesm->custcode ?? ''));
+        if ($ordno === '' || $custCode === '' || !$this->hasTable('orderm')) {
+            return 0.0;
+        }
+
+        $orderSlno = (int) (DB::table('orderm')->whereRaw('TRIM(ordno)=?', [$ordno])->value('slno') ?? 0);
+        $posted = $this->postedOrderCashAdvanceForCustomer($ordno, $orderSlno, $custCode);
+        $alreadyDeducted = max($this->toNum($salesm->advance ?? 0), 0);
+
+        return round(max($posted - $alreadyDeducted, 0), 2);
     }
 
     private function insertLegacyDaybookRow(
@@ -2649,22 +2892,58 @@ class OrderSaleController extends Controller
         }
     }
 
+    private function reserveGeneraliCounterValue(string $code, int $maxUsed = 0): int
+    {
+        if (!$this->hasTable('generali')) {
+            return $maxUsed + 1;
+        }
+
+        return DB::transaction(function () use ($code, $maxUsed) {
+            $row = DB::table('generali')
+                ->where('code', $code)
+                ->lockForUpdate()
+                ->first();
+
+            $current = (int) $this->toNum((string) ($row->cvalue ?? '0'));
+            $next = max($current, $maxUsed) + 1;
+
+            DB::table('generali')->updateOrInsert(['code' => $code], ['cvalue' => (string) $next]);
+
+            return $next;
+        }, 3);
+    }
+
     private function reserveGlobalSerialNo(): int
     {
-        $current = $this->readGeneraliCounter('SERIALNO');
-        $maxUsed = 0;
-        foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
-            if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
-                $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+        if (!$this->hasTable('generali')) {
+            $maxUsed = 0;
+            foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
+                if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
+                    $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+                }
             }
+            return $maxUsed + 1;
         }
 
-        $next = max($current, $maxUsed) + 1;
-        if ($this->hasTable('generali')) {
+        return DB::transaction(function () {
+            $row = DB::table('generali')
+                ->where('code', 'SERIALNO')
+                ->lockForUpdate()
+                ->first();
+            $current = (int) $this->toNum((string) ($row->cvalue ?? '0'));
+
+            $maxUsed = 0;
+            foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
+                if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
+                    $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+                }
+            }
+
+            $next = max($current, $maxUsed) + 1;
             DB::table('generali')->updateOrInsert(['code' => 'SERIALNO'], ['cvalue' => (string) $next]);
-        }
 
-        return $next;
+            return $next;
+        }, 3);
     }
 
     private function readGeneralsValue(string $code, string $default = ''): string

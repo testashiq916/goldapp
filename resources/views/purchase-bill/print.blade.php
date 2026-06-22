@@ -22,6 +22,9 @@
   .page.landscape{width:1180px}
   .header{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:18px}
   .company h1{margin:0 0 6px;font-size:28px;letter-spacing:.5px}
+  .company-addr{font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;margin-bottom:4px;max-width:480px}
+  .company-meta{font-size:12px;font-weight:600;color:var(--ink);line-height:1.5;display:flex;flex-wrap:wrap;gap:12px;margin-top:2px}
+  .company-meta span{white-space:nowrap}
   .company .meta,.bill-meta .meta{color:var(--muted);font-size:13px;line-height:1.5}
   .bill-meta{text-align:right;min-width:260px}
   .bill-title{font-size:22px;font-weight:700;color:var(--accent);margin:0 0 8px}
@@ -45,7 +48,39 @@
   .summary tr.total td{background:#eff6ff;font-size:15px;font-weight:700;color:#0f2d4b}
   .footer{margin-top:30px;display:flex;justify-content:space-between;gap:30px;font-size:12px;color:var(--muted)}
   .sign{width:220px;text-align:center;padding-top:34px;border-top:1px solid var(--line)}
-  @media print{body{background:#fff}.toolbar{display:none!important}.page-wrap{padding:0}.page{width:auto;margin:0;border:none;box-shadow:none;padding:0}.page.landscape{width:auto}@page{size:A4 portrait;margin:10mm}}
+  @media print{
+    @page{size:A4 portrait;margin:10mm}
+    body{background:#fff;font-size:11px}
+    .toolbar{display:none!important}
+    .page-wrap{padding:0}
+    .page{width:auto;margin:0;border:none;box-shadow:none;padding:0}
+    .page.landscape{width:auto}
+    .header{margin-bottom:10px;padding-bottom:10px;break-inside:avoid;page-break-inside:avoid}
+    .grid{gap:12px;margin-bottom:10px}
+    .card,.note-box,.summary,.summary tr,.footer,.sign{
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+    .card h3{padding:6px 10px}
+    .card .body{padding:8px 10px;line-height:1.45}
+    .section-title{margin:10px 0 6px}
+    table{break-inside:auto;page-break-inside:auto}
+    thead{display:table-header-group}
+    tfoot{display:table-row-group}
+    tr{break-inside:avoid;page-break-inside:avoid}
+    th,td{padding:4px 5px;font-size:10.5px}
+    .totals{
+      margin-top:8px;
+      gap:10px;
+      grid-template-columns:minmax(0,1fr) 300px;
+      break-inside:auto;
+      page-break-inside:auto;
+    }
+    .summary table td{padding:4px 6px;font-size:11px}
+    .summary tr.total td{font-size:13px}
+    .note-box{min-height:72px;font-size:11px}
+    .footer{margin-top:12px}
+  }
 </style>
 @include('partials.print-layout-head')
 </head>
@@ -74,6 +109,23 @@
   <div class="header">
     <div class="company" data-print-app-header="purchase-company">
       <h1>{{ $company['name'] ?: 'Company' }}</h1>
+      @php
+        $compAddr  = trim((string) ($company['address'] ?? ''));
+        $compAddr2 = trim((string) ($company['address2'] ?? ''));
+        $compPhone = trim((string) ($company['phone'] ?? ''));
+        $compGstin = trim((string) ($company['gstin'] ?? ''));
+      @endphp
+      @if($compAddr !== '' || $compAddr2 !== '')
+      <div class="company-addr">
+        {!! nl2br(e($compAddr)) !!}@if($compAddr2 !== '')<br>{!! nl2br(e($compAddr2)) !!}@endif
+      </div>
+      @endif
+      @if($compPhone !== '' || $compGstin !== '')
+      <div class="company-meta">
+        @if($compPhone !== '')<span>Ph: {{ $compPhone }}</span>@endif
+        @if($compGstin !== '')<span>GSTIN: {{ $compGstin }}</span>@endif
+      </div>
+      @endif
     </div>
     <div class="bill-meta">
       <div class="bill-title">Purchase Invoice</div>
@@ -90,12 +142,25 @@
     <div class="card">
       <h3>Supplier Details</h3>
       <div class="body">
+        @php
+          $supplierAddr = trim((string) ($master->addr ?? ''));
+          if ($supplierAddr === '' && $supplier) {
+              $parts = array_filter([
+                  trim((string) ($supplier->addr1 ?? '')),
+                  trim((string) ($supplier->addr2 ?? '')),
+                  trim((string) ($supplier->city ?? '')),
+              ], fn ($v) => $v !== '');
+              $supplierAddr = implode(', ', $parts);
+          }
+          $supplierMobile = trim((string) ($master->mobile ?? '')) ?: trim((string) ($supplier->mobile ?? ''));
+          $supplierPan    = trim((string) ($master->pan ?? '')) ?: trim((string) ($supplier->panadhar ?? ''));
+        @endphp
         <div><strong>{{ $master->name ?: '-' }}</strong></div>
         <div class="kv" style="margin-top:8px">
           <div class="k">Supplier Code</div><div>{{ $master->suppcode ?: '-' }}</div>
-          <div class="k">Address</div><div>{{ $master->addr ?: ($supplier->addr1 ?? '-') }}</div>
-          <div class="k">Mobile</div><div>{{ $master->mobile ?: ($supplier->mobile ?? '-') }}</div>
-          <div class="k">PAN / Aadhar</div><div>{{ $master->pan ?: ($supplier->panadhar ?? '-') }}</div>
+          <div class="k">Address</div><div>{{ $supplierAddr !== '' ? $supplierAddr : '-' }}</div>
+          <div class="k">Mobile</div><div>{{ $supplierMobile !== '' ? $supplierMobile : '-' }}</div>
+          <div class="k">PAN / Aadhar</div><div>{{ $supplierPan !== '' ? $supplierPan : '-' }}</div>
           <div class="k">State</div><div>{{ $master->statecode ?: '-' }}{{ $stateName ? ' - '.$stateName : '' }}</div>
         </div>
       </div>
@@ -118,6 +183,15 @@
   </div>
 
   <div class="section-title">Purchased Items</div>
+  @php
+    $totQty   = array_sum(array_column($rows, 'qty'));
+    $totWgt   = array_sum(array_column($rows, 'weight'));
+    $totStone = array_sum(array_column($rows, 'stone_weight'));
+    $totMud   = array_sum(array_column($rows, 'mud_less'));
+    $totNet   = array_sum(array_column($rows, 'net_weight'));
+    $totMc    = array_sum(array_column($rows, 'mc'));
+    $totAmt   = array_sum(array_column($rows, 'amount'));
+  @endphp
   <table>
     <thead>
       <tr>
@@ -157,9 +231,30 @@
       <tr><td colspan="13" class="center">No items found.</td></tr>
       @endforelse
     </tbody>
+    @if(count($rows))
+    <tfoot>
+      <tr style="background:#f1f5f9;font-weight:700;color:#0f2d4b">
+        <td class="center" colspan="4">Total ({{ count($rows) }} item{{ count($rows) === 1 ? '' : 's' }})</td>
+        <td class="num">{{ number_format($totQty, 0, '.', '') }}</td>
+        <td class="num">{{ number_format($totWgt, 3, '.', '') }}</td>
+        <td class="num">{{ number_format($totStone, 3, '.', '') }}</td>
+        <td class="num">{{ number_format($totMud, 3, '.', '') }}</td>
+        <td class="num">{{ number_format($totNet, 3, '.', '') }}</td>
+        <td></td>
+        <td class="num">{{ $totNet > 0 ? number_format($totAmt / $totNet, 2, '.', '') : '-' }}</td>
+        <td class="num">{{ number_format($totMc, 2, '.', '') }}</td>
+        <td class="num">{{ number_format($totAmt, 2, '.', '') }}</td>
+      </tr>
+    </tfoot>
+    @endif
   </table>
 
   @if(count($exchange))
+  @php
+    $exQty = array_sum(array_column($exchange, 'qty'));
+    $exWgt = array_sum(array_column($exchange, 'weight'));
+    $exAmt = array_sum(array_column($exchange, 'amount'));
+  @endphp
   <div class="section-title">Purchase Return / Exchange Items</div>
   <table>
     <thead>
@@ -188,14 +283,27 @@
       </tr>
       @endforeach
     </tbody>
+    <tfoot>
+      <tr style="background:#f1f5f9;font-weight:700;color:#0f2d4b">
+        <td class="center" colspan="3">Total ({{ count($exchange) }} item{{ count($exchange) === 1 ? '' : 's' }})</td>
+        <td class="num">{{ number_format($exQty, 0, '.', '') }}</td>
+        <td class="num">{{ number_format($exWgt, 3, '.', '') }}</td>
+        <td colspan="2"></td>
+        <td class="num">{{ number_format($exAmt, 2, '.', '') }}</td>
+      </tr>
+    </tfoot>
   </table>
   @endif
 
   <div class="totals">
+    @if(trim((string)($master->note ?? '')) !== '')
     <div class="note-box">
       <strong>Note</strong>
-      <div style="margin-top:8px">{{ trim((string)($master->note ?? '')) !== '' ? $master->note : 'No notes.' }}</div>
+      <div style="margin-top:8px">{{ $master->note }}</div>
     </div>
+    @else
+    <div></div>
+    @endif
 
     <div class="summary">
       <table>

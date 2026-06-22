@@ -37,6 +37,8 @@ class NativeDashboardController extends Controller
         $dashboardData['silverRate'] = $rates['SRATE'] ?? 0;
         $dashboardData['thRate'] = $rates['THRATE'] ?? 0;
         $dashboardData['platinumRate'] = $rates['PRATE'] ?? 0;
+        $dashboardData['todayDuePendingAccounts'] = $this->getTodayDuePendingAccounts($request);
+        $dashboardData['creditBillSummary'] = $this->getCreditBillSummary($request);
 
         // Currency / country / religion config — used by all iframe modules via window.GOLDAPP_CFG
         $currencyConfig = $request->session()->get('currency_config')
@@ -53,6 +55,8 @@ class NativeDashboardController extends Controller
             'companyThemeActive' => $currentDatabase !== '' && strcasecmp($currentDatabase, $primaryDatabase) !== 0,
             'userPermissions' => $userPermissions,
             'hasRestrictedMenuAccess' => $hasRestrictedMenuAccess,
+            'dashboardAccessDenied' => $hasRestrictedMenuAccess && !in_array('MDI_DASHBOARD', $userPermissions, true),
+            'showStartupPopups' => (bool) $request->session()->pull('show_startup_popups', false),
         ]);
     }
 
@@ -77,6 +81,10 @@ class NativeDashboardController extends Controller
     {
         $userCode = strtoupper(trim($userCode));
         if ($userCode === '' || !$this->hasTable('userd')) {
+            return [[], false];
+        }
+
+        if (in_array($userCode, ['ADMIN', 'MGR', 'DEVELOPER'], true)) {
             return [[], false];
         }
 
@@ -124,6 +132,122 @@ class NativeDashboardController extends Controller
         return $rates;
     }
 
+    private function getTodayDuePendingAccounts(Request $request): array
+    {
+        if (!$this->hasTable('accountm') || !$this->hasTable('clients')) {
+            return ['rows' => [], 'totals' => ['count' => 0, 'to_get' => 0.0, 'to_give' => 0.0, 'net' => 0.0]];
+        }
+
+        try {
+            $today = date('Y-m-d');
+            $rl = max(1, (int) $request->session()->get('gilevel', 1));
+            $opColumn = $rl === 1 && $this->hasCol('accountm', 'opbal') ? 'opbal' : ($this->hasCol('accountm', 'opbalb') ? 'opbalb' : 'opbal');
+            $hasDaybook = $this->hasTable('daybook') && $this->hasCol('daybook', 'accode') && $this->hasCol('daybook', 'amount') && $this->hasCol('daybook', 'tdate');
+
+            $baseRows = DB::table('accountm as a')
+                ->join('clients as c', 'a.accode', '=', 'c.code')
+                ->selectRaw("
+                    TRIM(a.accode) as accode,
+                    TRIM(COALESCE(c.name, a.name, '')) as cname,
+                    TRIM(COALESCE(c.mobile, '')) as mobile,
+                    TRIM(COALESCE(c.telephone, '')) as telephone,
+                    TRIM(COALESCE(a.actype2, '')) as actype2,
+                    COALESCE(a.{$opColumn}, 0) as opbal,
+                    COALESCE(c.duedate, null) as client_duedate
+                ")
+                ->where('a.control', '<=', $rl)
+                ->get();
+
+            $codes = $baseRows->pluck('accode')->map(fn ($v) => trim((string) $v))->filter()->values()->all();
+
+            $daybookStats = [];
+            if ($hasDaybook && $codes !== []) {
+                $daybookStats = DB::table('daybook')
+                    ->selectRaw('TRIM(accode) as code, COALESCE(SUM(amount), 0) as tran_amount, MAX(CASE WHEN amount > 0 THEN tdate ELSE NULL END) as lcdate')
+                    ->whereIn('accode', $codes)
+                    ->where('tdate', '<=', $today)
+                    ->where('control', '<=', $rl)
+                    ->groupBy('accode')
+                    ->get()
+                    ->keyBy(fn ($row) => trim((string) $row->code))
+                    ->all();
+            }
+
+            $salesDue = [];
+            if ($this->hasTable('salesm') && $this->hasCol('salesm', 'custcode') && $this->hasCol('salesm', 'duedate') && $codes !== []) {
+                $salesDue = DB::table('salesm')
+                    ->selectRaw('TRIM(custcode) as code, MAX(duedate) as due')
+                    ->whereIn('custcode', $codes)
+                    ->groupBy('custcode')
+                    ->get()
+                    ->keyBy(fn ($row) => trim((string) $row->code))
+                    ->all();
+            }
+
+            $purchaseDue = [];
+            if ($this->hasTable('purchasem') && $this->hasCol('purchasem', 'suppcode') && $this->hasCol('purchasem', 'duedate') && $codes !== []) {
+                $purchaseDue = DB::table('purchasem')
+                    ->selectRaw('TRIM(suppcode) as code, MAX(duedate) as due')
+                    ->whereIn('suppcode', $codes)
+                    ->groupBy('suppcode')
+                    ->get()
+                    ->keyBy(fn ($row) => trim((string) $row->code))
+                    ->all();
+            }
+
+            $mapped = [];
+            foreach ($baseRows as $row) {
+                $code = trim((string) ($row->accode ?? ''));
+                $clientDue = (string) ($row->client_duedate ?? '');
+                $clientDue = $clientDue !== '0000-00-00' ? $clientDue : '';
+                $salesDueDate = (string) ($salesDue[$code]->due ?? '');
+                $purchaseDueDate = (string) ($purchaseDue[$code]->due ?? '');
+                $dueDate = collect([$clientDue, $salesDueDate, $purchaseDueDate])
+                    ->filter(fn ($value) => $value !== '' && $value !== '0000-00-00')
+                    ->sort()
+                    ->last();
+
+                if ($dueDate !== $today) {
+                    continue;
+                }
+
+                $netBal = round((float) ($row->opbal ?? 0) + (float) ($daybookStats[$code]->tran_amount ?? 0), 2);
+                if (abs($netBal) < 0.01) {
+                    continue;
+                }
+
+                $mapped[] = [
+                    'code' => $code,
+                    'name' => trim((string) ($row->cname ?? '')),
+                    'mobile' => trim((string) ($row->mobile ?? '')),
+                    'telephone' => trim((string) ($row->telephone ?? '')),
+                    'actype2' => trim((string) ($row->actype2 ?? '')),
+                    'balance' => $netBal,
+                    'balance_abs' => abs($netBal),
+                    'status' => $netBal > 0 ? 'TG' : 'TR',
+                    'duedate' => $dueDate,
+                    'lcdate' => (string) ($daybookStats[$code]->lcdate ?? ''),
+                ];
+            }
+
+            usort($mapped, fn ($a, $b) => strcmp($a['name'], $b['name']));
+
+            $totals = ['count' => count($mapped), 'to_get' => 0.0, 'to_give' => 0.0, 'net' => 0.0];
+            foreach ($mapped as $row) {
+                if ($row['status'] === 'TR') {
+                    $totals['to_get'] += $row['balance_abs'];
+                } else {
+                    $totals['to_give'] += $row['balance_abs'];
+                }
+                $totals['net'] += $row['balance'];
+            }
+
+            return ['rows' => $mapped, 'totals' => $totals];
+        } catch (\Throwable) {
+            return ['rows' => [], 'totals' => ['count' => 0, 'to_get' => 0.0, 'to_give' => 0.0, 'net' => 0.0]];
+        }
+    }
+
     private function getDashboardData(): array
     {
         $data = [
@@ -134,9 +258,12 @@ class NativeDashboardController extends Controller
             'todaySalesBills' => 0,
             'todayPurchaseBills' => 0,
             'todaySalesWeight' => 0,
+            'todayPurchaseWeight' => 0,
             'todaySalesReturn' => 0,
             'todaySalesReturnWeight' => 0,
             'monthSalesWeight' => 0,
+            'monthPurchaseWeight' => 0,
+            'monthPurchaseBills' => 0,
             'monthSalesReturn' => 0,
             'monthSalesReturnWeight' => 0,
             'totalCustomers' => 0,
@@ -226,6 +353,19 @@ class NativeDashboardController extends Controller
                 $data['monthSalesWeight'] = round($monthGross['weight'] - $monthReturn['weight'], 3);
                 $data['monthSalesReturn'] = round($monthReturn['amount'], 2);
                 $data['monthSalesReturnWeight'] = round($monthReturn['weight'], 3);
+            }
+
+            if ($this->hasTable('purchasem')) {
+                $todayPurchase = $this->purchaseSummary($today, $today);
+                $monthPurchase = $this->purchaseSummary($monthStart, $today);
+
+                $data['todayPurchase'] = round($todayPurchase['amount'], 2);
+                $data['todayPurchaseBills'] = $todayPurchase['bills'];
+                $data['todayPurchaseWeight'] = round($todayPurchase['weight'], 3);
+
+                $data['monthPurchase'] = round($monthPurchase['amount'], 2);
+                $data['monthPurchaseBills'] = $monthPurchase['bills'];
+                $data['monthPurchaseWeight'] = round($monthPurchase['weight'], 3);
             }
 
             // Top 5 items by sales amount
@@ -493,6 +633,98 @@ class NativeDashboardController extends Controller
         return $data;
     }
 
+    private function getCreditBillSummary(Request $request): array
+    {
+        $empty = [
+            'rows' => [],
+            'totals' => ['count' => 0, 'billamt' => 0.0, 'ramt' => 0.0, 'bal' => 0.0],
+        ];
+
+        if (!$this->hasTable('salesm') || !$this->hasCol('salesm', 'bal')) {
+            return $empty;
+        }
+
+        try {
+            $rl = max(1, (int) $request->session()->get('gilevel', 1));
+            $billCol = $this->hasCol('salesm', 'billno') ? 'billno' : ($this->hasCol('salesm', 'docno') ? 'docno' : 'slno');
+            $dateCol = $this->hasCol('salesm', 'tdate') ? 'tdate' : null;
+            $custCodeCol = $this->hasCol('salesm', 'custcode') ? 'custcode' : null;
+            $custNameCol = $this->hasCol('salesm', 'custname') ? 'custname' : ($this->hasCol('salesm', 'name') ? 'name' : null);
+            $billAmtCol = $this->hasCol('salesm', 'netamt') ? 'netamt' : ($this->hasCol('salesm', 'billamt') ? 'billamt' : null);
+            $rcvdCol = $this->hasCol('salesm', 'ramt') ? 'ramt' : null;
+            $dueCol = $this->hasCol('salesm', 'duedate') ? 'duedate' : null;
+            $statusCol = $this->hasCol('salesm', 'status') ? 'status' : null;
+
+            $clientJoin = $custCodeCol && $this->hasTable('clients') && $this->hasCol('clients', 'code');
+            $clientNameExpr = $clientJoin && $this->hasCol('clients', 'name') ? 'c.name' : 'NULL';
+            $clientMobileExpr = $clientJoin && $this->hasCol('clients', 'mobile') ? 'c.mobile' : "''";
+            $salesNameExpr = $custNameCol ? "s.{$custNameCol}" : 'NULL';
+            $custCodeExpr = $custCodeCol ? "s.{$custCodeCol}" : "''";
+
+            $query = DB::table('salesm as s')
+                ->when($clientJoin, fn ($q) => $q->leftJoin('clients as c', "s.{$custCodeCol}", '=', 'c.code'))
+                ->whereRaw('COALESCE(s.bal, 0) > 0.005')
+                ->when($this->hasCol('salesm', 'control'), fn ($q) => $q->where('s.control', '<=', $rl));
+
+            if ($statusCol) {
+                $query->where(function ($q) use ($statusCol) {
+                    $q->whereNull("s.{$statusCol}")
+                        ->orWhere("s.{$statusCol}", '')
+                        ->orWhere("s.{$statusCol}", '<>', 0);
+                });
+            }
+
+            $totals = (clone $query)
+                ->selectRaw(
+                    'COUNT(*) as count, '
+                    . ($billAmtCol ? "COALESCE(SUM(s.{$billAmtCol}), 0)" : '0') . ' as billamt, '
+                    . ($rcvdCol ? "COALESCE(SUM(s.{$rcvdCol}), 0)" : '0') . ' as ramt, '
+                    . 'COALESCE(SUM(s.bal), 0) as bal'
+                )
+                ->first();
+
+            $rows = $query
+                ->selectRaw("
+                    TRIM(CAST(s.{$billCol} AS CHAR)) as billno,
+                    " . ($dateCol ? "s.{$dateCol}" : 'NULL') . " as tdate,
+                    TRIM(COALESCE({$custCodeExpr}, '')) as custcode,
+                    TRIM(COALESCE({$clientNameExpr}, {$salesNameExpr}, '')) as cname,
+                    TRIM(COALESCE({$clientMobileExpr}, '')) as mobile,
+                    " . ($billAmtCol ? "COALESCE(s.{$billAmtCol}, 0)" : '0') . " as billamt,
+                    " . ($rcvdCol ? "COALESCE(s.{$rcvdCol}, 0)" : '0') . " as ramt,
+                    COALESCE(s.bal, 0) as bal,
+                    " . ($dueCol ? "s.{$dueCol}" : 'NULL') . " as duedate
+                ")
+                ->orderByDesc('s.bal')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => [
+                    'billno' => trim((string) ($row->billno ?? '')),
+                    'tdate' => (string) ($row->tdate ?? ''),
+                    'custcode' => trim((string) ($row->custcode ?? '')),
+                    'cname' => trim((string) ($row->cname ?? '')),
+                    'mobile' => trim((string) ($row->mobile ?? '')),
+                    'billamt' => (float) ($row->billamt ?? 0),
+                    'ramt' => (float) ($row->ramt ?? 0),
+                    'bal' => (float) ($row->bal ?? 0),
+                    'duedate' => (string) ($row->duedate ?? ''),
+                ])
+                ->all();
+
+            return [
+                'rows' => $rows,
+                'totals' => [
+                    'count' => (int) ($totals->count ?? 0),
+                    'billamt' => (float) ($totals->billamt ?? 0),
+                    'ramt' => (float) ($totals->ramt ?? 0),
+                    'bal' => (float) ($totals->bal ?? 0),
+                ],
+            ];
+        } catch (\Throwable) {
+            return $empty;
+        }
+    }
+
     private function salesSummary(string $date1, string $date2): array
     {
         if (!$this->hasTable('salesm')) {
@@ -545,6 +777,40 @@ class NativeDashboardController extends Controller
                 ->whereBetween('m.tdate', [$date1, $date2])
                 ->when($this->hasCol('salesrm', 'status'), fn ($q) => $q->where('m.status', '<>', 0))
                 ->when($this->hasCol('salesrm', 'control'), fn ($q) => $q->where('m.control', '<=', 1))
+                ->sum('d.weight');
+        }
+
+        return [
+            'amount' => (float) ($master->amount ?? 0),
+            'weight' => $weight,
+            'bills' => (int) ($master->bills ?? 0),
+        ];
+    }
+
+    private function purchaseSummary(string $date1, string $date2): array
+    {
+        if (!$this->hasTable('purchasem')) {
+            return ['amount' => 0.0, 'weight' => 0.0, 'bills' => 0];
+        }
+
+        $amountCol = $this->hasCol('purchasem', 'netamt')
+            ? 'netamt'
+            : ($this->hasCol('purchasem', 'billamt') ? 'billamt' : null);
+
+        $master = DB::table('purchasem')
+            ->whereBetween('tdate', [$date1, $date2])
+            ->when($this->hasCol('purchasem', 'status'), fn ($q) => $q->where('status', '<>', 0))
+            ->when($this->hasCol('purchasem', 'control'), fn ($q) => $q->where('control', '<=', 1))
+            ->selectRaw(($amountCol ? "COALESCE(SUM($amountCol), 0)" : '0') . ' as amount, COUNT(DISTINCT slno) as bills')
+            ->first();
+
+        $weight = 0.0;
+        if ($this->hasTable('purchased') && $this->hasCol('purchased', 'weight')) {
+            $weight = (float) DB::table('purchased as d')
+                ->join('purchasem as m', 'm.slno', '=', 'd.slno')
+                ->whereBetween('m.tdate', [$date1, $date2])
+                ->when($this->hasCol('purchasem', 'status'), fn ($q) => $q->where('m.status', '<>', 0))
+                ->when($this->hasCol('purchasem', 'control'), fn ($q) => $q->where('m.control', '<=', 1))
                 ->sum('d.weight');
         }
 

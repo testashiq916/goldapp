@@ -7,17 +7,17 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .toolbar h1{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;margin-right:4px}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-.tb-input{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:11px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-input{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:17px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .tb-input::placeholder{color:rgba(255,255,255,.4)}
 .f-group{display:flex;align-items:center;gap:3px}
 .sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 1px}
-.btn{padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:4px 12px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
 .name-box{background:rgba(255,255,255,.1);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;min-width:120px;display:inline-block}
@@ -38,7 +38,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
 .section-head .cnt{font-size:10px;color:#64748b;font-weight:600}
 
 table{width:100%;border-collapse:collapse;font-size:11px}
-th{background:#f8fafc;padding:5px 6px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;border-bottom:1px solid #e2e8f0}
+th{background:#f8fafc;padding:5px 6px;font-size:15px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;border-bottom:1px solid #e2e8f0}
 th.num{text-align:right}
 td{padding:4px 6px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
 td.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -47,7 +47,7 @@ tr.total-row td{background:#eff6ff;font-weight:700;border-top:2px solid #bfdbfe}
 
 .empty-msg{text-align:center;padding:40px;color:#94a3b8;font-size:12px}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 
 @media print{
@@ -57,7 +57,9 @@ tr.total-row td{background:#eff6ff;font-weight:700;border-top:2px solid #bfdbfe}
   .section{box-shadow:none;break-inside:avoid}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 

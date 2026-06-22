@@ -104,7 +104,7 @@ const ReportExport = (() => {
     var selectedType = 'csv';
     var cards = box.querySelectorAll('[data-xtype]');
     cards.forEach(function (card) {
-      card.onclick = function () {
+      card.onclick = function (event) {
         cards.forEach(function (c) {
           c.style.borderColor = '#e2e8f0';
           c.style.background = '#fff';
@@ -114,6 +114,14 @@ const ReportExport = (() => {
         card.style.background = '#eff6ff';
         card.style.color = '#1e40af';
         selectedType = card.getAttribute('data-xtype');
+
+        // Direct toolbar buttons open this dialog and programmatically choose
+        // Excel/PDF. Finish those synthetic clicks immediately; real clicks
+        // still only select a type and wait for the Save button.
+        if (event && event.isTrusted === false) {
+          var saveBtn = document.getElementById('_xSave');
+          if (saveBtn) setTimeout(function () { saveBtn.click(); }, 0);
+        }
       };
     });
 
@@ -171,6 +179,19 @@ const ReportExport = (() => {
     }
   }
 
+  function formatValue(h, value) {
+    var v = value == null ? '' : value;
+    var key = String((h && h[1]) || '').toLowerCase();
+    var label = String((h && h[0]) || '').toLowerCase();
+    if (key.indexOf('date') !== -1 || key === 'tdate' || label.indexOf('date') !== -1) {
+      if (typeof window !== 'undefined' && typeof window.goldappFormatDate === 'function') {
+        return window.goldappFormatDate(v);
+      }
+      return String(v).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3-$2-$1');
+    }
+    return v;
+  }
+
   function exportCSV(hs, rows, fname) {
     var lines = [];
     lines.push(hs.map(function (h) {
@@ -179,8 +200,7 @@ const ReportExport = (() => {
 
     rows.forEach(function (row) {
       lines.push(hs.map(function (h) {
-        var v = row[h[1]];
-        if (v == null) v = '';
+        var v = formatValue(h, row[h[1]]);
         return '"' + String(v).replace(/"/g, '""') + '"';
       }).join(','));
     });
@@ -208,8 +228,7 @@ const ReportExport = (() => {
     rows.forEach(function (row) {
       html += '<tr>';
       hs.forEach(function (h) {
-        var v = row[h[1]];
-        if (v == null) v = '';
+        var v = formatValue(h, row[h[1]]);
         var cls = h[2] ? (h[3] === 3 ? 'num3' : 'num') : '';
         html += '<td class="' + cls + '">' + esc(v) + '</td>';
       });
@@ -250,8 +269,7 @@ const ReportExport = (() => {
     rows.forEach(function (row) {
       html += '<tr>';
       hs.forEach(function (h) {
-        var v = row[h[1]];
-        if (v == null) v = '';
+        var v = formatValue(h, row[h[1]]);
         if (h[2]) v = Number(v || 0).toFixed(h[3] != null ? h[3] : 2);
         html += '<td class="' + (h[2] ? 'num' : '') + '">' + esc(v) + '</td>';
       });

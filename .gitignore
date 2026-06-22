@@ -1,4 +1,5 @@
 *.log
+claude.zip
 .DS_Store
 .env
 .env.backup

@@ -1,0 +1,244 @@
+Item Create Logic
+=================
+
+Main page
+---------
+Item add/edit:
+/item-master
+
+
+Main API routes
+---------------
+Load dropdown options:
+GET /item-master/options
+
+Search items:
+GET /item-master/search?search=TEXT
+
+Load one item:
+POST /item-master/get-item
+
+Save item:
+POST /item-master/save
+
+Delete item:
+POST /item-master/delete
+
+Check item code:
+POST /item-master/code-exists
+
+Rename item code:
+POST /item-master/rename-code
+
+
+Storage table
+-------------
+Items are saved in the items table.
+
+Primary code:
+items.code
+
+Description:
+items.name
+
+Item type:
+items.itype
+
+Common item types:
+G = Gold
+S = Silver
+P = Platinum
+D = Diamond
+O = Others
+
+
+Create flow
+-----------
+1. Open /item-master.
+2. Click Add.
+3. The browser resets the form and sets mode = add.
+4. User enters item code and description.
+5. User selects group, subgroup, item type, purity, stock type, smith, bill type, rates, and options as required.
+6. Click Save or press F9.
+7. Browser sends POST /item-master/save.
+8. Server validates mode, code, and description.
+9. Server checks whether the item code already exists.
+10. If mode is add and code exists, save is blocked.
+11. Server builds the items payload from request fields.
+12. Server inserts the row into items.
+13. Server logs Item(CODE) Added in delpart audit.
+14. Server returns success message.
+
+
+Edit flow
+---------
+1. Click Edit or Search.
+2. Select an item from search.
+3. Browser calls POST /item-master/get-item.
+4. Server loads the row from items by code.
+5. Browser fills the form and sets mode = edit.
+6. Code field is locked.
+7. Click Save or press F9.
+8. Browser sends POST /item-master/save.
+9. Server updates the existing items row.
+10. Server logs Item(CODE) Updated in delpart audit.
+
+
+Required fields
+---------------
+mode:
+add or edit
+
+code:
+Required, maximum 10 characters.
+
+desc:
+Required, maximum 50 characters.
+Saved to items.name.
+
+
+Important controller
+--------------------
+File:
+app/Http/Controllers/ItemMasterController.php
+
+Important methods:
+index()
+options()
+search()
+getItem()
+save()
+delete()
+codeExists()
+renameCode()
+payloadFromRequest()
+canDeleteItem()
+
+
+Important view
+--------------
+File:
+resources/views/items/master.blade.php
+
+Important JavaScript:
+resetForm()
+payload()
+doSave()
+loadItemByCode()
+loadOptions()
+applyItem()
+openSearch()
+
+
+Dropdown options
+----------------
+/item-master/options loads:
+itemgrp -> groups
+itemsubgrp -> subgroups
+stktype -> stock types
+itemsqtype or qtype -> purity/quality types
+salestype or billtype -> bill types
+clients where ctype = G -> smith list
+
+
+Payload mapping
+---------------
+Request field desc saves to:
+items.name
+
+Request field regional saves to:
+items.regionalname
+
+Request field grpcode saves to:
+items.grpcode
+
+Request field subgrpcode saves to:
+items.subgrpcode
+
+Request field itype saves to:
+items.itype
+
+Request field mrate/mcrate saves to:
+items.mcharge
+
+Request field stktype saves to:
+items.defstktype
+
+Request field qtype saves to:
+items.defquality and items.qtype
+
+Request field smith saves to:
+items.defsmith
+
+Request field billtype saves to:
+items.billtype
+
+
+Default values on add
+---------------------
+When adding a new item, stock quantity and weight columns are initialized as 0 if those columns exist:
+qty
+weight
+stonewgt
+qtyb
+weightb
+stonewgtb
+opqty
+opweight
+opstonewgt
+opqtyb
+opweightb
+opstonewgtb
+
+
+Delete logic
+------------
+Delete is blocked when:
+1. The item does not exist.
+2. items.reserve = Y.
+3. Existing transactions contain weight for this item.
+
+Transaction checks include:
+salesd
+salesrd
+purchased
+purchaserd
+orderd
+repaird
+smithd
+refineryd
+itemadj
+
+
+Rename code logic
+-----------------
+POST /item-master/rename-code changes one item code to another.
+
+If the new code does not exist:
+items.code is updated.
+
+If the new code already exists and merge is confirmed:
+the old item row is deleted and references are moved to the new code.
+
+Reference tables updated include:
+itemadj
+itemsstk
+orderd
+salesd
+purchased
+purchaserd
+refineryd
+repaird
+smithd
+barcode
+itemstmp
+modelm
+
+
+Notes
+-----
+Item creation does not use an automatic next-code counter.
+The user manually enters the item code.
+
+The save logic only writes columns that exist in the current items table.
+This makes the item master work across slightly different legacy schemas.

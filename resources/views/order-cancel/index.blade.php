@@ -44,7 +44,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#eef2f7;color:#111827}
     </div>
     <div class="actions">
       <button class="btn btn-ok" id="ok">OK</button>
-      <button class="btn btn-exit" id="exit">Exit</button>
+      <button class="btn btn-exit" id="btnExit" type="button" data-action="exit">Exit</button>
     </div>
     <div class="msg" id="msg"></div>
   </div>
@@ -115,9 +115,29 @@ async function doSearch(){
 }
 
 $('ok').onclick = doCancel;
-$('exit').onclick = () => {
-  if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'close-module' }, '*');
-};
+function closeScreen(){
+  let posted = false;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'goldapp:close-module-frame' }, '*');
+      window.parent.postMessage({ action: 'closeModule' }, '*');
+      posted = true;
+    }
+    if (window.top && window.top !== window && window.top !== window.parent) {
+      window.top.postMessage({ type: 'goldapp:close-module-frame' }, '*');
+      window.top.postMessage({ action: 'closeModule' }, '*');
+      posted = true;
+    }
+  } catch (e) {}
+  if (posted) return;
+  if (window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  window.location.href = @json(url('/dashboard'));
+}
+
+$('btnExit').onclick = closeScreen;
 $('help').onclick = () => { $('helpModal').classList.add('show'); $('q').focus(); doSearch(); };
 $('closeHelp').onclick = () => $('helpModal').classList.remove('show');
 $('find').onclick = doSearch;
@@ -125,6 +145,7 @@ $('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 $('doc').addEventListener('keydown', e => { if (e.key === 'Enter') doCancel(); if (e.key === 'F1') { e.preventDefault(); $('help').click(); } });
 document.addEventListener('keydown', e => {
   if (e.key === 'F1') { e.preventDefault(); $('help').click(); }
+  if (e.key === 'Escape' && !$('helpModal').classList.contains('show')) { e.preventDefault(); closeScreen(); }
   if (e.key === 'Escape' && $('helpModal').classList.contains('show')) $('helpModal').classList.remove('show');
 });
 $('doc').focus();

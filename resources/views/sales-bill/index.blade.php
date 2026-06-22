@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<script src="{{ asset('js/goldapp-common.js') }}"></script>
+<script src="{{ asset('js/goldapp-common.js') }}?v={{ @filemtime(public_path('js/goldapp-common.js')) }}"></script>
 <title>{{ $title ?? 'Enter Sales Bill Details' }}</title>
 <script>
   @php
@@ -26,6 +26,7 @@
       THRATE: {{ $rates['THRATE'] ?? 0 }},
     },
     exchItems:  @json($exchItems ?? []),
+    itemGroups: @json($itemGroups ?? []),
     billTypes:  @json($billTypes ?? []),
     counters:   @json($counters ?? []),
     salesmen:   @json($salesmen ?? []),
@@ -46,14 +47,20 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html, body { width: 100%; }
   body {
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 12px;
+    font-size: 15px;
     background: #dfe3e8;
     color: #1a202c;
-    overflow: hidden;
-    height: 100vh;
+    overflow: auto;
+    min-height: 100vh;
   }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #eef1f5; }
+  ::-webkit-scrollbar-thumb { background: #b8c2cf; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #8fa0b5; }
+  .main-window { min-width: 1100px; }
 
   /* Smooth transitions */
   input, select, button { transition: all 0.15s ease; }
@@ -78,9 +85,9 @@
   .title-bar {
     background: linear-gradient(135deg, #1e3a5f, #2c5282);
     color: white;
-    padding: 6px 12px;
+    padding: 8px 12px;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -175,20 +182,20 @@
     align-items: center;
     gap: 4px;
     padding: 1px 0;
-    min-height: 24px;
+    min-height: 30px;
   }
   .top-section label {
     font-weight: 600;
-    font-size: 11px;
+    font-size: 14px;
     min-width: 74px;
     color: #4a5568;
   }
   .top-section input, .top-section select {
-    font-size: 11px;
+    font-size: 14px;
     padding: 2px 6px;
     border: 1px solid #9ea7b3;
     background: #fff;
-    height: 22px;
+    height: 28px;
     border-radius: 2px;
     color: #2d3748;
   }
@@ -217,14 +224,14 @@
   }
   .top-section .row.customer-row #btnCustSearch,
   .top-section .row.customer-row #btnCustCreate {
-    font-size: 10px;
+    font-size: 13px;
     padding: 1px 6px;
     border: 1px solid #cbd5e0;
     border-radius: 3px;
     cursor: pointer;
     background: #fff;
     min-width: 24px;
-    height: 22px;
+    height: 28px;
   }
   .top-section .row.customer-row #btnCustCreate {
     color: #2f855a;
@@ -233,7 +240,7 @@
   .top-section .row.customer-row #custSearchResults { position: absolute; top: 24px; left: 184px; width: 420px; max-height: 220px; overflow-y: auto; background: #111827; border: 1px solid #374151; border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); z-index: 500; display: none; font-size: 11px; color: #f9fafb; }
   .top-section .row.billtype-row { justify-content: flex-start !important; gap: 6px; }
   .top-section .row.billtype-row .nav-btns { display: inline-flex; gap: 3px; margin-right: 8px; }
-  .top-section .row.billtype-row .nav-btns button { font-size: 10px; padding: 1px 6px; border: 1px solid #cbd5e0; border-radius: 3px; background: #fff; cursor: pointer; }
+  .top-section .row.billtype-row .nav-btns button { font-size: 13px; padding: 2px 8px; border: 1px solid #cbd5e0; border-radius: 3px; background: #fff; cursor: pointer; }
   .top-section .row.billtype-row #fBillType { flex: 1; min-width: 0; width: auto !important; }
   .top-section .tiny-label { min-width: auto; }
   .top-section .row #fMobNo { flex: 1; min-width: 0; width: auto; }
@@ -262,7 +269,18 @@
     height: 16px;
     flex: 0 0 auto;
   }
-  .inline-check { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #4a5568; }
+  .top-section .row.item-group-row label {
+    min-width: 54px;
+    margin-left: 120px;
+  }
+  .top-section .row.item-group-row #fItemGroup {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+    height: 20px;
+    font-size: 11px;
+  }
+  .inline-check { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #4a5568; }
 
   /* ===== ITEM TABLE ===== */
   .table-container {
@@ -270,30 +288,39 @@
     border: 1px solid #c4ccd7;
     border-radius: 2px;
     background: #fff;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
+  .table-container::-webkit-scrollbar { height: 8px; }
+  .table-container::-webkit-scrollbar-track { background: #f0f3f7; }
+  .table-container::-webkit-scrollbar-thumb { background: #b8c2cf; border-radius: 4px; }
+  .table-container::-webkit-scrollbar-thumb:hover { background: #8fa0b5; }
   table.items {
     width: 100%;
+    min-width: 0;
+    table-layout: fixed;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 14px;
   }
   table.items thead th {
     background: #2d3748;
     color: #e2e8f0;
-    padding: 5px 6px;
+    padding: 6px 2px;
     border: 1px solid #4a5568;
     font-weight: 600;
-    font-size: 10px;
+    font-size: 13px;
     text-align: center;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.2;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
   }
   table.items tbody td {
     border: 1px solid #edf2f7;
-    padding: 2px 4px;
+    padding: 1px 2px;
     text-align: center;
-    height: 22px;
+    height: 28px;
   }
   table.items tbody tr:nth-child(odd) { background: #ffffff; }
   table.items tbody tr:nth-child(even) { background: #f7fafc; }
@@ -301,18 +328,19 @@
   table.items tbody tr.empty { height: 20px; }
   table.items tbody tr.empty td { border-color: #edf2f7; }
   table.items tbody input {
-    font-size: 11px; border: none; background: transparent; text-align: center; width: 100%; height: 100%;
+    font-size: 14px; border: none; background: transparent; text-align: center; width: 100%; height: 100%;
   }
   table.items tbody input:focus { background: #fffff0; outline: 2px solid #4299e1; border-radius: 2px; }
   table.items tbody input.ic-code:focus { background: #fff7cc; outline: 2px solid #2563eb; }
+  table.items .dmd-col { display: table-cell; }
 
   .table-footer {
     display: flex;
     align-items: center;
     background: #e9edf2;
-    padding: 4px 8px;
+    padding: 5px 8px;
     gap: 8px;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
     color: #2d3748;
     border-top: 1px solid #c4ccd7;
@@ -321,8 +349,8 @@
     background: #fff;
     border: 1px solid #9ea7b3;
     border-radius: 2px;
-    padding: 2px 12px;
-    font-size: 11px;
+    padding: 3px 12px;
+    font-size: 14px;
     cursor: pointer;
     font-weight: 600;
     color: #2d3748;
@@ -333,21 +361,22 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    flex: 0 0 34.0136%; /* first 6 item columns: 500 / 1470 */
+    flex: 0 0 28.60%; /* first 6 item columns: 415 / 1451 */
   }
   .table-footer .tf-totals {
     display: grid;
-    grid-template-columns: 45fr 110fr 110fr 110fr 95fr 120fr 50fr 130fr 110fr 90fr;
+    grid-template-columns: 38fr 82fr 82fr 82fr 78fr 78fr 78fr 82fr 42fr 65fr 76fr 100fr 85fr 68fr;
     align-items: center;
     flex: 1 1 auto;
   }
+  .table-footer .dmd-total { display: inline; }
   .table-footer button:hover { background: #edf2f7; border-color: #a0aec0; }
   .table-footer button:active { transform: translateY(1px); }
 
   .info-bar {
     background: #e9edf2;
-    padding: 3px 8px;
-    font-size: 11px;
+    padding: 4px 8px;
+    font-size: 14px;
     font-weight: 600;
     display: grid;
     grid-template-columns: 220px 1fr 360px;
@@ -364,39 +393,57 @@
     background: #e9edf2;
     padding: 5px 8px;
     display: grid;
-    grid-template-columns: 220px 300px 340px 360px;
-    gap: 0 14px;
+    grid-template-columns: 200px 390px 215px 270px 260px;
+    gap: 0 12px;
     padding-right: 250px; /* reserve space for right action panel */
-    font-size: 11px;
+    font-size: 14px;
     border-top: 1px solid #c4ccd7;
     align-items: start;
   }
   .bottom-section > div {
     display: grid;
-    grid-auto-rows: 24px;
+    grid-auto-rows: 30px;
     align-content: start;
+  }
+  .bottom-section > div.payment-method {
+    border: 1px solid #d6deea;
+    border-radius: 8px;
+    background: #fff;
+    padding: 4px 6px;
+    margin-top: -2px;
+  }
+  .bottom-section .section-title {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #cbd5e1;
+    color: #213f73;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
   .bottom-section .row {
     display: flex;
     align-items: center;
     gap: 4px;
     padding: 0;
-    min-height: 24px;
+    min-height: 30px;
     white-space: nowrap;
   }
   .bottom-section label {
     font-weight: 600;
-    font-size: 11px;
+    font-size: 14px;
     min-width: 76px;
     color: #4a5568;
     line-height: 1;
   }
   .bottom-section input, .bottom-section select {
-    font-size: 11px;
-    padding: 1px 4px;
+    font-size: 14px;
+    padding: 2px 4px;
     border: 1px solid #9ea7b3;
     background: #fff;
-    height: 21px;
+    height: 26px;
     width: 70px;
     border-radius: 2px;
     color: #2d3748;
@@ -420,6 +467,52 @@
     color: #1f2937;
     font-weight: 500;
   }
+  .payment-method .account-row {
+    display: grid;
+    grid-template-columns: 78px 132px 92px;
+    align-items: center;
+    gap: 4px;
+  }
+  .payment-method .received-row {
+    display: grid;
+    grid-template-columns: 78px 92px 20px 58px;
+    align-items: center;
+    gap: 4px;
+  }
+  .payment-method .account-row label {
+    min-width: 0;
+  }
+  .payment-method .received-row .received-label {
+    font-weight: 700;
+  }
+  .payment-method .account-row select {
+    width: 132px;
+  }
+  .payment-method .account-row .pay-amount,
+  .payment-method .account-row .ccard-amount,
+  .payment-method .received-row .pay-amount {
+    width: 92px;
+    text-align: right;
+  }
+  .payment-method .received-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+  .payment-method .credit-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: #1f2937;
+    justify-self: start;
+    white-space: nowrap;
+  }
+  .payment-method .credit-inline input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
 
   /* ===== RIGHT BUTTONS ===== */
   .action-buttons {
@@ -441,8 +534,8 @@
     background: #fff;
     border: 1px solid #9ea7b3;
     border-radius: 4px;
-    padding: 4px 16px;
-    font-size: 12px;
+    padding: 7px 16px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     min-width: 110px;
@@ -458,7 +551,7 @@
     background: #f8fafc;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 14px;
     color: #334155;
   }
   .secondary-sync-box input[type="checkbox"] {
@@ -476,7 +569,7 @@
     background: #fff7ed;
     border: 1px solid #fdba74;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
     color: #9a3412;
   }
@@ -492,7 +585,7 @@
     border-radius: 6px;
     background: #fff7ed;
     color: #9a3412;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
   }
@@ -595,7 +688,7 @@
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    width: 820px;
+    width: min(1280px, calc(100vw - 40px));
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     animation: popIn 0.2s ease-out;
     overflow: hidden;
@@ -634,10 +727,13 @@
 
   .exchange-body {
     padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   table.exchange-table {
     width: 100%;
+    min-width: 1180px;
     border-collapse: collapse;
     font-size: 11px;
     border-radius: 4px;
@@ -762,7 +858,7 @@
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    width: 900px;
+    width: min(1280px, calc(100vw - 40px));
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     animation: popIn 0.2s ease-out;
     overflow: hidden;
@@ -779,10 +875,15 @@
     letter-spacing: 0.3px;
   }
 
-  .sr-body { padding: 6px; }
+  .sr-body {
+    padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   table.sr-table {
     width: 100%;
+    min-width: 1160px;
     border-collapse: collapse;
     font-size: 11px;
     border-radius: 4px;
@@ -1108,7 +1209,78 @@
     .title-bar { font-size: 11px; padding: 5px 8px; }
     .table-footer { overflow-x: auto; }
   }
+
+  /* ===== READABILITY BOOST ===== */
+  body {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .title-bar {
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .top-section label,
+  .bottom-section label,
+  .inline-check,
+  .table-footer,
+  .info-bar {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .top-section input,
+  .top-section select,
+  .bottom-section input,
+  .bottom-section select,
+  .table-footer button {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .top-section input,
+  .top-section select {
+    height: 24px;
+  }
+  .bottom-section input,
+  .bottom-section select {
+    height: 23px;
+  }
+  .bottom-section .section-title {
+    font-size: 12px;
+    font-weight: 900;
+  }
+  table.items,
+  table.exchange-table,
+  table.sreturn-table {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  table.items thead th,
+  table.exchange-table thead th,
+  table.sreturn-table thead th {
+    font-size: 11px;
+    font-weight: 800;
+  }
+  table.items tbody td,
+  table.exchange-table tbody td,
+  table.sreturn-table tbody td {
+    font-weight: 700;
+  }
+  table.items tbody input,
+  table.exchange-table tbody input,
+  table.sreturn-table tbody input {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .action-buttons button {
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .payment-method .received-row .received-label,
+  .payment-method .credit-inline,
+  .table-footer .tf-label {
+    font-weight: 800;
+  }
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>
@@ -1124,7 +1296,7 @@
   <div class="top-section">
     <div>
       <div class="row billno-row"><label id="lblBillNo">Bill No</label><input id="fBillNo" class="lg" value="" readonly><span class="inline-check"><input id="fManualBillNo" type="checkbox" style="width:16px;height:16px;"><span>Manual BNo</span></span></div>
-      <div class="row"><label>Rate/gm</label><input id="fRatePerGm" class="sm" value="{{ number_format((float)($rates['GRATE'] ?? 0),2,'.','') }}"><input id="fRatePurity" class="sm" value="99.5"><label>Counter</label><select id="fCounter" style="width:80px;font-size:11px;height:20px;"><option value="">--</option></select></div>
+      <div class="row"><label>Rate/gm</label><input id="fRatePerGm" class="sm" value="{{ number_format((float)($rates['GRATE'] ?? 0),2,'.','') }}"><input id="fRatePurity" class="sm" value="99.5"><select id="fCounter" hidden><option value="">--</option></select></div>
       <div class="row customer-row"><label>Customer</label><input id="fCustomerCodeInput" class="sm" value="" autocomplete="off"><input id="fCustomerName" class="lg" value="" autocomplete="off"><input type="hidden" id="fCustomerCode" value=""><button id="btnCustSearch" title="Search Customer">^</button><button id="btnCustCreate" title="Create Customer">+</button>
         <div id="custSearchResults"></div>
       </div>
@@ -1147,7 +1319,8 @@
     <div>
       <div class="row"><label>Date</label><input id="fBillDate" type="date" class="md" value="" style="background:#fefce8;"><span id="fBillTime" style="font-size:10px;margin-left:6px;"></span></div>
       <div class="row"><label>Op.Wgt</label><input id="fOpWgt" class="sm" value=".000"><label>Rate/8 gm</label><input id="fRatePer8gm" class="sm" value="{{ number_format(((float)($rates['GRATE'] ?? 0))*8,2,'.','') }}"></div>
-      <div class="row ob-row"><label class="ob-label">OB</label><input id="fOB" class="sm" value=".00"><label class="sm-label">SM Name</label><select id="fSmName" style="font-size:11px;height:20px;"><option value="">--</option></select><label class="tiny-label">WS</label><input id="fWs" type="checkbox"></div>
+      <div class="row ob-row"><label class="ob-label">OB</label><input id="fOB" class="sm" value=".00"><label class="sm-label">SM Name</label><select id="fSmName" style="font-size:11px;height:20px;"><option value="">--</option></select><input id="fWs" type="checkbox" hidden></div>
+      <div class="row item-group-row"><label>Group</label><select id="fItemGroup"><option value="">-- All --</option></select></div>
       <div class="row" id="rowPrevAdv"><label>Prev.Adv</label><input id="fPrevAdv" class="sm" value=".00"><span style="flex:1 1 auto;"></span><button type="button" id="btnRateAll" style="font-size:10px;padding:2px 8px;border:1px solid #cbd5e0;border-radius:3px;background:#fff;cursor:pointer;">Rate All</button></div>
     </div>
   </div>
@@ -1162,22 +1335,26 @@
     <table class="items">
       <thead>
         <tr>
-          <th style="width:60px;">Item code</th>
-          <th style="width:150px;">Item Name</th>
-          <th style="width:70px;">Purity</th>
-          <th style="width:70px;">Model</th>
-          <th style="width:70px;">HSN</th>
-          <th style="width:80px;">HUID</th>
-          <th style="width:45px;">Qty</th>
-          <th style="width:110px;">Weight in Gm.</th>
-          <th style="width:110px;">Stone Weight</th>
-          <th style="width:110px;">Net Wgt in Gm.</th>
-          <th style="width:95px;">Stone Price</th>
-          <th style="width:120px;">Wastage in Gm.</th>
-          <th style="width:50px;">MC %</th>
-          <th style="width:130px;">Making Charge</th>
-          <th style="width:110px;">Amount</th>
-          <th style="width:90px;">Rate</th>
+          <th style="width:55px;">Item Code</th>
+          <th style="width:125px;">Item Name</th>
+          <th style="width:55px;">Purity</th>
+          <th style="width:65px;">Barcode</th>
+          <th style="width:55px;">HSN</th>
+          <th style="width:60px;">HUID</th>
+          <th style="width:38px;">Qty</th>
+          <th style="width:82px;">Weight</th>
+          <th style="width:82px;">Stone Wgt</th>
+          <th style="width:82px;">Net Wgt</th>
+          <th style="width:78px;">Stone Price</th>
+          <th class="dmd-col" style="width:78px;">Diamond Wgt</th>
+          <th class="dmd-col" style="width:78px;">Diamond Amt</th>
+          <th style="width:82px;">Wastage</th>
+          <th style="width:42px;">MC %</th>
+          <th style="width:65px;">VA Disc %</th>
+          <th style="width:76px;">Disc VA Amt</th>
+          <th style="width:100px;">Making Charge</th>
+          <th style="width:85px;">Amount</th>
+          <th style="width:68px;">Rate</th>
         </tr>
       </thead>
       <tbody id="itemsTbody">
@@ -1199,8 +1376,12 @@
       <span id="ftStoneWgt" class="tfv">0.000</span>
       <span id="ftNetWgt" class="tfv">.000</span>
       <span id="ftStonePrice" class="tfv">.00</span>
+      <span id="ftDmdWgt" class="tfv dmd-total">0.000</span>
+      <span id="ftDmdAmt" class="tfv dmd-total">0.00</span>
       <span id="ftWastage" class="tfv">.00</span>
       <span class="tfv">0.00</span>
+      <span id="ftVaDiscPerc" class="tfv">0.00</span>
+      <span id="ftVaDiscAmt" class="tfv">0.00</span>
       <span id="ftMcAmt" class="tfv">0.00</span>
       <span id="ftAmount" class="tfv">0.00</span>
       <span id="ftRate" class="tfv">0.00</span>
@@ -1232,51 +1413,60 @@
       <div class="row"><label>Discount</label><input id="fDiscount" value="" autocomplete="off"><input id="fDiscountPerc" class="w50" value="0.00" autocomplete="off"></div>
       <div class="row"><label>Grand Amt</label><input id="fGrandAmt" class="w80" value=".00" readonly></div>
       <div class="row"><label>Purch.Tax</label><input id="fPurchTaxPerc" class="w50" value="."><input id="fPurchTaxAmt" class="w50" value=".00"></div>
-      <div class="row"><label>Cash/Bank</label><select id="fCashBank"><option>CASH IN HAND</option></select></div>
-      <div class="row"><label>Chq Bank</label><select id="fChqBank" style="width:120px;"><option></option></select></div>
       <div class="row"><label>Agent</label><select id="fAgent" style="width:120px;"><option></option></select></div>
       <div class="row"><label>Approved by</label><select id="fApprovedBy" style="width:120px;"><option></option></select></div>
     </div>
 
+    <!-- Payment Method -->
+    <div class="payment-method">
+      <div class="section-title">Payment Method</div>
+      <div class="received-row"><label class="received-label">Received Amt</label><input id="fTotalRcvd" class="pay-amount" value=".00" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="fTotalRcvd_nohistory"><input id="fCredit" type="checkbox"><span>Credit</span></div>
+      <div class="account-row"><label>Cash/Bank</label><select id="fCashBank"><option>CASH IN HAND</option></select><input id="fCashAmt" class="pay-amount" value=".00"></div>
+      <div class="account-row"><label>Chq Bank</label><select id="fChqBank"><option></option></select><input id="fChqAmt" class="pay-amount" value=".00"></div>
+      <input type="hidden" id="fCcardAmt" value="">
+      <div class="row"><label>BC</label><input id="fBcPerc" class="w50" value=".00"><input id="fBcAmt" class="w50" value=".00"></div>
+      <div class="row"><label>Chq. Date</label><input id="fChqDate" type="date" class="w80" value=""></div>
+      <div class="row"><label>Chq. No</label><input id="fChqNo" class="w80" value=""><input id="fPdc" type="checkbox"><span>PDC</span></div>
+      <div class="row" style="display:none"><label></label><input id="fCcardPdc" type="checkbox"><span class="chk-text">CCard PDC ?</span></div>
+    </div>
+
     <!-- Column 2 -->
     <div>
-      <div class="row"><label>Repair</label><input id="fRepair" class="w80" value=".00"></div>
-      <div class="row"><label>Cess</label><input id="fCessPerc" class="w50" value="0."><input id="fCessAmt" class="w50" value=".00"></div>
-      <div class="row"><label>Fancy Amt</label><input id="fFancyAmt" class="w80" value=".00"></div>
+      <div class="row"><label>Balance</label><input id="fBalance" class="w80" value=".00" readonly></div>
+      <div class="row"><label>Due Date</label><input id="fDueDate" type="date" class="w80" value=""></div>
+      <input type="hidden" id="fRepair" value=".00">
+      <input type="hidden" id="fCessPerc" value="0.">
+      <input type="hidden" id="fCessAmt" value=".00">
+      <input type="hidden" id="fFancyAmt" value=".00">
       <div class="row"><label>Schm Less</label><input id="fSchemeAmt" class="w80" value=".00"><select id="fSchemeLedger" class="w80"><option value="APP">APP</option><option value="SCHMAMT">GP</option></select></div>
       <div class="row"><label>TCS</label><input id="fTcsPerc" class="w50" value="0.00"><input id="fTcsAmt" class="w50" value=".00"></div>
       <div class="row"><label></label><input id="fInterstate" type="checkbox"><span class="chk-text">Interstate</span></div>
       <div class="row" style="display:none"><label></label><input id="fLoan" type="checkbox"><span class="chk-text">Loan</span></div>
       <div class="row" style="display:none"><label></label><input id="fAddBc" type="checkbox"><span class="chk-text">Add BC</span></div>
-      <div class="row" style="display:none"><label></label><input id="fCcardPdc" type="checkbox"><span class="chk-text">CCard PDC ?</span></div>
     </div>
 
     <!-- Column 3 -->
     <div>
+      <div class="row"><label>Sales Ret.</label><input id="fSalesRetAmt" class="w80" value="0.00" readonly></div>
+      <div class="row"><label>Net Total</label><input id="fNetTotal" class="w80" value=".00" readonly></div>
       <div class="row"><label>Exchange</label><input id="fExchangeAmt" class="w80" value="0.00" readonly></div>
       <div class="row"><label>HMC</label><input id="fHmc" class="w80" value=".00"></div>
-      <div class="row"><label id="lblTotalRcvd">Total Rcvd</label><input id="fTotalRcvd" class="w80" value=".00" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="fTotalRcvd_nohistory"></div>
+      <label id="lblTotalRcvd" style="display:none">Total Rcvd</label>
       <div class="row"><label>Net Amt</label><input id="fNetAmt" class="w80" value=".00" readonly> CB: <input id="fCb" class="w50" value=".00"></div>
       <div class="row"><label>Note</label><input id="fNote" style="width:150px;" value=""></div>
-      <div class="row"><label>CCardAmt</label><input id="fCcardAmt" value=""> BC: <input id="fBcPerc" class="w50" value=".00"><input id="fBcAmt" class="w50" value=".00"></div>
-      <div class="row"><label>Chq.Amt/Dt</label><input id="fChqAmt" class="w50" value=".00"><input id="fChqDate" type="date" class="w80" value=""></div>
-      <div class="row"><label>Chq. No</label><input id="fChqNo" class="w80" value=""><input id="fPdc" type="checkbox"><span>PDC</span></div>
       <div class="row"><label>Veh. No.</label><input id="fVehNo" class="w80" value=""></div>
       <div class="row"><label></label><label>Scheme Bal</label><input id="fSchemeBal" class="w80" value=""></div>
     </div>
 
     <!-- Column 4 -->
     <div>
-      <div class="row"><label style="min-width:auto;">Redeem Points</label><input id="fRedeemPoints" type="checkbox"><label>Sales Ret.</label><input id="fSalesRetAmt" class="w80" value="0.00" readonly></div>
-      <div class="row"><label></label><label>Net Total</label><input id="fNetTotal" class="w80" value=".00" readonly></div>
-      <div class="row"><label></label><input id="fCredit" type="checkbox"><span>Credit</span><label style="margin-left:10px;">Balance</label><input id="fBalance" class="w80" value=".00" readonly></div>
-      <div class="row"><label>Due Date</label><input id="fDueDate" type="date" class="w80" value=""></div>
+      <div class="row"><label>Redeem Points</label><input id="fRedeemPoints" type="checkbox"></div>
+      <div class="row"><label>Send Sms</label><input id="fSendSms" type="checkbox"></div>
       <div class="row"><label>PC Points</label><input id="fPcPoints" class="w80" value=""></div>
       <div class="row"><label>PC Amt</label><input id="fPcAmt" class="w80" value=""></div>
       <div class="row"><label>Supply Place</label><input id="fSupplyPlace" class="w80" value=""></div>
       <div class="row"><label id="lblState">State</label><select id="fState" style="width:100px;"><option></option></select></div>
-      <div class="row"><label>Distance</label><input id="fDistance" class="w80" value=""></div>
-      <div class="row"><label></label><input id="fSendSms" type="checkbox"><span>Send Sms</span></div>
+      <input type="hidden" id="fDistance" value="">
     </div>
   </div>
   <!-- Action Buttons (right side) -->
@@ -1289,9 +1479,7 @@
       <span>Quotation</span>
     </label>
     <button type="button" id="btnSave">Save</button>
-    <button type="button" id="btnShortPrint">Short Print</button>
     <button type="button" id="btnExit">Exit</button>
-    <button type="button" id="btnQtnPrint">Qtn Print</button>
   </div>
 </div>
 
@@ -1464,11 +1652,8 @@
         <input id="srTaxPerc" value="3." style="width:30px;">
         <input id="srTaxAmt" value=".00">
       </div>
-      <div class="field-group">
-        <label>Cess:</label>
-        <input id="srCessPerc" value="." style="width:30px;">
-        <input id="srCessAmt" value=".00">
-      </div>
+      <input type="hidden" id="srCessPerc" value=".">
+      <input type="hidden" id="srCessAmt" value=".00">
       <div class="field-group">
         <label>Bill Amt :</label>
         <input id="srBillAmt" class="wide" value="0.00" style="background:#fefce8;">
@@ -1491,12 +1676,34 @@
 
 <!-- Bill Item Selection Popup -->
 <div id="srBillSelectOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;">
+  <div style="background:#fff;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-width:760px;max-width:92vw;max-height:86vh;display:flex;flex-direction:column;">
     <div style="background:#2d3748;color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;">
       <span style="font-weight:600;font-size:13px;">Select Items to Return</span>
       <button id="btnSrBillSelClose" style="background:rgba(255,255,255,0.15);color:#fff;border:none;width:22px;height:20px;font-size:14px;font-weight:700;cursor:pointer;border-radius:4px;">&#10005;</button>
     </div>
+    <div style="padding:8px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input id="srBillSearchQ" placeholder="Search bill no / customer..." style="height:26px;flex:1;border:1px solid #cbd5e1;border-radius:4px;padding:0 8px;font-size:12px;">
+        <button id="btnSrBillSearch" style="height:26px;background:#2b6cb0;color:#fff;border:none;border-radius:4px;padding:0 12px;font-size:12px;font-weight:600;cursor:pointer;">Search Bill</button>
+      </div>
+      <div style="max-height:120px;overflow:auto;border:1px solid #e2e8f0;background:#fff;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead>
+            <tr style="background:#edf2f7;">
+              <th style="padding:4px 6px;text-align:left;width:120px;">Bill No</th>
+              <th style="padding:4px 6px;text-align:left;width:90px;">Date</th>
+              <th style="padding:4px 6px;text-align:left;">Customer</th>
+              <th style="padding:4px 6px;text-align:right;width:90px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="srBillSearchTbody">
+            <tr><td colspan="4" style="padding:8px;text-align:center;color:#718096;">Search or select current bill items below.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div style="overflow-y:auto;flex:1;padding:8px;">
+      <div id="srBillItemCaption" style="font-size:11px;font-weight:700;color:#4a5568;margin-bottom:5px;">Current bill items</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead>
           <tr style="background:#edf2f7;">
@@ -1562,7 +1769,7 @@
     <div id="passwordModalTitle" class="head">E-Invoice Password</div>
     <div id="passwordModalText" class="body">Enter API password to generate e-invoice.</div>
     <div class="body" style="padding-top:0;">
-      <input id="passwordModalInput" type="password" autocomplete="current-password" style="width:100%;height:36px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:14px;" placeholder="Enter password">
+      <input id="passwordModalInput" name="password" type="password" autocomplete="current-password" style="width:100%;height:36px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:14px;" placeholder="Enter password">
     </div>
     <div class="foot" style="gap:8px;">
       <button id="passwordModalCancel" class="secondary-btn" type="button">Cancel</button>
@@ -1579,7 +1786,7 @@
   // 1. CONFIG & CONSTANTS
   // ══════════════════════════════════════════════════════════════════
   const csrf = document.querySelector('meta[name="csrf-token"]').content;
-  const { siteUrl, currentDatabase, mode, rates, exchItems, billTypes, counters, salesmen, agents, cashBanks, approvedBy, states, mcRows, wstgRows, software, access = {} } = window.SB_CONFIG;
+  const { siteUrl, currentDatabase, mode, rates, exchItems, itemGroups = [], billTypes, counters, salesmen, agents, cashBanks, approvedBy, states, mcRows, wstgRows, software, access = {} } = window.SB_CONFIG;
   const ALLOW_PREV_NEXT_BUTTONS = !!access.allowPrevNextButtons;
   const GOLD_RATE     = rates.GRATE;
   const SILVER_RATE   = rates.SRATE;
@@ -1622,8 +1829,9 @@
   const BAL_RCVD_TO_DISCOUNT = flagY(sw.BalRcvdToDiscount, 'N');
   const IS_SECONDARY_DB = !!(window.SB_CONFIG?.isSecondaryDb);
   const DEFAULT_SALES_TAX_PERC = IS_SECONDARY_DB ? 0 : 3;
-  const ASK_EINVOICE_ABOVE_AMOUNT = flagY(sw.AskEInvoiceAboveAmount, 'Y');
-  const EINVOICE_THRESHOLD_AMOUNT = Number(sw.EInvoiceThresholdAmount ?? 1000000) || 1000000;
+  const EWAY_BILL_THRESHOLD_AMOUNT = Number(sw.EWayBillThresholdAmount ?? sw.EInvoiceThresholdAmount ?? 1000000) || 1000000;
+  const PAN_REQUIRED_AMOUNT = 200000;
+  const PAN_REQUIRED_MESSAGE = 'Amount two lakh above. Please add PAN card.';
 
   // ══════════════════════════════════════════════════════════════════
   // 2. STATE
@@ -1634,6 +1842,7 @@
   let currentBillNo = '';
   let currentLegacySlno = 0;
   let isSaving = false;
+  let navigationViewOnly = false;
   let forceItemCodeFocusIdx = -1;
   let pendingItemCodeFocusIdx = -1;
   let pendingItemCodePickerIdx = -1;
@@ -1647,6 +1856,7 @@
   let billNoRefreshToken = 0;
   let totalRcvdDirty = false;
   let discountDirty = false;
+  let autoAdjustReceivedOnce = false;
   let _nextRowId = 1;
   function nextRowId() { return _nextRowId++; }
 
@@ -1654,13 +1864,44 @@
   // 3. UTILITIES
   // ══════════════════════════════════════════════════════════════════
   async function api(url, method, payload) {
-    const opts = { method, headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf } };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const opts = { method, signal: controller.signal, headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf } };
     if (method === 'POST') {
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(payload || {});
     }
-    const res = await fetch(url, opts);
-    return await res.json();
+    try {
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      let data = null;
+      if (!text && res.ok) {
+        return { ok: true, message: 'Saved successfully.', status: res.status };
+      }
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (_) {
+        const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        return {
+          ok: false,
+          message: plain
+            ? `Server returned ${res.status}: ${plain.slice(0, 220)}`
+            : `Server returned ${res.status} ${res.statusText || ''}`.trim(),
+          status: res.status,
+        };
+      }
+      if (!res.ok && data && typeof data === 'object' && data.ok === undefined) {
+        data.ok = false;
+      }
+      return data;
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        throw new Error('Request timeout. Please try again.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function toNum(v) {
@@ -1690,6 +1931,9 @@
     if (ROUND_OFF_ALL_AMT) return Math.round(num);
     const p = Math.pow(10, ROUND_DEC);
     return Math.round(num * p) / p;
+  }
+  function roundReceivedAmount(n) {
+    return Math.round(toNum(n));
   }
   function billTypeTaxPerc(rawCode = val('fBillType')) {
     const code = String(rawCode || '').trim().toUpperCase();
@@ -1738,6 +1982,13 @@
     if (h === 0) h = 12;
     return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ' ' + ap;
   }
+  function setNavigationViewOnly(on) {
+    navigationViewOnly = !!on;
+    const btn = $('btnSave');
+    if (!btn) return;
+    btn.disabled = navigationViewOnly;
+    btn.title = navigationViewOnly ? 'Previous/Next loaded bills are view only.' : '';
+  }
 
   function showAlert(msg, ok, onClose = null) {
     const modal = $('msgModal');
@@ -1746,7 +1997,7 @@
     const btn = $('msgModalOk');
     if (modal && title && text && btn) {
       warningCloseHandler = (typeof onClose === 'function') ? onClose : null;
-      title.textContent = ok ? 'Saved' : 'Warning';
+      title.textContent = ok ? (String(msg || '').toLowerCase().includes('generating') ? 'Please wait' : 'Saved') : 'Warning';
       text.textContent = String(msg || '');
       modal.classList.add('active');
       modal.setAttribute('aria-hidden', 'false');
@@ -1771,7 +2022,32 @@
     el._t = setTimeout(() => { el.style.opacity = '0'; }, ok ? 3000 : 6000);
   }
 
+  function billAmountForPanCheck() {
+    return Math.max(
+      toNum(val('fGrandAmt')),
+      toNum(val('fNetAmt')),
+      toNum(val('fNetTotal')),
+      toNum(val('fBillTotal'))
+    );
+  }
+
+  function validatePanForHighAmount() {
+    return true;
+  }
+
+  function closeCurrentModuleWindow() {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'goldapp:close-module-frame' }, '*');
+        return;
+      }
+    } catch (_) {}
+    try { window.close(); } catch (_) {}
+  }
+
   function openBillPrintPreview(kind = 'full') {
+    if (!validatePanForHighAmount()) return;
+
     const billNo = val('fBillNo') || '';
     const billDate = val('fBillDate') || '';
     const customer = val('fCustomerName') || '';
@@ -1783,27 +2059,164 @@
 
     const rows = (items || []).filter(r => String(r.item_code || '').trim() !== '');
     if (kind === 'short') {
-      const thermalRows = rows.map((r, i) => `
+      // Salesman code + bill-type letter for the header
+      const smSelEl = $('fSmName');
+      const smCode = smSelEl ? (smSelEl.value || (smSelEl.selectedOptions[0] ? smSelEl.selectedOptions[0].textContent : '')) : '';
+      const btSelEl = $('fBillType');
+      const btRaw = btSelEl ? (btSelEl.value || (btSelEl.selectedOptions[0] ? btSelEl.selectedOptions[0].textContent : '')) : '';
+      const btLetter = String(btRaw || 'G').trim().charAt(0).toUpperCase();
+      const catOf = (r) => String(r.display_category || r.item_type || r.item_code || '').trim().charAt(0).toUpperCase();
+
+      // Per-row totals
+      let tQty = 0, tW = 0, tSW = 0, tNW = 0, tSP = 0, tA = 0;
+      rows.forEach(r => {
+        tQty += toNum(r.qty);
+        tW   += toNum(r.weight);
+        tSW  += toNum(r.stone_wgt);
+        tNW  += toNum(r.net_wgt);
+        tSP  += toNum(r.stone_price);
+        tA   += toNum(r.amount);
+      });
+
+      const thermalRows = rows.map((r) => `
         <tr>
-          <td>${i + 1}</td>
-          <td>
-            <div>${esc(r.item_name || r.item_code || '')}</div>
-            <div style="font-size:10px;">${esc(r.item_code || '')}</div>
-            <div style="font-size:10px;">VA %: ${fmt2(toNum(r.mc_perc ?? r.vaperc ?? 0))}</div>
-            <div style="font-size:10px;">VA Amt: ${fmt2(toNum(r.making_charge || 0))}</div>
-            <div style="font-size:10px;">Rate/gm: ${fmt2(toNum(r.rate || 0))}</div>
-          </td>
-          <td style="text-align:right;">${fmt3(r.weight)}</td>
-          <td style="text-align:right;">${fmt2(r.amount)}</td>
+          <td>${esc(catOf(r))}</td>
+          <td class="r">${toNum(r.qty)}</td>
+          <td class="r">${fmt2(toNum(r.rate))}</td>
+          <td class="r">${fmt3(r.weight)}</td>
+          <td class="r">${fmt3(r.stone_wgt)}</td>
+          <td class="r">${fmt3(r.net_wgt)}</td>
+          <td class="r">${fmt2(toNum(r.vaperc ?? r.mc_perc ?? 0))}</td>
+          <td class="r">${fmt2(r.stone_price)}</td>
+          <td class="r">${fmt2(r.amount)}</td>
         </tr>`).join('');
 
-      const title = 'Estimate';
+      const totalRow = `
+        <tr class="tot">
+          <td></td>
+          <td class="r">${toNum(tQty)}</td>
+          <td></td>
+          <td class="r">${fmt3(tW)}</td>
+          <td class="r">${fmt3(tSW)}</td>
+          <td class="r">${fmt3(tNW)}</td>
+          <td></td>
+          <td class="r">${fmt2(tSP)}</td>
+          <td class="r">${fmt2(tA)}</td>
+        </tr>`;
+
+      // ── Exchange (old gold given) rows ──────────────────────────────
+      const exItems = (exchRows || []).filter(r => toNum(r.weight) > 0 || toNum(r.amount) !== 0);
+      let eW = 0, eLess = 0, eNW = 0, eA = 0;
+      exItems.forEach(r => {
+        eW    += toNum(r.weight);
+        eLess += toNum(r.less_wgt ?? r.mud_less ?? 0);
+        eNW   += toNum(r.net_wgt);
+        eA    += toNum(r.amount);
+      });
+      const exchangeSection = exItems.length ? `
+        <div class="sec-title">Exchange</div>
+        <table class="items">
+          <thead>
+            <tr>
+              <th>Item</th><th class="r">Wgt</th><th class="r">Less</th><th class="r">Touch</th>
+              <th class="r">Rate</th><th class="r">NetWt</th><th class="r">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${exItems.map(r => `
+              <tr>
+                <td>${esc(r.item_name || r.item_code || 'OLD')}</td>
+                <td class="r">${fmt3(r.weight)}</td>
+                <td class="r">${fmt3(toNum(r.less_wgt ?? r.mud_less ?? 0))}</td>
+                <td class="r">${fmt2(toNum(r.touch))}</td>
+                <td class="r">${fmt2(toNum(r.rate))}</td>
+                <td class="r">${fmt3(r.net_wgt)}</td>
+                <td class="r">${fmt2(r.amount)}</td>
+              </tr>`).join('')}
+            <tr class="tot">
+              <td></td>
+              <td class="r">${fmt3(eW)}</td>
+              <td class="r">${fmt3(eLess)}</td>
+              <td></td><td></td>
+              <td class="r">${fmt3(eNW)}</td>
+              <td class="r">${fmt2(eA)}</td>
+            </tr>
+          </tbody>
+        </table>` : '';
+
+      // ── Sales return rows (same model as sold items) ────────────────
+      const srItems = (srRows || []).filter(r => String(r.item_code || '').trim() !== '' || toNum(r.amount) !== 0);
+      let rQty = 0, rW = 0, rSW = 0, rNW = 0, rSP = 0, rA = 0;
+      srItems.forEach(r => {
+        rQty += toNum(r.qty);
+        rW   += toNum(r.weight);
+        rSW  += toNum(r.stone_wgt);
+        rNW  += toNum(r.net_wgt);
+        rSP  += toNum(r.stone_price);
+        rA   += toNum(r.amount);
+      });
+      const salesReturnSection = srItems.length ? `
+        <div class="sec-title">Sales Return</div>
+        <table class="items">
+          <thead>
+            <tr>
+              <th>C#</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Gwt</th>
+              <th class="r">Swt</th><th class="r">Netwt</th><th class="r">VA%</th><th class="r">S.Amt</th><th class="r">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${srItems.map(r => `
+              <tr>
+                <td>${esc(catOf(r))}</td>
+                <td class="r">${toNum(r.qty)}</td>
+                <td class="r">${fmt2(toNum(r.rate))}</td>
+                <td class="r">${fmt3(r.weight)}</td>
+                <td class="r">${fmt3(r.stone_wgt)}</td>
+                <td class="r">${fmt3(r.net_wgt)}</td>
+                <td class="r">${fmt2(toNum(r.vaperc ?? r.mc_perc ?? 0))}</td>
+                <td class="r">${fmt2(r.stone_price)}</td>
+                <td class="r">${fmt2(r.amount)}</td>
+              </tr>`).join('')}
+            <tr class="tot">
+              <td></td>
+              <td class="r">${toNum(rQty)}</td>
+              <td></td>
+              <td class="r">${fmt3(rW)}</td>
+              <td class="r">${fmt3(rSW)}</td>
+              <td class="r">${fmt3(rNW)}</td>
+              <td></td>
+              <td class="r">${fmt2(rSP)}</td>
+              <td class="r">${fmt2(rA)}</td>
+            </tr>
+          </tbody>
+        </table>` : '';
+
+      const exchangeAmt = val('fExchangeAmt') || '0.00';
+      const salesRetAmt = val('fSalesRetAmt') || '0.00';
+
+      // Tax breakdown (CGST/SGST when intra-state, IGST when inter-state)
+      const taxPerc = toNum(val('fTaxPerc'));
+      const taxAmt = toNum(val('fTaxAmt') || '0');
+      const interstate = chk('fInterstate');
+      let cgstP = 0, sgstP = 0, igstP = 0, cgstA = 0, sgstA = 0, igstA = 0;
+      if (interstate) {
+        igstP = taxPerc; igstA = taxAmt;
+      } else {
+        cgstP = sgstP = taxPerc / 2;
+        cgstA = sgstA = taxAmt / 2;
+      }
+      const totalVa = val('infoTotalVa') || '0.00';
+      const salesAmt = val('fBillTotal') || '0.00';
+      const finalAmt = val('fGrandAmt') || val('fNetAmt') || '0.00';
+      const pPerc = (p) => toNum(p).toFixed(3);
+
+      const title = 'Estimate ' + btLetter;
       const win = window.open('', '_blank', 'width=420,height=760,scrollbars=yes');
       if (!win) return false;
 
       win.document.write(`
         <!doctype html>
-        <html><head><title>${title} - ${esc(billNo)}</title>
+        <html><head><title>${esc(title)} - ${esc(billNo)}</title>
         <style>
           @@page { size: 80mm auto; margin: 4mm; }
           * { box-sizing: border-box; }
@@ -1811,20 +2224,25 @@
           .actions { margin: 0 0 10px 0; display: flex; justify-content: center; gap: 8px; }
           .actions button { border: 1px solid #555; background: #fff; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
           .slip { padding: 4px 0; }
-          .center { text-align: center; }
-          .title { font-size: 18px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
-          .shop { font-size: 15px; font-weight: 700; text-transform: uppercase; }
+          .title { font-size: 15px; font-weight: 700; }
+          .hdr { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+          .hdr td { vertical-align: top; padding: 0; }
+          .hdr .hr { text-align: right; white-space: nowrap; font-weight: 700; }
+          .bn { font-weight: 700; }
+          .cn { font-weight: 700; margin-bottom: 2px; }
           .rule { border-top: 1px dashed #000; margin: 6px 0; }
           .meta-row { display: flex; justify-content: space-between; gap: 8px; margin: 2px 0; }
           .meta-row div { white-space: nowrap; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { padding: 4px 2px; vertical-align: top; }
-          thead th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; font-size: 10px; text-transform: uppercase; }
-          tbody tr:last-child td { border-bottom: 1px dashed #000; }
+          table.items { width: 100%; border-collapse: collapse; font-size: 9px; }
+          table.items th, table.items td { padding: 2px 1px; vertical-align: top; }
+          table.items .r { text-align: right; }
+          table.items thead th { border-top: 1px dashed #000; border-bottom: 1px dashed #000; font-size: 9px; text-align: right; }
+          table.items thead th:first-child { text-align: left; }
+          table.items tr.tot td { border-top: 1px dashed #000; font-weight: 700; }
+          .sec-title { margin-top: 8px; font-weight: 700; font-size: 11px; }
           .totals { margin-top: 6px; }
-          .totals .meta-row { font-weight: 700; }
-          .totals .meta-row.grand { font-size: 13px; }
-          .foot { margin-top: 10px; text-align: center; font-size: 10px; }
+          .totals .meta-row.grand { font-size: 13px; font-weight: 700; }
+          .foot { margin-top: 10px; font-size: 10px; }
           @media print { .actions { display:none; } body { width: auto; } }
         </style>
         </head><body>
@@ -1833,28 +2251,38 @@
             <button type="button" onclick="window.__goldappExit()">Close</button>
           </div>
           <div class="slip">
-            <div class="center shop">Saleena Gold And Diamonds</div>
-            <div class="center title">${title}</div>
-            <div class="rule"></div>
-            <div class="meta-row"><div>Bill: ${esc(billNo)}</div><div>Date: ${esc(billDate)}</div></div>
-            <div class="meta-row"><div>Customer: ${esc(customer || '-')}</div></div>
-            <div class="meta-row"><div>Mobile: ${esc(mobile || '-')}</div></div>
-            <div class="meta-row"><div>Rate/8gm: ${esc(val('fRatePer8gm') || '0.00')}</div></div>
-            <table>
-              <thead>
-                <tr><th style="width:8%">#</th><th style="width:47%">Item</th><th style="width:20%; text-align:right;">Wgt</th><th style="width:25%; text-align:right;">Amt</th></tr>
-              </thead>
-              <tbody>${thermalRows || '<tr><td colspan="4" style="text-align:center;">No items</td></tr>'}</tbody>
+            <table class="hdr">
+              <tr>
+                <td class="title">${esc(title)}</td>
+                <td class="hr">${esc(billDate)}<br>${esc(smCode)}</td>
+              </tr>
             </table>
+            <div class="bn">${esc(billNo)}</div>
+            <div class="cn">${esc(customer || '')}</div>
+            <table class="items">
+              <thead>
+                <tr>
+                  <th>C#</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Gwt</th>
+                  <th class="r">Swt</th><th class="r">Netwt</th><th class="r">VA%</th><th class="r">S.Amt</th><th class="r">Total</th>
+                </tr>
+              </thead>
+              <tbody>${thermalRows || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}${rows.length ? totalRow : ''}</tbody>
+            </table>
+            ${exchangeSection}
+            ${salesReturnSection}
             <div class="totals">
-              <div class="meta-row"><div>Bill Total</div><div>${esc(val('fBillTotal') || '0.00')}</div></div>
-              <div class="meta-row"><div>Tax</div><div>${esc(tax)}</div></div>
-              <div class="meta-row"><div>Discount</div><div>${esc(disc)}</div></div>
-              <div class="meta-row grand"><div>Net Amount</div><div>${esc(netAmt)}</div></div>
-              <div class="meta-row"><div>Grand Amount</div><div>${esc(grand)}</div></div>
+              <div class="meta-row"><div>Total VA</div><div>${esc(totalVa)}</div></div>
+              <div class="meta-row"><div>Sales Amount</div><div>${esc(salesAmt)}</div></div>
+              ${exItems.length ? `<div class="meta-row"><div>Exchange</div><div>${esc(exchangeAmt)}</div></div>` : ''}
+              ${srItems.length ? `<div class="meta-row"><div>Sales Return</div><div>${esc(salesRetAmt)}</div></div>` : ''}
+              <div class="meta-row"><div>CGST ${pPerc(cgstP)} %</div><div>${fmt2(cgstA)}</div></div>
+              <div class="meta-row"><div>SGST ${pPerc(sgstP)} %</div><div>${fmt2(sgstA)}</div></div>
+              <div class="meta-row"><div>IGST ${pPerc(igstP)} %</div><div>${fmt2(igstA)}</div></div>
+              <div class="meta-row"><div>Tax Amount</div><div>${fmt2(taxAmt)}</div></div>
+              <div class="meta-row grand"><div>Final Amount</div><div>${esc(finalAmt)}</div></div>
             </div>
             <div class="rule"></div>
-            <div class="foot">Estimate Only</div>
+            <div class="foot">Notes:-</div>
           </div>
           <script>
             (function() {
@@ -2067,6 +2495,7 @@
       setVal('fChqBank', '');
       setVal('fChqAmt', '0.00');
       setVal('fCcardAmt', '0.00');
+      setVal('fCashAmt', '0.00');
       setVal('fBcPerc', '0.00');
       setVal('fBcAmt', '0.00');
       setVal('fPrevAdv', '0.00');
@@ -2174,41 +2603,209 @@
     });
   }
 
-  async function maybePromptEInvoice(billNo, amount) {
-    if (mode !== 'bill' || !ASK_EINVOICE_ABOVE_AMOUNT) return;
+  function isB2BBillType(rawCode = val('fBillType')) {
+    const code = String(rawCode ?? '').trim().toUpperCase();
+    if (!code) return false;
+    if (code === 'B2B' || code.includes('B2B') || code.includes('B3B') || /^B[23]/.test(code)) return true;
+    const list = Array.isArray(billTypes) ? billTypes : [];
+    const entry = list.find(b =>
+      String(b.code ?? '').trim().toUpperCase() === code ||
+      String(b.name ?? '').trim().toUpperCase() === code
+    );
+    if (!entry) return false;
+    const name = String(entry.name ?? '').toUpperCase();
+    const prefix = String(entry.prefix ?? '').toUpperCase();
+    return name === 'B2B' || name.includes('B2B') || name.includes('B3B') || prefix.includes('B2B') || prefix.includes('B3B');
+  }
 
-    const netAmount = toNum(amount);
-    if (netAmount <= EINVOICE_THRESHOLD_AMOUNT) return;
+  function findB2BBillTypeValue(rawCurrent = val('fBillType')) {
+    const list = Array.isArray(billTypes) ? billTypes : [];
+    const currentCode = String(rawCurrent ?? '').trim().toUpperCase();
+    const current = list.find(entry =>
+      String(entry?.code ?? '').trim().toUpperCase() === currentCode ||
+      String(entry?.name ?? '').trim().toUpperCase() === currentCode
+    );
+    const currentName = String(current?.name ?? '').trim().toUpperCase();
+    const currentPrefix = String(current?.prefix ?? '').trim().toUpperCase();
+    const directCodes = {
+      G: ['B2G'],
+      G18: ['B2B18'],
+      D: ['B2D'],
+      S: ['B2BSIL'],
+      P: ['B2BP'],
+      W: ['B2BW'],
+    }[currentCode] || [];
+
+    for (const code of directCodes) {
+      const direct = list.find(entry => String(entry?.code ?? '').trim().toUpperCase() === code);
+      if (direct?.code) return direct.code;
+    }
+
+    const score = entry => {
+      const code = String(entry?.code ?? '').trim().toUpperCase();
+      const name = String(entry?.name ?? '').trim().toUpperCase();
+      const prefix = String(entry?.prefix ?? '').trim().toUpperCase();
+      const haystack = `${code} ${name} ${prefix}`;
+      if (!haystack.includes('B2B') && !haystack.includes('B3B') && !/^B[23]/.test(code)) return 0;
+
+      let points = 1;
+      if (code === 'B2B' || name === 'B2B' || prefix === 'B2B') points += 3;
+      if (haystack.includes('B2B')) points += 2;
+      if (currentName && name.includes(currentName)) points += 5;
+      if (currentPrefix) {
+        const prefixHead = currentPrefix.split('/')[0];
+        if (prefixHead && prefix.includes(prefixHead)) points += 4;
+      }
+      if (currentCode && code.includes(currentCode)) points += 2;
+      return points;
+    };
+    const matched = list
+      .map(entry => ({ entry, score: score(entry) }))
+      .filter(row => row.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.entry;
+    if (matched?.code) return matched.code;
+
+    const sel = $('fBillType');
+    if (!sel) return '';
+    const options = Array.from(sel.options || []);
+    const opt = options.find(o => String(o.value || '').trim().toUpperCase() === 'B2B')
+      || options.find(o => String(o.textContent || '').trim().toUpperCase() === 'B2B')
+      || options.find(o => String(o.value + ' ' + o.textContent).toUpperCase().includes('B2B'));
+    return opt ? opt.value : '';
+  }
+
+  async function applyB2BBillTypeForGst(rawGstin = val('fGstNo')) {
+    if (mode !== 'bill' || currentLegacySlno > 0 || inQuotationMode()) return;
+    if (!String(rawGstin || '').trim()) return;
+    if (isB2BBillType()) return;
+
+    const b2bValue = findB2BBillTypeValue();
+    if (!b2bValue) return;
+
+    const before = val('fBillType');
+    setBillTypeByAny(b2bValue);
+    if (val('fBillType') === before) return;
+
+    applyHeaderRate();
+    setVal('fTaxPerc', String(normalizeTaxPerc(0, val('fBillType'))));
+    if (!chk('fManualBillNo') && (BILL_TYPEWISE_BILLNO || TAX_BILL_TYPE_WISE)) {
+      await refreshNextBillNo();
+    }
+    triggerRecalc();
+  }
+
+  function hasValidGstin(rawGstin = val('fGstNo')) {
+    return /^\d{2}[A-Z0-9]{13}$/.test(String(rawGstin || '').trim().toUpperCase());
+  }
+
+  async function maybePromptEInvoice(billNo, amount) {
+    if (!['bill', 'edit'].includes(mode)) return;
+
+    if (!isB2BBillType()) return;
 
     const wantsGenerate = await showConfirmModal(
-      'Sales amount is Rs. ' + fmtMoney(netAmount) + '.\nDo you want to generate e-invoice now?',
+      'B2B sales bill saved.\nDo you want to generate e-invoice now?',
       'Generate E-Invoice'
     );
     if (!wantsGenerate) return;
 
-    const password = await showPasswordModal(
-      'Enter e-invoice API password for bill ' + billNo + '.',
-      'E-Invoice Password'
-    );
-    if (password === null) return;
-    if (!String(password).trim()) {
-      showAlert('E-invoice password is required.');
+    if (!hasValidGstin()) {
+      showAlert('Enter valid customer GST No before generating e-invoice.', false, () => $('fGstNo')?.focus());
       return;
     }
 
+    const password = await showPasswordModal('Enter API password to generate e-invoice.\nLeave blank to use saved password.');
+    if (password === null) return;
+
     try {
-      const res = await api(siteUrl + '/api/sales-bill/einvoice', 'POST', {
-        bill_no: billNo,
-        password: String(password),
-      });
+      showAlert('Generating e-invoice. Please wait...', true);
+      const body = { bill_no: billNo };
+      if (password !== '') body.password = password;
+      const res = await api(siteUrl + '/api/sales-bill/einvoice', 'POST', body);
       if (res.ok) {
-        showAlert(res.message || 'E-invoice generated successfully.', true);
+        const successLines = [res.message || 'E-invoice generated successfully.'];
+        if (res.irn) successLines.push('IRN: ' + res.irn);
+        if (res.ack_no) successLines.push('Ack No: ' + res.ack_no);
+        const providerMessage = res.provider_response?.results?.message || {};
+        const pdfUrl = providerMessage.EinvoicePdf || providerMessage.einvoice_pdf || providerMessage.pdf_url || '';
+        const qrUrl = providerMessage.QRCodeUrl || providerMessage.qrcode_url || '';
+        if (pdfUrl) successLines.push('PDF: ' + pdfUrl);
+        if (qrUrl) successLines.push('QR: ' + qrUrl);
+        showAlert(successLines.join('\n'), true);
       } else {
-        showAlert(res.message || 'E-invoice generation failed.');
+        showAlert(formatEInvoiceError(res, 'E-invoice generation failed.'));
       }
     } catch (e) {
-      showAlert('E-invoice error: ' + e.message);
+      showAlert('E-invoice error: ' + (e && e.message ? e.message : String(e)));
     }
+  }
+
+  async function maybePromptEWayBill(billNo, amount) {
+    if (!['bill', 'edit'].includes(mode)) return;
+
+    const netAmount = toNum(amount);
+    if (netAmount < EWAY_BILL_THRESHOLD_AMOUNT) return;
+
+    const wantsGenerate = await showConfirmModal(
+      'Bill amount is Rs. ' + fmtMoney(netAmount) + '.\nDo you want to generate e-way bill now?',
+      'Generate E-Way Bill'
+    );
+    if (!wantsGenerate) return;
+
+    const password = await showPasswordModal('Enter API password to generate e-way bill.\nLeave blank to use saved password.', 'E-Way Bill Password');
+    if (password === null) return;
+
+    try {
+      const body = { bill_no: billNo };
+      if (password !== '') body.password = password;
+      const res = await api(siteUrl + '/api/sales-bill/ewaybill', 'POST', body);
+      if (res.ok) {
+        const lines = [res.message || 'E-way bill generated successfully.'];
+        if (res.eway_bill_no) lines.push('E-Way Bill No: ' + res.eway_bill_no);
+        if (res.valid_upto) lines.push('Valid Upto: ' + res.valid_upto);
+        if (res.print_url) lines.push('Print URL: ' + res.print_url);
+        showAlert(lines.join('\n'), true);
+      } else {
+        showAlert(formatEInvoiceError(res, 'E-way bill generation failed.'));
+      }
+    } catch (e) {
+      showAlert('E-way bill error: ' + (e && e.message ? e.message : String(e)));
+    }
+  }
+
+  function formatEInvoiceError(res, fallback) {
+    const lines = [];
+    if (res && res.message) lines.push(String(res.message));
+    if (res && res.provider_status) lines.push('Provider status: ' + res.provider_status);
+    const pr = res && res.provider_response;
+    if (pr && typeof pr === 'object') {
+      const errMsg = (pr.results && (pr.results.errorMessage || pr.results.message))
+        || pr.error || pr.error_message || pr.message || pr.msg;
+      if (errMsg && (!res.message || String(errMsg) !== String(res.message))) {
+        lines.push('Details: ' + String(errMsg));
+      }
+      const code = (pr.results && pr.results.code) || pr.code || pr.errorCode;
+      if (code) lines.push('Code: ' + code);
+      if (lines.length <= 1) {
+        try {
+          lines.push('Provider response: ' + JSON.stringify(pr).slice(0, 1000));
+        } catch (_) {}
+      }
+    } else if (typeof pr === 'string' && pr.trim() !== '' && pr !== res.message) {
+      lines.push('Details: ' + pr);
+    }
+    if (res && res.request_payload && typeof res.request_payload === 'object') {
+      const gstin = res.request_payload.user_gstin || res.request_payload.seller_details?.gstin || '';
+      const docNo = res.request_payload.document_details?.document_number || '';
+      if (gstin || docNo) lines.push('Sent: GSTIN ' + gstin + (docNo ? ', Doc ' + docNo : ''));
+    }
+    if (res && lines.length === 0) {
+      try {
+        lines.push('Response: ' + JSON.stringify(res).slice(0, 1000));
+      } catch (_) {}
+    }
+    if (lines.length === 0) lines.push(fallback || 'E-invoice generation failed.');
+    return lines.join('\n');
   }
 
   function promptStkQType(currentStk = '', currentQ = '', currentTouch = 0) {
@@ -2340,6 +2937,10 @@
     });
     try {
       const res = await api(siteUrl + '/api/sales-bill/check-bill-no?' + params.toString(), 'GET');
+      if (!res.ok) {
+        showAlert(res.message || 'Unable to check bill number. Please try again.');
+        return false;
+      }
       if (res.ok && res.duplicate) {
         showAlert('Duplicate: This Bill Number already exist...', false);
         setVal('fBillNo', '');
@@ -2347,7 +2948,8 @@
         return false;
       }
     } catch (e) {
-      // ignore and allow user to continue editing
+      showAlert('Bill number check failed: ' + (e && e.message ? e.message : String(e)));
+      return false;
     }
     return true;
   }
@@ -2446,6 +3048,9 @@
     populateSelect('fCashBank', cashBanks, item =>
       item.type === 'H' ? item.name : item.code + ' - ' + item.name
     );
+    populateSelect('fChqBank', cashBanks, item =>
+      item.type === 'H' ? item.name : item.code + ' - ' + item.name
+    );
     populateSelect('fApprovedBy', approvedBy);
     populateSelect('fState', states, item => item.code + ' - ' + item.name);
   }
@@ -2530,6 +3135,7 @@
       setVal('fGstNo', cust.tin || '');
       setVal('fPanNo', cust.panadhar || '');
       setVal('fOB', fmt2(cust.opbalance || 0));
+      await applyB2BBillTypeForGst(cust.tin || '');
       if (cust.cocode) {
         setCoPartyOption(cust.cocode, '');
       } else {
@@ -2758,46 +3364,117 @@
   function newItemRow() {
     return {
       _rowId: nextRowId(), item_code: '', item_name: '', item_type: 'G',
+      group_code: selectedItemGroupCode(),
+      display_category: '', is_diamond: false,
       purity: '', model: '', hsn: '', huid: '',
       qty: 0, weight: 0, stone_wgt: 0, net_wgt: 0,
       stone_price: 0, wastage: 0, wstg_rate: 0, mcrate: 0, mc_perc: 0, vaperc: 0, making_charge: 0,
+      va_disc_perc: 0, va_disc_amt: 0,
       manual_mcharge: false, manual_amount: false,
       vaperqty: 0, dmdamt: 0, stkinnos: 'N',
       amount: 0, rate: 0, bcode: 0,
+      taxinternal: 'N',
       stktype: '', stktouch: 0
     };
+  }
+
+  function itemGroupOptions(selectedCode = '') {
+    const selected = String(selectedCode || '').trim().toUpperCase();
+    const base = '<option value="">-- All --</option>';
+    let foundSelected = !selected;
+    const options = itemGroups.map(g => {
+      const code = String(g.code || '').trim().toUpperCase();
+      const label = String(g.name || code).trim();
+      if (code === selected) foundSelected = true;
+      return '<option value="'+esc(code)+'"'+(code === selected ? ' selected' : '')+'>'+esc(code + (label && label !== code ? ' - ' + label : ''))+'</option>';
+    }).join('');
+    const selectedOption = foundSelected ? '' : '<option value="'+esc(selected)+'" selected>'+esc(selected)+'</option>';
+    return base + selectedOption + options;
+  }
+
+  function selectedItemGroupCode() {
+    return String(val('fItemGroup') || '').trim().toUpperCase();
+  }
+
+  function populateItemGroupSelect(selectedCode = '') {
+    const select = $('fItemGroup');
+    if (!select) return;
+    select.innerHTML = itemGroupOptions(selectedCode);
+  }
+
+  function setHeaderItemGroupFromItems(rows = items) {
+    const firstGroup = (rows || [])
+      .map(r => String(r.group_code || '').trim().toUpperCase())
+      .find(Boolean) || '';
+    populateItemGroupSelect(firstGroup);
+    setVal('fItemGroup', firstGroup);
+    rebuildItemCodeList(firstGroup);
+  }
+
+  function itemsForGroup(groupCode = '') {
+    const code = String(groupCode || '').trim().toUpperCase();
+    if (!code) return exchItems;
+    return exchItems.filter(it => String(it.grpcode || '').trim().toUpperCase() === code);
+  }
+
+  function rebuildItemCodeList(groupCode = '') {
+    const list = $('itemCodeList');
+    if (!list) return;
+    list.innerHTML = itemsForGroup(groupCode).map(it => {
+      const code = String(it.code || '').trim().toUpperCase();
+      const name = String(it.name || '').trim().toUpperCase();
+      return '<option value="'+esc(code)+'" label="'+esc(name)+'"></option>';
+    }).join('');
+  }
+
+  function isDiamondItemRow(row) {
+    if (!!row?.is_diamond) return true;
+    const displayCategory = String(row?.display_category || row?.display || '').trim().toUpperCase();
+    if (displayCategory.includes('DIAM')) return true;
+    const itemName = String(row?.item_name || '').trim().toUpperCase();
+    if (itemName.includes('DIAM')) return true;
+    const groupCode = String(row?.group_code || '').trim().toUpperCase();
+    if (groupCode === 'DD') return true;
+    const type = String(row?.item_type || '').trim().toUpperCase();
+    return ['D', 'DM', 'DMD', 'DIA', 'DIAMOND'].includes(type) || toNum(row?.dmdwgt) > 0 || toNum(row?.dmdamt) > 0;
   }
 
   function renderItemsTable() {
     const tbody = $('itemsTbody');
     tbody.innerHTML = '';
+    const selectedGroup = selectedItemGroupCode();
     items.forEach((row, idx) => {
       const tr = document.createElement('tr');
       tr.dataset.rowid = row._rowId;
+      if (!String(row.group_code || '').trim()) row.group_code = selectedGroup;
       tr.innerHTML =
-        '<td><input class="ic-code" list="itemCodeList" data-idx="'+idx+'" value="'+esc(row.item_code)+'" style="width:55px;text-align:left;"></td>' +
+        '<td><input class="ic-code" list="itemCodeList" data-idx="'+idx+'" value="'+esc(row.item_code)+'" title="Select item" style="width:48px;text-align:left;"></td>' +
         '<td style="text-align:left;font-size:10px;">'+esc(row.item_name)+'</td>' +
         '<td>'+esc(row.purity)+'</td>' +
-        '<td><input class="ic-model" data-idx="'+idx+'" value="'+esc(row.model)+'" style="width:50px;"></td>' +
-        '<td><input class="ic-hsn" data-idx="'+idx+'" value="'+esc(row.hsn || '')+'" style="width:70px;"></td>' +
-        '<td><input class="ic-huid" data-idx="'+idx+'" value="'+esc(row.huid)+'" style="width:60px;"></td>' +
-        '<td><input class="ic-qty" data-idx="'+idx+'" value="'+row.qty+'" style="width:30px;"></td>' +
-        '<td><input class="ic-weight" data-idx="'+idx+'" value="'+fmt3(row.weight)+'" style="width:55px;"></td>' +
-        '<td><input class="ic-stwgt" data-idx="'+idx+'" value="'+fmt3(row.stone_wgt)+'" style="width:55px;"></td>' +
+        '<td><input class="ic-bcode" data-idx="'+idx+'" value="'+(row.bcode && row.bcode !== '0' ? esc(row.bcode) : '')+'" style="width:55px;text-align:left;"></td>' +
+        '<td><input class="ic-hsn" data-idx="'+idx+'" value="'+esc(row.hsn || '')+'" style="width:48px;"></td>' +
+        '<td><input class="ic-huid" data-idx="'+idx+'" value="'+esc(row.huid)+'" style="width:52px;"></td>' +
+        '<td><input class="ic-qty" data-idx="'+idx+'" value="'+row.qty+'" style="width:28px;"></td>' +
+        '<td><input class="ic-weight" data-idx="'+idx+'" value="'+fmt3(row.weight)+'" style="width:52px;"></td>' +
+        '<td><input class="ic-stwgt" data-idx="'+idx+'" value="'+fmt3(row.stone_wgt)+'" style="width:52px;"></td>' +
         '<td>'+fmt3(row.net_wgt)+'</td>' +
-        '<td><input class="ic-stprice" data-idx="'+idx+'" value="'+fmt2(row.stone_price)+'" style="width:55px;"></td>' +
-        '<td><input class="ic-wastage" data-idx="'+idx+'" value="'+fmt3(row.wastage || 0)+'" style="width:55px;"></td>' +
-        '<td><input class="ic-vaperc" data-idx="'+idx+'" value="'+fmt2(row.mc_perc ?? row.vaperc ?? row.mcrate ?? 0)+'" style="width:48px;"></td>' +
-        '<td><input class="ic-mc" data-idx="'+idx+'" value="'+fmt2(row.making_charge)+'" style="width:60px;"></td>' +
-        '<td><input class="ic-amount" data-idx="'+idx+'" value="'+fmt2(row.amount)+'" style="width:70px;"></td>' +
-        '<td><input class="ic-rate" data-idx="'+idx+'" value="'+fmt2(row.rate)+'" style="width:60px;"></td>';
+        '<td><input class="ic-stprice" data-idx="'+idx+'" value="'+fmt2(row.stone_price)+'" style="width:54px;"></td>' +
+        '<td class="dmd-col"><input class="ic-dmdwgt" data-idx="'+idx+'" value="'+fmt3(row.dmdwgt || 0)+'" style="width:54px;"></td>' +
+        '<td class="dmd-col"><input class="ic-dmdamt" data-idx="'+idx+'" value="'+fmt2(row.dmdamt || 0)+'" style="width:54px;"></td>' +
+        '<td><input class="ic-wastage" data-idx="'+idx+'" value="'+fmt3(row.wastage || 0)+'" style="width:54px;"></td>' +
+        '<td><input class="ic-vaperc" data-idx="'+idx+'" value="'+fmt2(row.mc_perc ?? row.vaperc ?? row.mcrate ?? 0)+'" style="width:34px;"></td>' +
+        '<td><input class="ic-vadiscperc" data-idx="'+idx+'" value="'+fmt2(row.va_disc_perc || 0)+'" style="width:44px;"></td>' +
+        '<td><input class="ic-vadiscamt" data-idx="'+idx+'" value="'+fmt2(row.va_disc_amt || 0)+'" style="width:52px;"></td>' +
+        '<td><input class="ic-mc" data-idx="'+idx+'" value="'+fmt2(row.making_charge)+'" style="width:62px;"></td>' +
+        '<td><input class="ic-amount" data-idx="'+idx+'" value="'+fmt2(row.amount)+'" style="width:58px;"></td>' +
+        '<td><input class="ic-rate" data-idx="'+idx+'" value="'+fmt2(row.rate)+'" style="width:54px;"></td>';
       tbody.appendChild(tr);
     });
     // filler empty rows
     for (let i = 0, n = Math.max(0, 6 - items.length); i < n; i++) {
       const tr = document.createElement('tr');
       tr.className = 'empty';
-      tr.innerHTML = '<td></td>'.repeat(16);
+      tr.innerHTML = '<td></td>'.repeat(11) + '<td class="dmd-col"></td><td class="dmd-col"></td>' + '<td></td>'.repeat(7);
       tbody.appendChild(tr);
     }
     updateTableFooter();
@@ -2816,14 +3493,18 @@
   }
 
   function updateTableFooter() {
-    let tQ=0, tW=0, tSW=0, tNW=0, tSP=0, tWst=0, tMC=0, tA=0, tR=0;
+    let tQ=0, tW=0, tSW=0, tNW=0, tSP=0, tDW=0, tDA=0, tWst=0, tVDP=0, tVDA=0, tMC=0, tA=0, tR=0;
     items.forEach(r => {
       tQ  += toNum(r.qty);
       tW  += toNum(r.weight);
       tSW += toNum(r.stone_wgt);
       tNW += toNum(r.net_wgt);
       tSP += toNum(r.stone_price);
+      tDW += toNum(r.dmdwgt);
+      tDA += toNum(r.dmdamt);
       tWst+= toNum(r.wastage);
+      tVDP+= toNum(r.va_disc_perc);
+      tVDA+= toNum(r.va_disc_amt);
       tMC += toNum(r.making_charge);
       tA  += toNum(r.amount);
       tR  += toNum(r.rate);
@@ -2833,7 +3514,11 @@
     setVal('ftStoneWgt', fmt3(tSW));
     setVal('ftNetWgt', fmt3(tNW));
     setVal('ftStonePrice', fmt2(tSP));
+    setVal('ftDmdWgt', fmt3(tDW));
+    setVal('ftDmdAmt', fmt2(tDA));
     setVal('ftWastage', fmt2(tWst));
+    setVal('ftVaDiscPerc', fmt2(tVDP));
+    setVal('ftVaDiscAmt', fmt2(tVDA));
     setVal('ftMcAmt', fmt2(tMC));
     setVal('ftAmount', fmt2(tA));
     setVal('ftRate', items.length ? fmt2(tR / items.length) : '0.00');
@@ -2873,7 +3558,24 @@
   }
 
   function recomputeTaxAmtFromPerc() {
-    const billTotal = roundByMode(items.reduce((s, r) => s + toNum(r.amount || 0), 0));
+    const taxPerc = toNum(val('fTaxPerc'));
+    const cessPerc = chk('fInterstate') ? 0 : toNum(val('fCessPerc'));
+    const inclusiveDivisor = 100 + taxPerc + cessPerc;
+    let billTotal = 0;
+    let includedTax = 0;
+    let exclusiveBase = 0;
+    items.forEach(r => {
+      const amount = toNum(r.amount || 0);
+      if (String(r.taxinternal || 'N').toUpperCase() === 'Y' && inclusiveDivisor > 0) {
+        const base = (amount * 100) / inclusiveDivisor;
+        billTotal += base;
+        includedTax += amount - base;
+      } else {
+        billTotal += amount;
+        exclusiveBase += amount;
+      }
+    });
+    billTotal = roundByMode(billTotal);
     let disc = toNum(val('fDiscount'));
     const discPerc = toNum(val('fDiscountPerc'));
     if (disc <= 0 && discPerc > 0 && billTotal > 0) {
@@ -2882,8 +3584,9 @@
     }
     let taxBase = billTotal;
     if (TAX_AFTER_DISC) taxBase = Math.max(billTotal - disc, 0);
-    const taxPerc = toNum(val('fTaxPerc'));
-    const taxAmt = roundByMode((taxBase * taxPerc) / 100);
+    const externalTaxBase = includedTax > 0 ? exclusiveBase : taxBase;
+    const externalTax = roundByMode((externalTaxBase * taxPerc) / 100);
+    const taxAmt = roundByMode(includedTax + externalTax);
     setVal('fTaxAmt', fmt2(taxAmt));
   }
 
@@ -2939,7 +3642,9 @@
     items.push(newItemRow());
     renderItemsTable();
     const inputs = document.querySelectorAll('.ic-code');
-    if (inputs.length) inputs[inputs.length - 1].focus();
+    if (inputs.length) {
+      inputs[inputs.length - 1].focus();
+    }
   }
 
   function focusItemCodeRow(rowIdx, openPicker = false) {
@@ -3017,6 +3722,8 @@
     const stoneWgt = toNum(r.stone_wgt);
     const stonePrice = toNum(r.stone_price);
     const dmdamt = toNum(r.dmdamt);
+    let vaDiscPerc = toNum(r.va_disc_perc);
+    let vaDiscAmt = toNum(r.va_disc_amt);
     const code = String(r.item_code || '').trim().toUpperCase();
     const qtype = String(r.purity || '').trim().toUpperCase();
     const itemType = String(r.item_type || '').trim().toUpperCase();
@@ -3037,9 +3744,9 @@
       }
       if (stkinnos !== 'Y') {
         const den = (weight - stoneWgt + wastage);
-        if (den > 0) r.rate = (amount - mcharge - stonePrice - dmdamt) / den;
+        if (den > 0) r.rate = (amount - mcharge - stonePrice - dmdamt + vaDiscAmt) / den;
       } else if (qty > 0) {
-        r.rate = (amount - mcharge - stonePrice - dmdamt) / qty;
+        r.rate = (amount - mcharge - stonePrice - dmdamt + vaDiscAmt) / qty;
       }
     } else if (['weight', 'stonewgt', 'itemcode', 'rate', 'vaperc', 'qty'].includes(changedCol)) {
       // Manual MC% override: percent-based MC should always work.
@@ -3086,17 +3793,64 @@
       }
     }
 
+    const vaDiscBase = stkinnos === 'Y'
+      ? (qty * toNum(r.rate))
+      : ((weight - stoneWgt + toNum(r.wastage)) * toNum(r.rate));
+
+    if (changedCol === 'vadiscamt') {
+      vaDiscAmt = Math.max(0, toNum(r.va_disc_amt));
+      vaDiscPerc = vaDiscBase > 0 ? (vaDiscAmt * 100) / vaDiscBase : 0;
+      r.va_disc_perc = Number.isFinite(vaDiscPerc) ? vaDiscPerc : 0;
+    } else if (vaDiscPerc > 0) {
+      vaDiscAmt = (vaDiscBase * vaDiscPerc) / 100;
+      r.va_disc_amt = roundByMode(vaDiscAmt);
+      vaDiscAmt = toNum(r.va_disc_amt);
+    } else {
+      vaDiscAmt = Math.max(0, vaDiscAmt);
+      r.va_disc_amt = vaDiscAmt;
+    }
+
     r.net_wgt = net;
     if (stkinnos === 'Y') {
-      amount = qty * toNum(r.rate) + stonePrice + toNum(r.making_charge) + dmdamt;
+      amount = qty * toNum(r.rate) + stonePrice + toNum(r.making_charge) + dmdamt - vaDiscAmt;
     } else {
-      amount = (weight - stoneWgt + toNum(r.wastage)) * toNum(r.rate) + stonePrice + toNum(r.making_charge) + dmdamt;
+      amount = (weight - stoneWgt + toNum(r.wastage)) * toNum(r.rate) + stonePrice + toNum(r.making_charge) + dmdamt - vaDiscAmt;
     }
-    r.amount = roundByMode(amount);
+    r.amount = roundByMode(Math.max(amount, 0));
   }
 
   function recalcItemAmount(idx) {
     recalcMainByPb(idx, 'rate');
+  }
+
+  function clearInvalidItemRow(idx, message) {
+    const row = items[idx];
+    if (!row) return;
+    const rowId = row._rowId || nextRowId();
+    const groupCode = selectedItemGroupCode();
+    items[idx] = { ...newItemRow(), _rowId: rowId, group_code: groupCode };
+    showAlert(message || 'Invalid Item Code', false, () => {
+      renderItemsTable();
+      setTimeout(() => {
+        const c = $('itemsTbody').querySelector(`.ic-code[data-idx="${idx}"]`);
+        if (c) { c.focus(); c.select(); }
+      }, 20);
+    });
+    renderItemsTable();
+    triggerRecalc();
+  }
+
+  function applyHeaderItemGroupChange(groupCode) {
+    const code = String(groupCode || '').trim().toUpperCase();
+    setVal('fItemGroup', code);
+    rebuildItemCodeList(code);
+    items = items.map(row => ({ ...newItemRow(), _rowId: row._rowId || nextRowId(), group_code: code }));
+    renderItemsTable();
+    setTimeout(() => {
+      const codeInput = $('itemsTbody').querySelector('.ic-code[data-idx="0"]');
+      if (codeInput && code) codeInput.focus();
+    }, 20);
+    triggerRecalc();
   }
 
   async function itemLookup(idx) {
@@ -3104,9 +3858,12 @@
     if (!row) return false;
     const code = row.item_code.trim();
     if (!code) return false;
+    const groupCode = selectedItemGroupCode();
+    row.group_code = groupCode;
 
     const params = new URLSearchParams({
       code,
+      group_code:    groupCode,
       tax_perc:      numVal('fTaxPerc'),
       ast_perc:      numVal('fCessPerc'),
       is_cst:        chk('fInterstate') ? '1' : '0',
@@ -3117,8 +3874,15 @@
 
     try {
       const res = await api(siteUrl + '/api/sales-bill/item-lookup?' + params.toString(), 'GET');
-      if (!res.ok) { showAlert(res.message || 'Item not found'); return false; }
+      if (!res.ok) {
+        clearInvalidItemRow(idx, res.message || 'Invalid Item Code');
+        return false;
+      }
       const d = res.data;
+      if (groupCode && d.group_code && String(d.group_code).trim().toUpperCase() !== groupCode) {
+        clearInvalidItemRow(idx, 'Check the item group.');
+        return false;
+      }
       const dupRow = findDuplicateBarcodeRow(idx, d.bcode || 0);
       if (dupRow >= 0) {
         showAlert('This barcode already entered in row ' + (dupRow + 1) + '.', false, () => {
@@ -3139,14 +3903,21 @@
       }
       Object.assign(row, {
         item_code: d.item_code, item_name: d.item_name, item_type: d.item_type,
+        is_diamond: !!d.is_diamond,
+        display_category: d.display_category || '',
+        group_code: d.group_code || groupCode,
         purity: d.purity || '', model: d.model || '', hsn: d.hsn || '', huid: d.huid || '',
         qty: toNum(d.qty), weight: toNum(d.weight), stone_wgt: toNum(d.stone_wgt),
         net_wgt: toNum(d.net_wgt), stone_price: toNum(d.stone_price),
         wastage: toNum(d.wastage || 0), wstg_rate: toNum(d.wstg_rate), mcrate: toNum(d.mcrate),
         mc_perc: toNum((d.mc_perc ?? d.vaperc ?? d.mcrate) || 0),
         making_charge: toNum(d.making_charge), amount: toNum(d.amount),
+        va_disc_perc: toNum(d.va_disc_perc || 0),
+        va_disc_amt: toNum(d.va_disc_amt || 0),
         manual_mcharge: false, manual_amount: false,
         rate: toNum(d.rate), bcode: d.bcode || 0,
+        taxinternal: String(d.taxinternal || 'N').toUpperCase(),
+        billtype: d.billtype || '',
         stktype: d.stktype || '', stktouch: d.stktouch || 0,
         stkinnos: String(d.stkinnos || 'N').toUpperCase(),
         vaperc: toNum((d.vaperc ?? d.mc_perc ?? d.mcrate) || 0),
@@ -3163,6 +3934,13 @@
         pcostperc: toNum(d.pcostperc || 0),
         bcmcamt: toNum(d.bcmcamt || 0),
       });
+      if (d.billtype) {
+        const oldBillType = val('fBillType');
+        setBillTypeByAny(d.billtype);
+        if (val('fBillType') !== oldBillType) {
+          $('fBillType')?.dispatchEvent(new Event('change'));
+        }
+      }
       recalcMainByPb(idx, 'itemcode');
       if (d.warnings && d.warnings.length) showAlert(d.warnings.join('; '));
       renderItemsTable();
@@ -3180,13 +3958,27 @@
     }
   }
 
+  $('fItemGroup')?.addEventListener('change', function() {
+    applyHeaderItemGroupChange(this.value);
+  });
+
+  $('itemsTbody').addEventListener('focusin', function(e) {
+    const el = e.target;
+    const idx = parseInt(el.dataset?.idx);
+    if (isNaN(idx) || !items[idx]) return;
+    if (el.classList.contains('ic-code')) {
+      const groupCode = selectedItemGroupCode();
+      rebuildItemCodeList(groupCode);
+    }
+  });
+
   // Item table event delegation (blur captures since blur doesn't bubble)
   $('itemsTbody').addEventListener('blur', function(e) {
     const el = e.target;
     const idx = parseInt(el.dataset?.idx);
     if (isNaN(idx) || !items[idx]) return;
     let blurClass = '';
-    for (const c of ['ic-code', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-wastage', 'ic-vaperc', 'ic-mc', 'ic-rate', 'ic-amount', 'ic-qty', 'ic-model', 'ic-hsn', 'ic-huid']) {
+    for (const c of ['ic-code', 'ic-bcode', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-dmdwgt', 'ic-dmdamt', 'ic-wastage', 'ic-vaperc', 'ic-vadiscperc', 'ic-vadiscamt', 'ic-mc', 'ic-rate', 'ic-amount', 'ic-qty', 'ic-hsn', 'ic-huid']) {
       if (el.classList.contains(c)) {
         blurClass = c;
         break;
@@ -3207,16 +3999,31 @@
       } else if (r.item_code) {
         itemLookup(idx);
       }
+    } else if (el.classList.contains('ic-bcode')) {
+      r.bcode = Math.max(0, Math.trunc(toNum(el.value)));
+      el.value = r.bcode > 0 ? String(r.bcode) : '';
+      if (r.bcode > 0) {
+        r.item_code = String(r.bcode);
+        itemLookup(idx);
+      }
     } else if (el.classList.contains('ic-weight')) {
       r.weight = toNum(el.value); recalcMainByPb(idx, 'weight'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-stwgt')) {
       r.stone_wgt = toNum(el.value); recalcMainByPb(idx, 'stonewgt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-stprice')) {
       r.stone_price = toNum(el.value); recalcMainByPb(idx, 'stoneprice'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-dmdwgt')) {
+      r.dmdwgt = toNum(el.value); recalcMainByPb(idx, 'dmdwgt'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-dmdamt')) {
+      r.dmdamt = toNum(el.value); recalcMainByPb(idx, 'dmdamt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-wastage')) {
       r.wastage = toNum(el.value); recalcMainByPb(idx, 'wastage'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-vaperc')) {
       r.mc_perc = toNum(el.value); r.vaperc = r.mc_perc; r.manual_mcharge = false; recalcMainByPb(idx, 'vaperc'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-vadiscperc')) {
+      r.va_disc_perc = toNum(el.value); recalcMainByPb(idx, 'vadiscperc'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-vadiscamt')) {
+      r.va_disc_amt = toNum(el.value); recalcMainByPb(idx, 'vadiscamt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-mc')) {
       r.making_charge = toNum(el.value); r.manual_mcharge = true; recalcMainByPb(idx, 'mcharge'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-rate')) {
@@ -3232,8 +4039,6 @@
       }
     } else if (el.classList.contains('ic-qty')) {
       r.qty = Math.max(0, Math.round(toNum(el.value))); recalcMainByPb(idx, 'qty'); renderItemsTable(); triggerRecalc();
-    } else if (el.classList.contains('ic-model')) {
-      r.model = el.value;
     } else if (el.classList.contains('ic-hsn')) {
       r.hsn = el.value;
     } else if (el.classList.contains('ic-huid')) {
@@ -3253,16 +4058,31 @@
       } else if (r.item_code) {
         itemLookup(idx);
       }
+    } else if (el.classList.contains('ic-bcode')) {
+      r.bcode = Math.max(0, Math.trunc(toNum(el.value)));
+      el.value = r.bcode > 0 ? String(r.bcode) : '';
+      if (r.bcode > 0) {
+        r.item_code = String(r.bcode);
+        itemLookup(idx);
+      }
     } else if (el.classList.contains('ic-weight')) {
       r.weight = toNum(el.value); recalcMainByPb(idx, 'weight'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-stwgt')) {
       r.stone_wgt = toNum(el.value); recalcMainByPb(idx, 'stonewgt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-stprice')) {
       r.stone_price = toNum(el.value); recalcMainByPb(idx, 'stoneprice'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-dmdwgt')) {
+      r.dmdwgt = toNum(el.value); recalcMainByPb(idx, 'dmdwgt'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-dmdamt')) {
+      r.dmdamt = toNum(el.value); recalcMainByPb(idx, 'dmdamt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-wastage')) {
       r.wastage = toNum(el.value); recalcMainByPb(idx, 'wastage'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-vaperc')) {
       r.mc_perc = toNum(el.value); r.vaperc = r.mc_perc; r.manual_mcharge = false; recalcMainByPb(idx, 'vaperc'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-vadiscperc')) {
+      r.va_disc_perc = toNum(el.value); recalcMainByPb(idx, 'vadiscperc'); renderItemsTable(); triggerRecalc();
+    } else if (el.classList.contains('ic-vadiscamt')) {
+      r.va_disc_amt = toNum(el.value); recalcMainByPb(idx, 'vadiscamt'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-mc')) {
       r.making_charge = toNum(el.value); r.manual_mcharge = true; recalcMainByPb(idx, 'mcharge'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-rate')) {
@@ -3278,8 +4098,6 @@
       }
     } else if (el.classList.contains('ic-qty')) {
       r.qty = Math.max(0, Math.round(toNum(el.value))); recalcMainByPb(idx, 'qty'); renderItemsTable(); triggerRecalc();
-    } else if (el.classList.contains('ic-model')) {
-      r.model = el.value;
     } else if (el.classList.contains('ic-hsn')) {
       r.hsn = el.value;
     } else if (el.classList.contains('ic-huid')) {
@@ -3295,7 +4113,7 @@
     if (isNaN(idx) || !items[idx]) return;
 
     // Row-based PB-like tab flow for entry columns.
-    const seq = ['ic-code', 'ic-model', 'ic-hsn', 'ic-huid', 'ic-qty', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-wastage', 'ic-vaperc', 'ic-mc', 'ic-amount', 'ic-rate'];
+    const seq = ['ic-code', 'ic-bcode', 'ic-hsn', 'ic-huid', 'ic-qty', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-dmdwgt', 'ic-dmdamt', 'ic-wastage', 'ic-vaperc', 'ic-vadiscperc', 'ic-vadiscamt', 'ic-mc', 'ic-amount', 'ic-rate'];
     let curClass = '';
     for (const c of seq) {
       if (el.classList.contains(c)) {
@@ -3316,7 +4134,7 @@
       const cur = items[idx];
       if (ok && cur && cur.item_code && cur.item_name) {
         skipNextCodeBlurLookupIdx = idx;
-        focusNextItemEntryAfterLookup(idx, 'ic-model');
+        focusNextItemEntryAfterLookup(idx, 'ic-bcode');
       }
       return;
     }
@@ -3364,9 +4182,9 @@
 
   // PB-like Enter key navigation for ALL item table fields
   // Sequence of active (editable) columns for Enter-key navigation
-  const enterSeq = ['ic-code', 'ic-model', 'ic-hsn', 'ic-huid', 'ic-qty', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-wastage', 'ic-vaperc', 'ic-mc', 'ic-amount', 'ic-rate'];
+  const enterSeq = ['ic-code', 'ic-bcode', 'ic-hsn', 'ic-huid', 'ic-qty', 'ic-weight', 'ic-stwgt', 'ic-stprice', 'ic-dmdwgt', 'ic-dmdamt', 'ic-wastage', 'ic-vaperc', 'ic-vadiscperc', 'ic-vadiscamt', 'ic-mc', 'ic-amount', 'ic-rate'];
 
-  function focusNextItemEntryAfterLookup(idx, nextClass = 'ic-model') {
+  function focusNextItemEntryAfterLookup(idx, nextClass = 'ic-bcode') {
     renderItemsTable();
     setTimeout(() => {
       const next = $('itemsTbody').querySelector(`.${nextClass}[data-idx="${idx}"]`);
@@ -3384,7 +4202,7 @@
       // Move to next column in same row
       targetClass = enterSeq[curPos + 1];
     } else {
-      // At last column or unknown -> add new row, focus ic-code
+      // At last column or unknown -> add new row, focus item code
       targetRow = idx + 1;
       targetClass = enterSeq[0];
       if (!items[targetRow]) {
@@ -3430,7 +4248,7 @@
       if (ok && cur && cur.item_code && cur.item_name) {
         skipNextCodeBlurLookupIdx = idx;
 
-        focusNextItemEntryAfterLookup(idx, 'ic-model');
+        focusNextItemEntryAfterLookup(idx, 'ic-bcode');
       }
     } else {
       // --- All other fields: PB-like Enter navigation ---
@@ -3671,6 +4489,111 @@
   }, true);
 
   // Exchange Enter key navigation (PB: uekey event)
+  $('exchangeModal').addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== 'NumpadEnter') return;
+    if (!$('exchangeModal').classList.contains('active')) return;
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement)) return;
+    if (!el.closest('#exchTbody')) return;
+
+    const idx = parseInt(el.dataset?.idx);
+    if (isNaN(idx) || !exchRows[idx]) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const seq = ['ex-code', 'ex-rate', 'ex-qty', 'ex-weight', 'ex-mud', 'ex-stwgt', 'ex-stprice', 'ex-touch', 'ex-less', 'ex-lesswgt', 'ex-extra', 'ex-amount'];
+    const curClass = seq.find(c => el.classList.contains(c));
+    if (!curClass) return;
+
+    const focusCell = (rowIdx, cls, delay = 45) => {
+      setTimeout(() => {
+        const target = $('exchTbody')?.querySelector(`.${cls}[data-idx="${rowIdx}"]`);
+        if (target) {
+          target.focus();
+          if (typeof target.select === 'function') target.select();
+        }
+      }, delay);
+    };
+    const moveNext = () => {
+      const pos = seq.indexOf(curClass);
+      let targetRow = idx;
+      let targetClass = pos < seq.length - 1 ? seq[pos + 1] : 'ex-code';
+      if (pos >= seq.length - 1) {
+        targetRow = idx + 1;
+        if (!exchRows[targetRow]) {
+          exchRows.push(newExchRow());
+          renderExchTable();
+        }
+      }
+      focusCell(targetRow, targetClass);
+    };
+
+    if (curClass === 'ex-code') {
+      const code = el.value.trim().toUpperCase();
+      exchRows[idx].item_code = code;
+      if (code) exchItemLookup(idx);
+      focusCell(idx, STOP_ON_EXCH_RATE ? 'ex-rate' : 'ex-weight', 70);
+      return;
+    }
+
+    if (curClass === 'ex-rate') {
+      exchRows[idx].rate = toNum(el.value);
+      recalcExchRow(idx, 'rate');
+      renderExchTable();
+      const itemCode = String(exchRows[idx]?.item_code || '').trim().toUpperCase();
+      const item = exchItems.find(i => i.code === itemCode);
+      focusCell(idx, ((item?.ornament || 'N') === 'Y') ? 'ex-qty' : 'ex-weight');
+      return;
+    }
+
+    if (curClass === 'ex-weight') {
+      exchRows[idx].weight = toNum(el.value);
+      if (exchRows[idx].weight <= 0 && String(exchRows[idx].stkinnos || 'N').toUpperCase() !== 'Y') {
+        showAlert('Check Weight for ' + (exchRows[idx].item_code || '') + '.', false, () => focusCell(idx, 'ex-weight', 10));
+        renderExchTable();
+        return;
+      }
+      recalcExchRow(idx, 'weight');
+      renderExchTable();
+      focusCell(idx, 'ex-touch');
+      return;
+    }
+
+    if (curClass === 'ex-qty') {
+      exchRows[idx].qty = Math.max(0, Math.round(toNum(el.value)));
+      recalcExchRow(idx, 'qty');
+    } else if (curClass === 'ex-mud') {
+      exchRows[idx].mud_less = toNum(el.value);
+      recalcExchRow(idx, 'mud');
+    } else if (curClass === 'ex-stwgt') {
+      exchRows[idx].stone_wgt = toNum(el.value);
+      recalcExchRow(idx, 'stwgt');
+    } else if (curClass === 'ex-stprice') {
+      exchRows[idx].stone_price = toNum(el.value);
+      recalcExchRow(idx, 'stprice');
+    } else if (curClass === 'ex-touch') {
+      exchRows[idx].touch = toNum(el.value);
+      recalcExchRow(idx, 'touch');
+    } else if (curClass === 'ex-less') {
+      exchRows[idx].less_perc = toNum(el.value);
+      recalcExchRow(idx, 'lessperc');
+    } else if (curClass === 'ex-lesswgt') {
+      exchRows[idx].less_wgt = toNum(el.value);
+      recalcExchRow(idx, 'lesswgt');
+    } else if (curClass === 'ex-extra') {
+      exchRows[idx].rate2 = toNum(el.value);
+      exchRows[idx].extra_rate = exchRows[idx].rate2;
+      recalcExchRow(idx, 'rate2');
+    } else if (curClass === 'ex-amount') {
+      exchRows[idx].amount = toNum(el.value);
+      recalcExchRow(idx, 'amount');
+    }
+
+    renderExchTable();
+    moveNext();
+  }, true);
+
   $('exchTbody').addEventListener('keydown', function(e) {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -3881,7 +4804,8 @@
   }
 
   // PB w_sreturn.bcodechk + itemchanged: lookup via item-lookup API (handles barcode + items)
-  async function srItemLookup(idx) {
+  async function srItemLookup(idx, opts = {}) {
+    const focusWeightIfEmpty = opts.focusWeightIfEmpty !== false;
     const r = srRows[idx];
     if (!r) return;
     const code = (r.item_code || '').trim().toUpperCase();
@@ -3929,7 +4853,7 @@
       recalcSrByPb(idx, 'itemcode');
       renderSrTable();
       // PB: focus weight if zero
-      if (r.weight === 0) {
+      if (focusWeightIfEmpty && r.weight === 0) {
         const w = document.querySelectorAll('.sr-weight');
         if (w[idx]) w[idx].focus();
       }
@@ -4180,11 +5104,10 @@
     const taxPerc  = toNum($('srTaxPerc')?.value);
     const cessPerc = toNum($('srCessPerc')?.value);
     const billAmt = toNum($('srBillAmt')?.value);
-    const retAmt = tA - discount;
-    const tax  = roundByMode(retAmt * taxPerc / 100);
-    const cess = roundByMode(retAmt * cessPerc / 100);
-    const exAmt = retAmt + tax + cess;
-    const net = billAmt - tA - discount + tax + cess;
+    const tax  = roundByMode(tA * taxPerc / 100);
+    const cess = roundByMode(tA * cessPerc / 100);
+    const exAmt = tA - discount + tax + cess;
+    const net = billAmt - exAmt;
     setVal('srTaxAmt', fmt2(tax));
     setVal('srCessAmt', fmt2(cess));
     setVal('srRetAmt', fmt2(exAmt));
@@ -4224,7 +5147,7 @@
   }, true);
 
   // SR Enter key navigation (PB: uekey event)
-  $('srTbody').addEventListener('keydown', function(e) {
+  $('srTbody').addEventListener('keydown', async function(e) {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const el = e.target, idx = parseInt(el.dataset?.idx);
@@ -4232,7 +5155,7 @@
     if (el.classList.contains('sr-code')) {
       const code = el.value.trim().toUpperCase();
       srRows[idx].item_code = code;
-      if (code) srItemLookup(idx);
+      if (code) await srItemLookup(idx, { focusWeightIfEmpty: false });
       if (flagY(sw.AutoPopupStktype, 'N') && code) {
         const parsed = promptStkQType(srRows[idx].stktype || '', srRows[idx].qtype || '', srRows[idx].stktouch || 0);
         if (parsed && (parsed.stktype || parsed.qtype || parsed.stktouch > 0)) {
@@ -4252,16 +5175,28 @@
         }
       }
       el.blur();
-      setTimeout(() => { const mc = document.querySelectorAll('.sr-mc'); if (mc[idx]) mc[idx].focus(); }, 50);
+      setTimeout(() => {
+        const stwgt = $('srTbody').querySelector(`.sr-stwgt[data-idx="${idx}"]`);
+        if (stwgt) stwgt.focus();
+      }, 50);
     } else if (el.classList.contains('sr-rate') || el.classList.contains('sr-mc')) {
       el.blur();
       // PB: after rate or mc, add new row
       setTimeout(() => $('btnSrAdd').click(), 50);
     } else {
+      let targetClass = '';
+      const rowInputs = Array.from(el.closest('tr')?.querySelectorAll('input') || []);
+      const cur = rowInputs.indexOf(el);
+      if (cur >= 0 && cur < rowInputs.length - 1) {
+        targetClass = Array.from(rowInputs[cur + 1].classList).find(c => c.startsWith('sr-')) || '';
+      }
       el.blur();
-      const inputs = el.closest('tr').querySelectorAll('input');
-      const cur = Array.from(inputs).indexOf(el);
-      if (cur < inputs.length - 1) setTimeout(() => inputs[cur + 1].focus(), 50);
+      if (targetClass) {
+        setTimeout(() => {
+          const target = $('srTbody').querySelector(`.${targetClass}[data-idx="${idx}"]`);
+          if (target) target.focus();
+        }, 50);
+      }
     }
   });
 
@@ -4408,11 +5343,17 @@
   function closeSalesReturn()  { $('salesReturnModal').classList.remove('active'); }
 
   // ── Bill Item Selection Popup ──────────────────────────────────────
-  function openBillSelectPopup() {
-    const billItems = items.filter(r => r.item_code && r.item_code.trim());
-    if (!billItems.length) { showAlert('No items in the bill to select.'); return; }
+  function renderSrBillSelectItems(billItems, caption = 'Current bill items') {
     const tbody = $('srBillSelTbody');
     tbody.innerHTML = '';
+    if ($('srBillItemCaption')) $('srBillItemCaption').textContent = caption;
+    if (!billItems.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="padding:12px;text-align:center;color:#718096;">No items found for selection.</td></tr>';
+      $('chkSrBillSelAll').checked = false;
+      const overlay = $('srBillSelectOverlay');
+      overlay._billItems = [];
+      return;
+    }
     billItems.forEach((r, i) => {
       const tr = document.createElement('tr');
       tr.style.cssText = 'border-bottom:1px solid #e2e8f0;' + (i % 2 === 0 ? 'background:#f7fafc;' : '');
@@ -4430,8 +5371,60 @@
     });
     $('chkSrBillSelAll').checked = false;
     const overlay = $('srBillSelectOverlay');
-    overlay.style.display = 'flex';
     overlay._billItems = billItems;
+  }
+
+  function openBillSelectPopup() {
+    const billItems = items.filter(r => r.item_code && r.item_code.trim());
+    const overlay = $('srBillSelectOverlay');
+    renderSrBillSelectItems(billItems, billItems.length ? 'Current bill items' : 'Select a bill to load items');
+    overlay.style.display = 'flex';
+    $('srBillSearchQ')?.focus();
+    loadSrBillSearch('');
+  }
+
+  function renderSrBillSearchRows(rows) {
+    const tbody = $('srBillSearchTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="padding:8px;text-align:center;color:#718096;">No bills found.</td></tr>';
+      return;
+    }
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      tr.style.cssText = 'border-bottom:1px solid #e2e8f0;cursor:pointer;' + (i % 2 === 0 ? 'background:#fff;' : 'background:#f8fafc;');
+      tr.innerHTML =
+        '<td style="padding:4px 6px;font-weight:700;color:#2b6cb0;">'+esc(r.bill_no || '')+'</td>' +
+        '<td style="padding:4px 6px;">'+esc(r.bill_date || '')+'</td>' +
+        '<td style="padding:4px 6px;">'+esc(r.customer_name || '')+'</td>' +
+        '<td style="padding:4px 6px;text-align:right;">'+fmt2(r.net_total || 0)+'</td>';
+      tr.addEventListener('click', () => loadSrBillItems(r.bill_no || ''));
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function loadSrBillSearch(q = '') {
+    try {
+      const res = await api(siteUrl + '/api/sales-bill/search?q=' + encodeURIComponent(q), 'GET');
+      renderSrBillSearchRows(res.ok ? (res.rows || []) : []);
+    } catch (_) {
+      renderSrBillSearchRows([]);
+    }
+  }
+
+  async function loadSrBillItems(billNo) {
+    billNo = String(billNo || '').trim();
+    if (!billNo) return;
+    try {
+      const res = await api(siteUrl + '/api/sales-bill/get?bill_no=' + encodeURIComponent(billNo), 'GET');
+      if (!res.ok) { showAlert(res.message || 'Bill not found.'); return; }
+      const d = res.data || {};
+      const billItems = (d.items || []).filter(r => r.item_code && String(r.item_code).trim());
+      renderSrBillSelectItems(billItems, 'Bill ' + billNo + ' - ' + (d.customer_name || ''));
+    } catch (e) {
+      showAlert('Bill load error: ' + e.message);
+    }
   }
   function closeBillSelectPopup() {
     $('srBillSelectOverlay').style.display = 'none';
@@ -4442,6 +5435,13 @@
   $('btnSrBillSelClose').addEventListener('click', closeBillSelectPopup);
   $('btnSrBillSelCancel').addEventListener('click', closeBillSelectPopup);
   $('btnSrSelectBill').addEventListener('click', openBillSelectPopup);
+  $('btnSrBillSearch')?.addEventListener('click', () => loadSrBillSearch(val('srBillSearchQ')));
+  $('srBillSearchQ')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      loadSrBillSearch(val('srBillSearchQ'));
+    }
+  });
   $('btnSrBillSelAdd').addEventListener('click', () => {
     const overlay = $('srBillSelectOverlay');
     const billItems = overlay._billItems || [];
@@ -4451,9 +5451,28 @@
     for (let i = srRows.length - 1; i >= 0; i--) {
       if (!srRows[i].item_code.trim()) srRows.splice(i, 1);
     }
+    const returnKey = (r) => {
+      const bcode = String(r.bcode || '').trim();
+      if (bcode && bcode !== '0') return 'B:' + bcode;
+      return [
+        'I',
+        String(r.item_code || '').trim().toUpperCase(),
+        String(r.model || '').trim().toUpperCase(),
+        fmt3(r.weight),
+        fmt2(r.amount),
+      ].join(':');
+    };
+    const selectedKeys = new Set(srRows.map(returnKey));
+    let skipped = 0;
     checked.forEach(chk => {
       const r = billItems[parseInt(chk.dataset.idx)];
       if (!r) return;
+      const key = returnKey(r);
+      if (selectedKeys.has(key)) {
+        skipped++;
+        return;
+      }
+      selectedKeys.add(key);
       srRows.push({
         ...newSrRow(),
         item_code:    r.item_code,
@@ -4473,6 +5492,7 @@
         amount:       toNum(r.amount),
         bcode:        r.bcode || 0,
         stktype:      r.stktype || DEF_SRET_STKTYPE,
+        qtype:        r.qtype || r.purity || '',
         stktouch:     toNum(r.stktouch),
         stkinnos:     r.stkinnos || 'N',
         cost:         toNum(r.cost),
@@ -4481,6 +5501,7 @@
     closeBillSelectPopup();
     renderSrTable();
     updateSrFooter();
+    if (skipped > 0) showAlert(skipped + ' duplicate sales return item skipped.');
   });
 
   $('btnSrAdd').addEventListener('click', () => {
@@ -4534,11 +5555,15 @@
       items: items.map(r => ({
         qty: r.qty, weight: r.weight, stone_wgt: r.stone_wgt, net_wgt: r.net_wgt,
         stone_price: r.stone_price, making_charge: r.making_charge, amount: r.amount, rate: r.rate,
+        taxinternal: r.taxinternal || 'N',
       })),
       exchange: exchRows.map(r => ({ amount: r.amount })),
       sales_return: srRows.map(r => ({ amount: r.amount })),
+      sr_tax_perc: toNum($('srTaxPerc')?.value || 0),
       sr_tax_amt:  toNum($('srTaxAmt')?.value || 0),
+      sr_cess_perc: toNum($('srCessPerc')?.value || 0),
       sr_cess_amt: toNum($('srCessAmt')?.value || 0),
+      sr_discount_amt: toNum($('srDiscount')?.value || 0),
       extra: {
         discount:        numVal('fDiscount'),
         discount_perc:   numVal('fDiscountPerc'),
@@ -4546,6 +5571,7 @@
         tax:             numVal('fTaxAmt'),
         ast_perc:        numVal('fCessPerc'),
         ast:             numVal('fCessAmt'),
+        is_cst:          chk('fInterstate'),
         tcs_perc:        numVal('fTcsPerc'),
         repair_charge:   numVal('fRepair'),
         hallmark_charge: numVal('fHmc'),
@@ -4558,8 +5584,8 @@
         opening_balance: numVal('fOB'),
         round_to:        0,
         credit:          chk('fCredit'),
-        received:        numVal('fTotalRcvd'),
-        auto_rcvd:       !totalRcvdDirty,
+        received:        roundReceivedAmount(numVal('fTotalRcvd')),
+        auto_rcvd:       autoAdjustReceivedOnce || (mode !== 'edit' && !totalRcvdDirty),
         grand_to_rcvd:   false,
       }
     };
@@ -4585,13 +5611,33 @@
     setVal('fTcsAmt', fmt2(ex.tcs_amt));
     setVal('fGrandAmt', fmt2(ex.grand_amt));
     setVal('fNetAmt', fmt2(ex.net_amt));
-    if (document.activeElement?.id !== 'fTotalRcvd' && !totalRcvdDirty) {
-      setVal('fTotalRcvd', fmt2(ex.received));
+    if ((autoAdjustReceivedOnce || (mode !== 'edit' && !totalRcvdDirty)) && document.activeElement?.id !== 'fTotalRcvd') {
+      setVal('fTotalRcvd', fmt2(roundReceivedAmount(ex.received)));
     }
+    autoAdjustReceivedOnce = false;
     setVal('fBalance', fmt2(ex.balance));
     setVal('fCb', fmt2(ex.net_balance));
     updateRcvdCaptionByNet();
     updateTableFooter();
+  }
+
+  function syncCashAmt() {
+    if (document.activeElement?.id === 'fCashAmt') return;
+    const selected = $('fCashBank')?.selectedOptions?.[0];
+    const cashBankText = String((selected?.textContent || '') + ' ' + (val('fCashBank') || '')).toUpperCase();
+    const isDigitalPay = /(GPAY|G PAY|GOOGLE PAY|UPI|PHONEPE|PAYTM)/.test(cashBankText);
+    const amount = isDigitalPay ? Math.max(numVal('fTotalRcvd') - numVal('fChqAmt'), 0) : 0;
+    setVal('fCashAmt', fmt2(amount));
+  }
+
+  function isCashBankAccount(code) {
+    const text = String(code || '').trim().toUpperCase();
+    return text === '' || text === 'CASH' || text === 'CASH IN HAND';
+  }
+
+  function cashBankSplitAmount() {
+    if (isCashBankAccount(val('fCashBank'))) return 0;
+    return Math.min(Math.max(numVal('fCashAmt'), 0), Math.max(numVal('fTotalRcvd') - numVal('fChqAmt'), 0));
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -4615,17 +5661,20 @@
 
   // PB-like discount/discount% sync.
   $('fDiscount')?.addEventListener('change', function() {
+    autoAdjustReceivedOnce = true;
     syncDiscountPair(false);
     recomputeVaInfo();
     triggerRecalc();
   });
   $('fDiscountPerc')?.addEventListener('change', function() {
+    autoAdjustReceivedOnce = true;
     syncDiscountPair(true);
     recomputeVaInfo();
     triggerRecalc();
   });
   $('fDiscount')?.addEventListener('input', function() {
     discountDirty = true;
+    autoAdjustReceivedOnce = true;
     syncDiscountPair(false);
     recomputeVaInfo();
     triggerRecalc();
@@ -4633,6 +5682,7 @@
   $('fDiscount')?.addEventListener('change', function() { discountDirty = false; });
   $('fDiscount')?.addEventListener('blur', function() { discountDirty = false; });
   $('fDiscountPerc')?.addEventListener('input', function() {
+    autoAdjustReceivedOnce = true;
     syncDiscountPair(true);
     recomputeVaInfo();
     triggerRecalc();
@@ -4657,13 +5707,22 @@
     triggerRecalc();
   });
   $('fTotalRcvd')?.addEventListener('change', function() {
-    this.value = fmt2(this.value);
+    this.value = fmt2(roundReceivedAmount(this.value));
     triggerRecalcNow();
   });
   $('fTotalRcvd')?.addEventListener('blur', function() {
-    this.value = fmt2(this.value);
+    this.value = fmt2(roundReceivedAmount(this.value));
     triggerRecalcNow();
   });
+  $('fCashAmt')?.addEventListener('blur', function() {
+    const amount = cashBankSplitAmount();
+    this.value = fmt2(isCashBankAccount(val('fCashBank')) ? this.value : amount);
+    setVal('fCcardAmt', fmt2(amount));
+  });
+  $('fChqAmt')?.addEventListener('blur', function() {
+    this.value = fmt2(this.value);
+  });
+  $('fCashBank')?.addEventListener('change', syncCashAmt);
 
   // Bill type change -> update rate + PB bill-type-wise bill no/tax
   $('fBillType').addEventListener('change', async function() {
@@ -4674,15 +5733,38 @@
       await refreshNextBillNo();
     }
   });
+  $('fGstNo')?.addEventListener('change', function() {
+    this.value = String(this.value || '').trim().toUpperCase();
+    applyB2BBillTypeForGst(this.value);
+  });
+  $('fGstNo')?.addEventListener('blur', function() {
+    this.value = String(this.value || '').trim().toUpperCase();
+    applyB2BBillTypeForGst(this.value);
+  });
   $('fWs').addEventListener('change', function() { applyHeaderRate(); });
 
   // ══════════════════════════════════════════════════════════════════
   // 10. SAVE / LOAD / NAVIGATE
   // ══════════════════════════════════════════════════════════════════
   async function saveBill() {
+    if (navigationViewOnly) {
+      showAlert('Previous/Next loaded bills are view only. Save is disabled.');
+      return;
+    }
     if (isSaving) return;
     const billNo = val('fBillNo').trim();
     if (!billNo) { showAlert('Bill number is required.'); return; }
+
+    const custCode = String(val('fCustomerCode') || val('fCustomerCodeInput') || '').trim();
+    const custName = String(val('fCustomerName') || '').trim();
+    if (!custCode || !custName) {
+      showAlert('Customer code and customer name are required.', false, () => {
+        $((!custCode ? 'fCustomerCodeInput' : 'fCustomerName'))?.focus();
+      });
+      return;
+    }
+    setVal('fCustomerCode', custCode);
+    setVal('fCustomerCodeInput', custCode);
 
     const salesmanCode = val('fSmName') || '';
     if (!salesmanCode) {
@@ -4691,6 +5773,7 @@
       });
       return;
     }
+    if (!validatePanForHighAmount()) return;
 
     isSaving = true;
     $('btnSave').textContent = 'Saving...';
@@ -4709,10 +5792,10 @@
       bill_date:     val('fBillDate'),
       bill_time:     $('fBillTime').textContent || nowTime(),
       bill_type:     val('fBillType') || 'G',
-      is_quotation:  chk('fQuotationMode'),
+      is_quotation:  inQuotationMode(),
       source_quotation_bill_no: selectedQuotationBillNo || null,
-      customer_name: val('fCustomerName'),
-      customer_code: val('fCustomerCode') || null,
+      customer_name: custName,
+      customer_code: custCode || null,
       address:       val('fAddress') || null,
       mobile:        val('fMobNo') || null,
       gst_no:        val('fGstNo') || null,
@@ -4732,11 +5815,14 @@
       cashbank_code: val('fCashBank') || null,
       distance:      numVal('fDistance'),
       items:         items.map(r => ({
-        item_code: r.item_code, item_name: r.item_name, item_type: r.item_type,
+        item_code: r.item_code, item_name: r.item_name, item_type: r.item_type, group_code: r.group_code || selectedItemGroupCode(),
+        is_diamond: !!r.is_diamond,
+        display_category: r.display_category || '',
         purity: r.purity, model: r.model, hsn: r.hsn, huid: r.huid,
         qty: r.qty, weight: r.weight, stone_wgt: r.stone_wgt, net_wgt: r.net_wgt,
         stone_price: r.stone_price, making_charge: r.making_charge,
         rate: r.rate, amount: r.amount,
+        taxinternal: r.taxinternal || 'N',
         bcode: r.bcode || 0,
         stkinnos: r.stkinnos || 'N',
         stktype: r.stktype || '',
@@ -4746,6 +5832,8 @@
         dmdwgt: r.dmdwgt || 0,
         dmdnos: r.dmdnos || 0,
         dmdunit: r.dmdunit || '',
+        va_disc_perc: r.va_disc_perc || 0,
+        va_disc_amt: r.va_disc_amt || 0,
         vaperc: r.vaperc || 0,
       })),
       exchange:      exchRows.map(r => ({
@@ -4768,8 +5856,11 @@
         stkinnos: r.stkinnos || 'N', stktouch: r.stktouch || 0, cost: r.cost || 0,
         dmdamt: r.dmdamt || 0, dmdwgt: r.dmdwgt || 0, vaperc: r.vaperc || 0, stkfd: r.stkfd || 'N',
       })),
+      sr_tax_perc: toNum($('srTaxPerc')?.value || 0),
       sr_tax_amt:  toNum($('srTaxAmt')?.value || 0),
+      sr_cess_perc: toNum($('srCessPerc')?.value || 0),
       sr_cess_amt: toNum($('srCessAmt')?.value || 0),
+      sr_discount_amt: toNum($('srDiscount')?.value || 0),
       extra: {
         discount:        numVal('fDiscount'),
         discount_perc:   numVal('fDiscountPerc'),
@@ -4787,7 +5878,7 @@
         scheme_ledger:   val('fSchemeLedger') || 'APP',
         bank_charge:     numVal('fBcAmt'),
         bc_perc:         numVal('fBcPerc'),
-        cc_amt:          numVal('fCcardAmt'),
+        cc_amt:          cashBankSplitAmount(),
         chq_amt:         numVal('fChqAmt'),
         chq_bank:        val('fChqBank') || '',
         chq_no:          val('fChqNo') || '',
@@ -4800,7 +5891,7 @@
         is_cst:          chk('fInterstate'),
         add_bank_charge: chk('fAddBc'),
         opening_balance: numVal('fOB'),
-        received:        numVal('fTotalRcvd'),
+        received:        roundReceivedAmount(numVal('fTotalRcvd')),
         balance:         numVal('fBalance'),
         credit:          chk('fCredit'),
         note:            val('fNote'),
@@ -4815,7 +5906,7 @@
         if (savedBillNo) {
           setVal('fBillNo', savedBillNo);
         }
-        if (res.data) applyRecalcResult(res.data);
+        if (res.data && mode !== 'edit') applyRecalcResult(res.data);
         const savedNetTotal = toNum(res.data?.net_total ?? val('fGrandAmt') ?? 0);
         const printSlno = res.legacy_slno;
         const isQuotation = !!(res.data?.is_quotation ?? payload.is_quotation);
@@ -4831,6 +5922,9 @@
               try {
                 await maybePromptEInvoice(savedBillNo, savedNetTotal);
               } catch (_) {}
+              try {
+                await maybePromptEWayBill(savedBillNo, savedNetTotal);
+              } catch (_) {}
             }
             pendingResetAfterPrint = false;
             setTimeout(() => {
@@ -4838,8 +5932,31 @@
               window.location.href = '{{ url("/sales-bill") }}?n=' + nextN;
             }, 100);
           });
+        } else if (mode === 'edit') {
+          showAlert((isQuotation ? 'Quotation edited successfully: ' : 'Bill edited successfully: ') + savedBillNo, true, async () => {
+            if (isQuotation) {
+              openBillPrintPreview('short');
+            } else if (printSlno) {
+              const printUrl = '{{ url("/sales-bill-print") }}?slno=' + printSlno;
+              window.open(printUrl, '_blank', 'width=950,height=820,scrollbars=yes');
+            }
+            let promptedExternalDocs = false;
+            if (!isQuotation) {
+              try {
+                await maybePromptEInvoice(savedBillNo, savedNetTotal);
+                promptedExternalDocs = true;
+              } catch (_) {}
+              try {
+                await maybePromptEWayBill(savedBillNo, savedNetTotal);
+                promptedExternalDocs = true;
+              } catch (_) {}
+            }
+            if (!promptedExternalDocs) {
+              setTimeout(closeCurrentModuleWindow, 50);
+            }
+          });
         } else {
-          showAlert('Bill saved: ' + billNo, true);
+          showAlert('Bill saved: ' + savedBillNo, true);
         }
       } else {
         showAlert(res.message || 'Save failed.');
@@ -4852,11 +5969,13 @@
     }
   }
 
-  async function loadBill(billNo) {
+  async function loadBill(billNo, viewOnly = false) {
     try {
-      const res = await api(siteUrl + '/api/sales-bill/get?bill_no=' + encodeURIComponent(billNo), 'GET');
+      const qtnQs = inQuotationMode() ? '&qtn=1' : '&qtn=0';
+      const res = await api(siteUrl + '/api/sales-bill/get?bill_no=' + encodeURIComponent(billNo) + qtnQs, 'GET');
       if (!res.ok) { showAlert(res.message || 'Bill not found.'); return; }
       const d = res.data;
+      setNavigationViewOnly(viewOnly);
 
       currentBillNo = d.bill_no;
       currentLegacySlno = Number(d.slno || 0);
@@ -4889,14 +6008,17 @@
       if (d.co_party_code) setCoPartyOption(d.co_party_code, '');
 
       items    = (d.items || []).map(r => ({ ...newItemRow(), ...r, hsn: r.hsn || r.note || '', _rowId: nextRowId() }));
+      setHeaderItemGroupFromItems(items);
       exchRows = (d.exchange || []).map(r => ({ ...newExchRow(), ...r, _rowId: nextRowId() }));
       srRows   = (d.sales_return || []).map(r => ({ ...newSrRow(), ...r, _rowId: nextRowId() }));
       if (srRows.length) {
-        const srTotal = srRows.reduce((s, r) => s + toNum(r.amount || 0), 0);
-        const extraRet = Number(d.extra?.tax_perc ?? 0);
-        setVal('srTaxPerc', String(extraRet || 0));
-        setVal('srTaxAmt', fmt2(roundByMode(srTotal * (extraRet || 0) / 100)));
+        setVal('srDiscount', fmt2(d.extra?.sr_discount_amt || 0));
+        setVal('srTaxPerc', String(d.extra?.sr_tax_perc || 0));
+        setVal('srTaxAmt', fmt2(d.extra?.sr_tax_amt || 0));
+        setVal('srCessPerc', String(d.extra?.sr_cess_perc || 0));
+        setVal('srCessAmt', fmt2(d.extra?.sr_cess_amt || 0));
       } else {
+        setVal('srDiscount', '0.00');
         setVal('srTaxAmt', '0.00');
         setVal('srCessAmt', '0.00');
       }
@@ -4918,7 +6040,7 @@
       setVal('fSchemeLedger', ex.scheme_ledger || 'APP');
       setVal('fBcPerc', ex.bc_perc ?? 0);
       setVal('fBcAmt', fmt2(ex.bank_charge));
-      setVal('fCcardAmt', fmt2(ex.cc_amt));
+      setVal('fCcardAmt', fmt2(isCashBankAccount(d.cashbank_code) ? 0 : ex.cc_amt));
       setVal('fChqAmt', fmt2(ex.chq_amt));
       setVal('fChqBank', ex.chq_bank || '');
       setVal('fChqNo', ex.chq_no || '');
@@ -4930,7 +6052,8 @@
       setVal('fPurchTaxAmt', fmt2(ex.ptax_amt));
       setVal('fAddBc', ex.add_bank_charge);
       setVal('fOB', fmt2(ex.opening_balance));
-      setVal('fTotalRcvd', fmt2(ex.received));
+      setVal('fTotalRcvd', fmt2(roundReceivedAmount(ex.received)));
+      setVal('fCashAmt', fmt2(isCashBankAccount(d.cashbank_code) ? (ex.cash_amt || 0) : (ex.cc_amt || 0)));
       totalRcvdDirty = false;
       discountDirty = false;
       setVal('fCredit', ex.credit);
@@ -4943,7 +6066,7 @@
         const keepOB = fmt2(ex.opening_balance);
         const keepDiscount = toNum(ex.discount) > 0 ? fmt2(ex.discount) : '';
         const keepDiscountPerc = ex.discount_perc ?? 0;
-        const keepReceived = fmt2(ex.received);
+        const keepReceived = fmt2(roundReceivedAmount(ex.received));
         await fetchCustomerByCode(d.customer_code, false);
         setVal('fOB', keepOB);
         setVal('fDiscount', keepDiscount);
@@ -4960,6 +6083,7 @@
 
   // Navigation (PB-style prev/next by slno/control/orderno)
   async function resetToAddMode(prefillBillNo = '', prefillTaxPerc = null, savedBillNo = '') {
+    setNavigationViewOnly(false);
     currentBillNo = '';
     currentLegacySlno = 0;
     hideCustSearch();
@@ -4978,6 +6102,9 @@
     setVal('fCo', '');
     setVal('fState', DEF_STATE_CODE || '');
     setVal('fCashBank', '');
+    populateItemGroupSelect('');
+    setVal('fItemGroup', '');
+    rebuildItemCodeList('');
     setVal('fSmName', '');
     setVal('fAgent', '');
     setVal('fApprovedBy', '');
@@ -5005,6 +6132,7 @@
     setVal('fBcAmt', '0.00');
     setVal('fCcardAmt', '0.00');
     setVal('fChqAmt', '0.00');
+    setVal('fCashAmt', '0.00');
     setVal('fChqBank', '');
     setVal('fChqNo', '');
     setVal('fChqDate', '');
@@ -5088,7 +6216,7 @@
         return;
       }
       if (res.bill_no) {
-        await loadBill(res.bill_no);
+        await loadBill(res.bill_no, true);
       }
     } catch (e) {
       showAlert('Previous navigation error: ' + e.message);
@@ -5111,7 +6239,7 @@
         resetToAddMode();
         return;
       }
-      await loadBill(res.bill_no);
+      await loadBill(res.bill_no, true);
     } catch (e) {
       showAlert('Next navigation error: ' + e.message);
     }
@@ -5125,6 +6253,10 @@
   $('btnExchange').addEventListener('click', openExchange);
   $('btnSalesReturn').addEventListener('click', openSalesReturn);
   $('btnSave').addEventListener('click', async () => {
+    if (navigationViewOnly) {
+      showAlert('Previous/Next loaded bills are view only. Save is disabled.');
+      return;
+    }
     if (!(await validateManualBillNo())) return;
     saveBill();
   });
@@ -5151,8 +6283,6 @@
     }
     history.back();
   });
-  $('btnShortPrint')?.addEventListener('click', () => openBillPrintPreview('short'));
-  $('btnQtnPrint').addEventListener('click', () => openBillPrintPreview('qtn'));
   $('btnQuotationSelect')?.addEventListener('click', openQuotationSelect);
   $('btnQuotationClose')?.addEventListener('click', closeQuotationSelect);
   $('quotationSelectModal')?.addEventListener('click', (e) => {
@@ -5183,13 +6313,13 @@
     'fManualBillNo', 'fRatePerGm', 'fRatePurity', 'fCounter',
     'fCustomerCodeInput', 'fCustomerName', 'btnCustSearch', 'btnCustCreate', 'fMobNo', 'fAddress',
     'btnPrev', 'btnNext', 'fBillType', 'fCo', 'fGstNo', 'fPanNo',
-    'fBillDate', 'fOpWgt', 'fRatePer8gm', 'fOB', 'fSmName', 'fWs', 'fPrevAdv', 'btnRateAll',
+    'fBillDate', 'fOpWgt', 'fRatePer8gm', 'fOB', 'fSmName', 'fItemGroup', 'fWs', 'fPrevAdv', 'btnRateAll',
     'fBillTotal', 'fTaxPerc', 'fTaxAmt', 'fDiscount', 'fDiscountPerc', 'fGrandAmt', 'fPurchTaxPerc', 'fPurchTaxAmt',
     'fCashBank', 'fChqBank', 'fAgent', 'fApprovedBy',
     'fRepair', 'fCessPerc', 'fCessAmt', 'fFancyAmt', 'fSchemeAmt', 'fSchemeLedger', 'fTcsPerc', 'fTcsAmt', 'fInterstate',
     'fExchangeAmt', 'fHmc', 'fTotalRcvd', 'fNetAmt', 'fCb', 'fNote', 'fCcardAmt', 'fBcPerc', 'fBcAmt', 'fChqAmt', 'fChqDate', 'fChqNo', 'fPdc', 'fVehNo', 'fSchemeBal',
     'fRedeemPoints', 'fSalesRetAmt', 'fNetTotal', 'fCredit', 'fBalance', 'fDueDate', 'fPcPoints', 'fPcAmt', 'fSupplyPlace', 'fState', 'fDistance', 'fSendSms',
-    'btnExchange', 'btnSalesReturn', 'btnQuotationSelect', 'fQuotationMode', 'btnSave', 'btnShortPrint', 'btnExit', 'btnQtnPrint'
+    'btnExchange', 'btnSalesReturn', 'btnQuotationSelect', 'fQuotationMode', 'btnSave', 'btnExit'
   ];
 
   function isElementTabbable(el) {
@@ -5280,7 +6410,14 @@
       }
       return;
     }
-    if (e.key === 'F5') { e.preventDefault(); $('btnSave')?.click(); }
+    if (e.key === 'F5') {
+      e.preventDefault();
+      if (navigationViewOnly) {
+        showAlert('Previous/Next loaded bills are view only. Save is disabled.');
+      } else {
+        $('btnSave')?.click();
+      }
+    }
     if (e.key === 'Escape') {
       if ($('exchangeModal').classList.contains('active')) closeExchange();
       else if ($('salesReturnModal').classList.contains('active')) closeSalesReturn();
@@ -5291,6 +6428,23 @@
   $('msgModal')?.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'msgModal') closeWarningModal();
   });
+  $('msgModal')?.addEventListener('keydown', function(e) {
+    if (!$('msgModal').classList.contains('active')) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeWarningModal();
+    }
+  });
+  document.addEventListener('keydown', function(e) {
+    const modal = $('msgModal');
+    if (!modal || !modal.classList.contains('active')) return;
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeWarningModal();
+    }
+  }, true);
   $('confirmModalYes')?.addEventListener('click', () => closeConfirmModal(true));
   $('confirmModalNo')?.addEventListener('click', () => closeConfirmModal(false));
   $('confirmModal')?.addEventListener('click', function(e) {
@@ -5312,6 +6466,8 @@
 
     // Populate dropdown selects from server data
     initDropdowns();
+    populateItemGroupSelect('');
+    rebuildItemCodeList('');
     await initCoPartyDropdown();
 
     if (DEF_COUNTER) setVal('fCounter', DEF_COUNTER);
@@ -5329,8 +6485,6 @@
       if ($('lblBillNo')) $('lblBillNo').textContent = 'Qtn No';
       const navBtns = document.querySelector('.nav-btns');
       if (navBtns) navBtns.style.display = 'none';
-      if ($('btnShortPrint')) $('btnShortPrint').style.display = 'none';
-      if ($('btnQtnPrint')) $('btnQtnPrint').style.display = 'none';
       if ($('btnQuotationSelect')) $('btnQuotationSelect').style.display = 'none';
     }
     if (!ALLOW_PREV_NEXT_BUTTONS) {

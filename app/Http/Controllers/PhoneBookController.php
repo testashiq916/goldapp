@@ -47,6 +47,64 @@ class PhoneBookController extends Controller
         ]);
     }
 
+    public function quickLookup(Request $request): JsonResponse
+    {
+        if (!$request->session()->has('user_code')) {
+            return response()->json(['ok' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $needle = trim((string) $request->query('phone', ''));
+        if ($needle === '' || !$this->hasTable('clients')) {
+            return response()->json(['ok' => true, 'results' => []]);
+        }
+
+        $digits = preg_replace('/\D+/', '', $needle) ?: '';
+        $like = '%' . $needle . '%';
+        $digitLike = $digits !== '' ? '%' . $digits . '%' : '';
+
+        $rows = DB::table('clients as c')
+            ->select([
+                'c.code',
+                'c.name',
+                DB::raw("TRIM(COALESCE(c.ctype, '')) as ctype"),
+                DB::raw("TRIM(COALESCE(c.mobile, '')) as mobile"),
+                DB::raw("TRIM(COALESCE(c.telephone, '')) as telephone"),
+                DB::raw("TRIM(COALESCE(c.city, '')) as city"),
+            ])
+            ->where(function ($q) use ($like, $digitLike) {
+                $q->where('c.mobile', 'like', $like)
+                    ->orWhere('c.telephone', 'like', $like)
+                    ->orWhere('c.code', 'like', $like)
+                    ->orWhere('c.name', 'like', $like);
+                if ($digitLike !== '') {
+                    $q->orWhereRaw("REGEXP_REPLACE(COALESCE(c.mobile, ''), '[^0-9]', '') LIKE ?", [$digitLike])
+                        ->orWhereRaw("REGEXP_REPLACE(COALESCE(c.telephone, ''), '[^0-9]', '') LIKE ?", [$digitLike]);
+                }
+            })
+            ->orderBy('c.name')
+            ->limit(20)
+            ->get()
+            ->map(function ($row) {
+                $ctype = strtoupper(trim((string) ($row->ctype ?? '')));
+                $mobile = trim((string) ($row->mobile ?? ''));
+                $telephone = trim((string) ($row->telephone ?? ''));
+                return [
+                    'code' => trim((string) ($row->code ?? '')),
+                    'name' => trim((string) ($row->name ?? '')),
+                    'type' => $ctype,
+                    'type_label' => $this->typeLabel($ctype),
+                    'mobile' => $mobile,
+                    'telephone' => $telephone,
+                    'contact' => $mobile !== '' ? $mobile : $telephone,
+                    'city' => trim((string) ($row->city ?? '')),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['ok' => true, 'results' => $rows]);
+    }
+
     private function buildPayload(): array
     {
         return [

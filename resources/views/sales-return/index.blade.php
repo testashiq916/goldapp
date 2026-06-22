@@ -22,13 +22,14 @@
   --g-header-2: #4457cb;
 }
 
+html, body { width: 100%; }
 body {
   font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
   font-size: 12px;
   background: radial-gradient(circle at 10% -10%, #eef3ff 0%, #f4f7fb 40%, #edf2f8 100%);
   color: var(--g-text);
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: auto;
 }
 
 input, select, button { transition: all 0.15s ease; font-family: inherit; }
@@ -48,7 +49,8 @@ input, select, button { transition: all 0.15s ease; font-family: inherit; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 20px);
+  min-height: calc(100vh - 20px);
+  min-width: 1080px;
   position: relative;
 }
 
@@ -131,9 +133,14 @@ input, select, button { transition: all 0.15s ease; font-family: inherit; }
   display: flex;
   flex-direction: column;
 }
-.table-scroll { overflow: auto; flex: 1; }
+.table-scroll { overflow: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.table-scroll::-webkit-scrollbar-track { background: #f0f3f7; }
+.table-scroll::-webkit-scrollbar-thumb { background: #b8c2cf; border-radius: 4px; }
+.table-scroll::-webkit-scrollbar-thumb:hover { background: #8fa0b5; }
 table.items {
   width: 100%;
+  min-width: 1050px;
   border-collapse: collapse;
   font-size: 11px;
 }
@@ -381,7 +388,28 @@ table.ltbl tbody tr:hover td { background: #edf3ff; }
 .t-inf { background: #1e3a8a; color: #dbeafe; }
 
 @media print { .action-buttons, .table-footer { display: none !important; } }
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .row{min-height:30px}
+.top-section label{font-size:14px}
+.top-section input,.top-section select{font-size:14px;height:28px}
+table.items{font-size:14px}
+table.items thead th{font-size:13px;padding:6px 5px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:14px}
+table.ltbl{font-size:14px}
+table.ltbl thead th{font-size:12px}
+.table-footer{font-size:14px}
+.table-footer button{font-size:14px;padding:3px 12px}
+.action-buttons button{font-size:15px;padding:7px 16px}
+.bottom-section{font-size:14px}
+.fl,.fl1,.fl2,.flbl{font-size:14px}
+input.fv,select.fv{font-size:14px;height:26px}
+.fbtn{font-size:14px}
+.foot-chk{font-size:13px}
+.inline-chk{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>
@@ -566,7 +594,10 @@ table.ltbl tbody tr:hover td { background: #edf3ff; }
     <button class="danger" onclick="openList('cancel')">&#10007; Cancel Bill</button>
     @endif
     @if($mode === 'reprint')
-    <button onclick="openList('reprint')">&#9112; Reprint</button>
+    <button id="btnPrint" onclick="printSalesReturn()">&#9112; Print</button>
+    @endif
+    @if($mode === 'bill' || $mode === 'edit')
+    <button id="btnPrint" onclick="printSalesReturn()" style="display:none">&#9112; Print</button>
     @endif
     <button onclick="openList('view')">&#9776; Records</button>
     <button onclick="resetForm()">&#8635; New</button>
@@ -685,8 +716,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupKeys();
     const qs = new URLSearchParams(window.location.search);
     const slno = parseInt(qs.get('slno') || '0', 10);
+    const autoPrint = qs.get('autoprint') === '1';
     if (slno > 0) {
-        loadEdit(slno);
+        const loaded = await loadEdit(slno);
+        if (loaded && autoPrint && PMODE === 'reprint') {
+            setTimeout(() => openSalesReturnPrint(S.slno), 250);
+        }
     } else if (PMODE==='edit'||PMODE==='cancel'||PMODE==='reprint') {
         setTimeout(()=>openList(PMODE),200);
     }
@@ -915,14 +950,10 @@ async function loadSaleBill() {
         if (r.master.discount) G('discount').value=r.master.discount;
         if (r.master.billtype) G('billtype').value=r.master.billtype;
         S.rows=[]; G('gridBody').innerHTML='';
-        (r.details||[]).forEach(d=>addRowWith({
-            code:d.code, itemname:d.itemname||d.name, qty:d.qty, weight:d.weight,
-            stonewgt:d.stonewgt||0, stoneprice:d.stoneprice||0, mcharge:d.mcharge,
-            wastage:d.wastage, amount:d.amount, rate:d.rate, vaperc:d.vaperc||0,
-            stktype:d.stktype||'', iqtype:d.itemtype||'', fr:d.fr||0, cost:d.cost||0,
-            stkinnos:d.stkinnos||'N',
-        }));
+        (r.details||[]).forEach(d=>addRowWith(normalizeDetailRow(d), {focus:false}));
         recalcAll();
+        updateTots();
+        setTimeout(updateTots, 60);
         toast('Loaded '+r.details.length+' items from '+(r.master.billno||bn),'ok');
     } catch(e) {
         toast('Failed to load bill: '+e.message,'err');
@@ -953,10 +984,34 @@ async function searchOrigBills(q) {
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 function addRow() { addRowWith({}); }
-function addRowWith(d={}) {
+function addRowWith(d={}, opts={}) {
     const idx=S.rows.length; S.rows.push({...d});
     renderRow(idx); S.curRow=idx; hiRow(idx);
-    setTimeout(()=>{ const el=document.querySelector('#r'+idx+' .cc input'); if(el) el.focus(); },40);
+    if (opts.focus !== false) {
+        setTimeout(()=>{ const el=document.querySelector('#r'+idx+' .cc input'); if(el) el.focus(); },40);
+    }
+}
+function normalizeDetailRow(d={}) {
+    return {
+        code: String(d.code || '').trim().toUpperCase(),
+        itemname: d.name || d.itemname || d.itemname2 || '',
+        qty: +(d.qty || 0),
+        weight: +(d.weight || 0),
+        stonewgt: +(d.stonewgt || 0),
+        stoneprice: +(d.stoneprice || 0),
+        mcharge: +(d.mcharge || 0),
+        wastage: +(d.wastage || 0),
+        amount: +(d.amount || 0),
+        rate: +(d.rate || 0),
+        vaperc: +(d.vaperc || 0),
+        stktype: d.stktype || '',
+        iqtype: d.iqtype || d.itemtype || '',
+        itemtype: d.itemtype || d.iqtype || '',
+        note: d.note || '',
+        fr: +(d.fr || 0),
+        cost: +(d.cost || 0),
+        stkinnos: d.stkinnos || 'N',
+    };
 }
 function renderRow(idx) {
     const d=S.rows[idx]||{};
@@ -1064,8 +1119,13 @@ function calcAmt(idx) {
     const w=d.weight||0, sw=d.stonewgt||0, wst=d.wastage||0;
     const mc=d.mcharge||0, sp=d.stoneprice||0, rt=d.rate||0, qty=d.qty||0;
     d.amount=Math.round((d.stkinnos==='Y'?qty*rt+sp+mc:(w-sw+wst)*rt+sp+mc)*100)/100;
-    const nel=document.querySelector('#r'+idx+' td:nth-child(9) input'); if(nel) nel.value=(w-sw).toFixed(3);
-    const ael=document.querySelector('#r'+idx+' .ca input');             if(ael) ael.value=d.amount||'';
+    const tr=G('r'+idx); if(!tr){ updateTots(); return; }
+    const nel=tr.querySelector('td:nth-child(9) input');  if(nel) nel.value=(w-sw).toFixed(3);
+    const wel=tr.querySelector('td:nth-child(11) input'); if(wel) wel.value=d.wastage?(+d.wastage).toFixed(3):'';
+    const vel=tr.querySelector('td:nth-child(12) input'); if(vel && document.activeElement!==vel) vel.value=d.vaperc?(+d.vaperc).toFixed(2):'';
+    const mel=tr.querySelector('td:nth-child(13) input'); if(mel) mel.value=d.mcharge?(+d.mcharge).toFixed(2):'';
+    const ael=tr.querySelector('.ca input');              if(ael) ael.value=d.amount||'';
+    const rel=tr.querySelector('td:nth-child(15) input'); if(rel && document.activeElement!==rel) rel.value=d.rate?(+d.rate).toFixed(2):'';
     updateTots();
 }
 function recalcAll() { S.rows.forEach((_,i)=>calcAmt(i)); }
@@ -1140,10 +1200,33 @@ async function saveSalesReturn() {
     const btn=G('btnSave'); if(btn) btn.disabled=true;
     try {
         const r=await post('save',pay);
-        if(r.success){ toast(r.message,'ok'); S.slno=0; S.mode='add'; setTimeout(()=>resetForm(),1200); }
+        if(r.success){
+            toast((r.message||'Sales Return saved successfully')+' - opening print','ok');
+            S.slno=r.slno||S.slno;
+            S.mode='edit';
+            const printBtn=G('btnPrint');
+            if(printBtn) printBtn.style.display='';
+            G('billno').readOnly=true;
+            setTimeout(() => openSalesReturnPrint(S.slno), 250);
+        }
         else toast(r.error||'Save failed','err');
     } catch(e){ toast('Error: '+e.message,'err'); }
     finally { if(btn) btn.disabled=false; }
+}
+
+function openSalesReturnPrint(slno) {
+    const n = parseInt(slno, 10);
+    if (!n || n <= 0) return;
+    const printUrl = '{{ url("/sales-return-print") }}?slno=' + n;
+    window.open(printUrl, '_blank', 'width=950,height=820,scrollbars=yes');
+}
+
+function printSalesReturn() {
+    if(!S.slno){
+        toast('Save or load a Sales Return before printing','err');
+        return;
+    }
+    openSalesReturnPrint(S.slno);
 }
 
 // ── List / Records ────────────────────────────────────────────────────────────
@@ -1195,7 +1278,7 @@ function filterList() {
 
 async function loadEdit(slno) {
     const r=await get('get',{slno});
-    if(!r.success){toast(r.error||'Failed to load','err');return;}
+    if(!r.success){toast(r.error||'Failed to load','err');return false;}
     closeModal('listModal'); resetForm(false);
     const m=r.master; S.slno=slno; S.mode='edit';
     G('billno').value=m.billno||''; G('billno').readOnly=true;
@@ -1210,14 +1293,15 @@ async function loadEdit(slno) {
     G('astamt').value=m.astamt||''; G('ob').value=m.ob||'';
     G('cbxInterstate').checked=m.cst==='Y';
     S.rows=[]; G('gridBody').innerHTML='';
-    (r.details||[]).forEach(d=>addRowWith({
-        code:d.code, itemname:d.name||d.itemname2||'', qty:d.qty, weight:d.weight,
-        stonewgt:d.stonewgt||0, stoneprice:d.stoneprice||0, mcharge:d.mcharge,
-        wastage:d.wastage, amount:d.amount, rate:d.rate, vaperc:d.vaperc||0,
-        stktype:d.stktype||'', iqtype:d.iqtype||d.itemtype||'', note:d.note||'', fr:d.fr||0,
-    }));
+    (r.details||[]).forEach(d=>addRowWith(normalizeDetailRow(d), {focus:false}));
     onCreditChange();
-    updateTots(); toast('Bill loaded for editing','ok');
+    recalcAll();
+    updateTots();
+    setTimeout(updateTots, 60);
+    toast('Bill loaded for editing','ok');
+    const printBtn=G('btnPrint');
+    if(printBtn) printBtn.style.display='';
+    return true;
 }
 
 async function doDelete(slno, bn) {
@@ -1232,7 +1316,10 @@ async function doCancel(slno, bn) {
     if(r.success){toast(r.message,'ok'); openList('cancel');}
     else toast(r.error||'Failed','err');
 }
-function doReprint(slno, bn) { toast('Reprint for '+bn+' — coming soon','inf'); closeModal('listModal'); }
+async function doReprint(slno, bn) {
+    const loaded = await loadEdit(slno);
+    if (loaded) setTimeout(() => openSalesReturnPrint(slno || S.slno), 250);
+}
 
 // ── Reset ─────────────────────────────────────────────────────────────────────
 function resetForm(doAdd=true) {
@@ -1262,6 +1349,8 @@ function resetForm(doAdd=true) {
     G('gridBody').innerHTML='';
     G('totalItems').textContent='0'; G('totalQty').textContent='0'; G('totalWgt').textContent='0.000';
     G('avgVaPerc').textContent='';
+    const printBtn=G('btnPrint');
+    if(printBtn && PMODE !== 'reprint') printBtn.style.display='none';
     if(!G('cbxManual').checked){ G('billno').readOnly=true; refreshBillNo(); }
     if(doAdd) addRow();
 }

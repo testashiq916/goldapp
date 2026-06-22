@@ -166,19 +166,30 @@ class ReceiptController extends Controller
     private function getAccountBalance(string $accode, int $control): float
     {
         if ($accode === '' || !$this->hasTable('daybook')) return 0;
-        $sum = (float) DB::table('daybook')
-            ->whereRaw('TRIM(accode) = ?', [$accode])
-            ->where('control', $control)
-            ->sum('amount');
-        // Add opening balance
+
+        // Opening balance from accountm
+        $opbal = 0.0;
         if ($this->hasTable('accountm')) {
             $ob = DB::table('accountm')->whereRaw('TRIM(accode) = ?', [$accode])->first();
             if ($ob) {
                 $opbal = ($control === 1) ? (float) ($ob->opbal ?? 0) : (float) ($ob->opbalb ?? 0);
-                $sum += $opbal;
             }
         }
-        return $sum;
+
+        // Match Cash Book's logic exactly so the figure here equals the Cash Book closing:
+        //   • control <= $control (include lower levels, e.g. drafts)
+        //   • JOIN daybookpart (only count entries that have a part row, like Cash Book does)
+        //   • date <= today (skip post-dated entries — that cash hasn't arrived yet)
+        $query = DB::table('daybook')
+            ->whereRaw('TRIM(daybook.accode) = ?', [$accode])
+            ->where('daybook.control', '<=', $control)
+            ->whereDate('daybook.tdate', '<=', now()->toDateString());
+
+        if ($this->hasTable('daybookpart')) {
+            $query->join('daybookpart', 'daybook.slno', '=', 'daybookpart.slno');
+        }
+
+        return $opbal + (float) $query->sum('daybook.amount');
     }
 
     private function generalProfile(string $code, string $default = ''): string
@@ -529,15 +540,74 @@ class ReceiptController extends Controller
         elseif ($type === 'f') $query->whereRaw("TRIM(actype2) = 'F'");
         elseif ($type === 'o') $query->whereRaw("TRIM(actype2) NOT IN ('C','S','J','G','R','F','H','B')");
 
+        $clientSearchColumns = [];
+        if ($this->hasTable('clients')) {
+            foreach (['mobile', 'telephone', 'homemobile', 'idno', 'panadhar'] as $col) {
+                if ($this->hasCol('clients', $col)) {
+                    $clientSearchColumns[] = $col;
+                }
+            }
+        }
+
         if ($search !== '') {
             $like = '%' . $search . '%';
-            $query->where(function ($q) use ($like) {
+            // Also match account codes whose linked clients row has a matching mobile/telephone/idno.
+            // Customers/suppliers often live in `clients` keyed by the same code as in `accountm`.
+            $clientCodes = [];
+            if ($this->hasTable('clients') && $clientSearchColumns !== []) {
+                $clientCodes = DB::table('clients')
+                    ->where(function ($q) use ($like, $clientSearchColumns) {
+                        foreach ($clientSearchColumns as $idx => $col) {
+                            $idx === 0
+                                ? $q->where($col, 'like', $like)
+                                : $q->orWhere($col, 'like', $like);
+                        }
+                    })
+                    ->limit(200)
+                    ->pluck('code')
+                    ->map(fn ($c) => trim((string) $c))
+                    ->filter()
+                    ->all();
+            }
+            $query->where(function ($q) use ($like, $clientCodes) {
                 $q->whereRaw('TRIM(accode) LIKE ?', [$like])
                   ->orWhereRaw('TRIM(name) LIKE ?', [$like]);
+                if (!empty($clientCodes)) {
+                    $q->orWhereIn(DB::raw('TRIM(accode)'), $clientCodes);
+                }
             });
         }
 
-        return $this->json(['success' => true, 'data' => $query->orderBy('name')->get()->all()]);
+        $rows = $query->orderBy('name')->limit(500)->get();
+
+        if ($this->hasTable('clients') && $rows->isNotEmpty()) {
+            $phoneColumns = array_values(array_filter(['mobile', 'telephone', 'homemobile'], fn ($col) => $this->hasCol('clients', $col)));
+            if ($phoneColumns !== []) {
+                $codes = $rows->pluck('accode')->map(fn ($c) => trim((string) $c))->filter()->values()->all();
+                $select = array_merge(['code'], $phoneColumns);
+                $phones = DB::table('clients')
+                    ->whereIn('code', $codes)
+                    ->get($select)
+                    ->keyBy(fn ($row) => trim((string) ($row->code ?? '')));
+
+                $rows = $rows->map(function ($row) use ($phones, $phoneColumns) {
+                    $client = $phones->get(trim((string) ($row->accode ?? '')));
+                    $phone = '';
+                    if ($client) {
+                        foreach ($phoneColumns as $col) {
+                            $phone = trim((string) ($client->{$col} ?? ''));
+                            if ($phone !== '') {
+                                break;
+                            }
+                        }
+                    }
+                    $row->mobile = $phone;
+                    return $row;
+                });
+            }
+        }
+
+        return $this->json(['success' => true, 'data' => $rows->values()->all()]);
     }
 
     // ── Action: load_account ──
@@ -820,6 +890,16 @@ class ReceiptController extends Controller
         if ($cbcode === '') return $this->json(['success' => false, 'error' => 'Cash/Bank account is required']);
         if ($accode === '') return $this->json(['success' => false, 'error' => 'Account code is required']);
         if ($amount <= 0) return $this->json(['success' => false, 'error' => 'Amount must be greater than zero']);
+
+        if (!$this->hasTable('accountm')) {
+            return $this->json(['success' => false, 'error' => 'Account master table not found.']);
+        }
+        if (!DB::table('accountm')->whereRaw('UPPER(TRIM(accode)) = ?', [$cbcode])->exists()) {
+            return $this->json(['success' => false, 'error' => "Cash/Bank account '{$cbcode}' not found. Cannot save."]);
+        }
+        if (!DB::table('accountm')->whereRaw('UPPER(TRIM(accode)) = ?', [$accode])->exists()) {
+            return $this->json(['success' => false, 'error' => "Account code '{$accode}' not found. Cannot save."]);
+        }
 
         try {
             DB::beginTransaction();

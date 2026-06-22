@@ -26,16 +26,18 @@ window.PR_CONFIG = {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:hidden;height:100vh;
+html,body{width:100%}
+body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:auto;min-height:100vh;
   background:radial-gradient(circle at 10% -10%,#fff5f5 0%,#fef7f7 40%,#fdf2f2 100%)}
 input,select,button{transition:all .15s ease}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:#f7fafc}
-::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#fbeded}
+::-webkit-scrollbar-thumb{background:#d8b0b0;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#b48585}
 
 /* ── Main window ── */
 .main-window{background:#fff;border:1px solid #e2c6c6;border-radius:12px;
-  box-shadow:0 10px 30px rgba(89,33,33,.10);margin:8px;overflow:hidden;position:relative}
+  box-shadow:0 10px 30px rgba(89,33,33,.10);margin:8px;overflow:hidden;position:relative;min-width:980px}
 
 .title-bar{background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fff;
   padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
@@ -67,8 +69,13 @@ input,select,button{transition:all .15s ease}
 
 /* ── Items table ── */
 .table-container{margin:0 8px;border:1px solid #e2c6c6;border-radius:10px;
-  background:#fff;overflow:hidden;box-shadow:0 3px 10px rgba(92,32,32,.05)}
-table.items{width:100%;border-collapse:collapse;font-size:11px}
+  background:#fff;overflow-x:auto;overflow-y:hidden;box-shadow:0 3px 10px rgba(92,32,32,.05);
+  -webkit-overflow-scrolling:touch}
+.table-container::-webkit-scrollbar{height:8px}
+.table-container::-webkit-scrollbar-track{background:#fbeded}
+.table-container::-webkit-scrollbar-thumb{background:#d8b0b0;border-radius:4px}
+.table-container::-webkit-scrollbar-thumb:hover{background:#b48585}
+table.items{width:100%;min-width:880px;border-collapse:collapse;font-size:11px}
 table.items thead th{background:linear-gradient(180deg,#7f1d1d,#6b1a1a);color:#fef2f2;
   padding:5px 5px;border:1px solid #991b1b;font-weight:600;font-size:10px;
   text-align:center;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
@@ -151,7 +158,26 @@ input.fv:focus,select.fv:focus{border-color:#fca5a5;box-shadow:0 0 0 2px rgba(23
   padding:4px 8px;text-align:left;font-weight:600}
 .srch-tbl td{padding:3px 8px;border-bottom:1px solid #f3e0e0;cursor:pointer}
 .srch-tbl tr:hover td{background:#fecaca}
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .row{min-height:30px}
+.top-section label{font-size:14px}
+.top-section input,.top-section select{font-size:14px;height:28px}
+.sup-btns button{font-size:13px;height:28px}
+table.items{font-size:14px}
+table.items thead th{font-size:13px;padding:6px 5px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:14px}
+.table-footer{font-size:14px}
+.table-footer button{font-size:14px;padding:3px 12px}
+.bottom-section{font-size:14px}
+.fl,.fl1,.fl2,.flbl{font-size:14px}
+input.fv,select.fv{font-size:14px;height:26px}
+.fbtn{font-size:14px}
+.foot-chk{font-size:13px}
+.inline-chk{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>
@@ -377,10 +403,10 @@ input.fv:focus,select.fv:focus{border-color:#fca5a5;box-shadow:0 0 0 2px rgba(23
       <button class="fbtn" onclick="prevBill()">&#9664; Prev</button>
       <button class="fbtn" onclick="nextBill()">Next &#9654;</button>
       @if($mode === 'cancel')
-      <button class="fbtn" onclick="openCancelModal()" style="background:#fee2e2;color:#c53030;border-color:#fca5a5">Cancel Bill</button>
+      <button class="fbtn" id="btnCancel" type="button" onclick="openCancelModal()" style="background:#fee2e2;color:#c53030;border-color:#fca5a5">Cancel Bill</button>
       @endif
       @if($mode === 'reprint')
-      <button class="fbtn" onclick="window.print()">Print</button>
+      <button class="fbtn" onclick="printPurchaseReturn()">Print</button>
       @endif
       <button class="fbtn" onclick="doExit()">Exit</button>
     </div>
@@ -467,15 +493,15 @@ input.fv:focus,select.fv:focus{border-color:#fca5a5;box-shadow:0 0 0 2px rgba(23
   <div class="modal-box" style="min-width:360px">
     <div class="modal-head">
       <span>Cancel Purchase Return Bill</span>
-      <button class="cls" onclick="document.getElementById('cancelModal').classList.remove('active')">&#10006;</button>
+      <button class="cls" type="button" onclick="document.getElementById('cancelModal').classList.remove('active')">&#10006;</button>
     </div>
     <div class="modal-body">
       <p style="margin-bottom:8px;font-size:12px">Cancel bill: <strong id="cancelBillNo"></strong></p>
       <input id="cancelReason" style="width:100%;height:26px;border:1px solid #e2c6c6;border-radius:7px;padding:2px 8px;font-size:12px" placeholder="Reason for cancellation">
     </div>
     <div class="modal-footer">
-      <button class="mbtn" onclick="confirmCancel()" style="background:#fee2e2;color:#c53030;border-color:#fca5a5">Confirm Cancel</button>
-      <button class="mbtn" onclick="document.getElementById('cancelModal').classList.remove('active')">Close</button>
+      <button class="mbtn" id="btnConfirmCancel" type="button" onclick="confirmCancel()" style="background:#fee2e2;color:#c53030;border-color:#fca5a5">Confirm Cancel</button>
+      <button class="mbtn" type="button" onclick="document.getElementById('cancelModal').classList.remove('active')">Close</button>
     </div>
   </div>
 </div>
@@ -484,6 +510,7 @@ input.fv:focus,select.fv:focus{border-color:#fca5a5;box-shadow:0 0 0 2px rgba(23
 // ── State ──────────────────────────────────────────────────────────────────
 let items      = [];
 let currentSlno = 0;
+let currentBillStatus = 1;
 let selRowIdx   = -1;
 let recalcTimer = null;
 
@@ -614,7 +641,7 @@ function rfRow(i) {
 }
 
 function rKey(e, i, col) {
-  if (e.key==='Tab' && !e.shiftKey) {
+  if ((e.key==='Tab' && !e.shiftKey) || e.key==='Enter') {
     e.preventDefault();
     const editCols=[0,1,2,3,4,5,6,7,8,9,10,13];
     const cur=editCols.indexOf(col), next=editCols[cur+1];
@@ -654,6 +681,33 @@ function delRow() {
   const idx=selRowIdx>=0?selRowIdx:items.length-1;
   items.splice(idx,1); selRowIdx=Math.min(idx,items.length-1);
   renderItems(); updateFoot();
+}
+
+function focusNextEntryField(current) {
+  const fields = Array.from(document.querySelectorAll(
+    '.top-section input:not([type=hidden]), .top-section select, .bottom-section input:not([type=hidden]), .bottom-section select, .bottom-section button'
+  )).filter(el => {
+    if (el.disabled || el.readOnly || el.tabIndex < 0) return false;
+    if (el.offsetParent === null) return false;
+    if (el.closest('.modal-overlay')) return false;
+    return true;
+  });
+  const pos = fields.indexOf(current);
+  if (pos < 0) return;
+  const next = fields[pos + 1] || fields[0];
+  next.focus();
+  if (typeof next.select === 'function' && next.tagName === 'INPUT') next.select();
+}
+
+function bindEnterKeyNavigation() {
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.defaultPrevented) return;
+    const el = e.target;
+    if (!el || !el.matches('input, select')) return;
+    if (el.closest('#itbody') || el.closest('.modal-overlay')) return;
+    e.preventDefault();
+    focusNextEntryField(el);
+  });
 }
 
 // ── Recalc ──────────────────────────────────────────────────────────────────
@@ -928,19 +982,33 @@ function saveBill(){
     $('btnSave').disabled=false;
     if(!d.ok){ alert('Error: '+(d.message||d.error||'Save failed')); return; }
     alert('Purchase return saved: '+(d.doc_no||''));
-    resetForm(); loadNextBillNo();
+    if ((PR_CONFIG.mode || 'bill') === 'edit') {
+      loadBill(d.doc_no || gv('fDocNo'));
+    } else {
+      resetForm();
+      loadNextBillNo();
+    }
   }).catch(e=>{ $('btnSave').disabled=false; alert('Save failed: '+e); });
 }
 
 // ── Load bill ────────────────────────────────────────────────────────────────
 function loadBill(billNo){
-  if(!billNo) return;
-  fetch(url('/api/purchase-return/get?bill_no=')+encodeURIComponent(billNo))
-    .then(r=>r.json()).then(d=>{ if(d.error||!d.doc_no){ alert(d.error||'Not found'); return; } applyBill(d); })
-    .catch(()=>{});
+  if(!billNo) return Promise.resolve(false);
+  return fetch(url('/api/purchase-return/get?bill_no=')+encodeURIComponent(billNo))
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok || d.error || !d.doc_no){
+        alert(d.message || d.error || 'Not found');
+        return false;
+      }
+      applyBill(d);
+      return true;
+    })
+    .catch(e=>{ alert('Load failed: '+e); return false; });
 }
 function applyBill(d){
   currentSlno=d.slno||0;
+  const billStatus = Number(d.status ?? 1);
+  currentBillStatus = Number.isNaN(billStatus) ? 1 : billStatus;
   sv('fDocNo',d.doc_no||''); sv('fBillNo',d.bill_no||'');
   sv('fDate',d.date||'');
   sv('fSupCode',d.sup_code||''); sv('fSupName',d.sup_name||'');
@@ -968,6 +1036,7 @@ function applyBill(d){
   }));
   renderItems(); updateFoot();
   sv('fCB', fmt2(d.cb||0));
+  syncCancelState();
 }
 
 // ── Navigation ───────────────────────────────────────────────────────────────
@@ -1009,19 +1078,53 @@ function doBillSearch(q){
 // ── Cancel ───────────────────────────────────────────────────────────────────
 function openCancelModal(){
   if(!gv('fDocNo')){ alert('Load a bill first'); return; }
+  if(!currentSlno){ alert('Load a saved bill first'); return; }
+  if(currentBillStatus===0){ alert('Bill already cancelled'); return; }
   sv('cancelBillNo',gv('fDocNo')); sv('cancelReason','');
   $('cancelModal').classList.add('active');
 }
-function confirmCancel(){
-  fetch(url('/api/purchase-return/cancel'),{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf()},
-    body:JSON.stringify({doc_no:gv('fDocNo'),reason:gv('cancelReason')})
-  }).then(r=>r.json()).then(d=>{
+async function confirmCancel(){
+  const btn = $('btnConfirmCancel');
+  if(!currentSlno){ alert('Load a saved bill first'); return; }
+  if(btn) btn.disabled = true;
+  try {
+    const response = await fetch(url('/api/purchase-return/cancel'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf(),'Accept':'application/json'},
+      body:JSON.stringify({doc_no:gv('fDocNo'),reason:gv('cancelReason')})
+    });
+    const text = await response.text();
+    let d = {};
+    try { d = text ? JSON.parse(text) : {}; } catch(e) {}
     $('cancelModal').classList.remove('active');
-    if(!d.ok){ alert('Error: '+(d.message||'Cancel failed')); return; }
-    alert('Bill cancelled'); resetForm(); loadNextBillNo();
-  }).catch(()=>{});
+    if(!response.ok || !d.ok){
+      if((d.message||'').toLowerCase().includes('already cancelled')){
+        currentBillStatus = 0;
+        syncCancelState();
+      }
+      alert('Error: '+(d.message || text || 'Cancel failed'));
+      return;
+    }
+    currentBillStatus = 0;
+    syncCancelState();
+    alert(d.message || 'Bill cancelled');
+    resetForm();
+    if(PR_CONFIG.mode === 'bill') loadNextBillNo();
+  } catch(e) {
+    alert('Cancel failed: '+e);
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+function syncCancelState(){
+  const btn = $('btnCancel');
+  if(!btn || PR_CONFIG.mode!=='cancel') return;
+  const cancelled = currentBillStatus===0;
+  btn.disabled = cancelled;
+  btn.textContent = cancelled ? 'Cancelled' : 'Cancel Bill';
+  btn.style.opacity = cancelled ? '0.55' : '1';
+  btn.style.cursor = cancelled ? 'not-allowed' : 'pointer';
 }
 
 // ── State sync ────────────────────────────────────────────────────────────────
@@ -1037,7 +1140,7 @@ function onManualChk(){
 // ── New / Reset ───────────────────────────────────────────────────────────────
 function newBill(){ resetForm(); loadNextBillNo(); }
 function resetForm(){
-  currentSlno=0; selRowIdx=-1;
+  currentSlno=0; currentBillStatus=1; selRowIdx=-1;
   ['fDocNo','fBillNo','fSupCode','fSupName','fAddress','fPan','fMobile','fNote'].forEach(id=>sv(id,''));
   sv('fDate', todayDMY()); sv('fOB','.00'); sv('fCB','.00');
   ['fBillTotal','fTaxAmt','fOthers','fPaidAmt','fNetTotal','fBalance','fChqAmt'].forEach(id=>sv(id,'.00'));
@@ -1045,6 +1148,7 @@ function resetForm(){
   ['fInterstate','fExternal','fPdc'].forEach(id=>$(id)&&($(id).checked=false));
   items=[]; selRowIdx=-1;
   renderItems(); updateFoot(); addRow();
+  syncCancelState();
 }
 function todayDMY(){
   const d=new Date(); const p=n=>String(n).padStart(2,'0');
@@ -1059,6 +1163,14 @@ function loadNextBillNo(){
 }
 function onBillTypeChange(){ loadNextBillNo(); }
 
+// ── Print ───────────────────────────────────────────────────────────────────
+function printPurchaseReturn(){
+  const docNo = gv('fDocNo').trim();
+  if(!docNo){ alert('Load a purchase return before printing.'); return; }
+  const printUrl = '{{ url("/purchase-return-print") }}?doc_no=' + encodeURIComponent(docNo);
+  window.open(printUrl, '_blank', 'width=950,height=820,scrollbars=yes');
+}
+
 // ── Exit ──────────────────────────────────────────────────────────────────────
 function doExit(){
   if(window.parent&&window.parent!==window) window.parent.postMessage({action:'closeModule'},'*');
@@ -1070,17 +1182,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   if (window.goldappDateUi) {
     window.goldappDateUi.attachCalendarInputs(['fDate', 'fChqDate']);
   }
-  loadNextBillNo(); addRow(); loadSupplierSelect();
-  document.addEventListener('click',e=>{ if(!e.target.closest('.sup-row')) hideSup(); });
-  if(PR_CONFIG.mode==='cancel'||PR_CONFIG.mode==='reprint') $('btnSave').style.display='none';
+  bindEnterKeyNavigation();
   const qs = new URLSearchParams(window.location.search);
   const urlDocNo = qs.get('doc_no');
   const autoPrint = qs.get('autoprint') === '1';
+  if(PR_CONFIG.mode === 'bill' && !urlDocNo) loadNextBillNo();
+  addRow(); loadSupplierSelect();
+  document.addEventListener('click',e=>{ if(!e.target.closest('.sup-row')) hideSup(); });
+  if(PR_CONFIG.mode==='cancel'||PR_CONFIG.mode==='reprint') $('btnSave').style.display='none';
+  syncCancelState();
   if (urlDocNo) {
-    loadBill(urlDocNo);
-    if (autoPrint && PR_CONFIG.mode === 'reprint') {
-      setTimeout(() => window.print(), 400);
-    }
+    loadBill(urlDocNo).then(loaded => {
+      if (loaded && autoPrint && PR_CONFIG.mode === 'reprint') {
+        setTimeout(() => printPurchaseReturn(), 250);
+      }
+    });
   }
 });
 </script>

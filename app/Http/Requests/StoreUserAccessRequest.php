@@ -20,6 +20,8 @@ class StoreUserAccessRequest extends FormRequest
             'password' => ['nullable', 'string', 'max:50'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:100'],
+            'companies' => ['nullable', 'array'],
+            'companies.*' => ['string', 'max:100'],
             'maxcredit' => ['nullable', 'numeric', 'min:0'],
             'maxdisc' => ['nullable', 'numeric', 'min:0'],
             'maxdiscperc' => ['nullable', 'numeric', 'min:0'],

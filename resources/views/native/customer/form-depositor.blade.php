@@ -313,12 +313,12 @@
                 <input type="number" step="0.01" name="opbalance" class="small-input" value="{{ number_format(abs($opbalance), 2, '.', '') }}">
                 <div class="radio-group">
                     <div class="radio-item">
-                        <input type="radio" name="balance_type" id="bal_credit" value="credit" {{ $balType === 'credit' ? 'checked' : '' }}>
-                        <label for="bal_credit">To receive</label>
+                        <input type="radio" name="balance_type" id="bal_debit" value="debit" {{ $balType === 'debit' ? 'checked' : '' }}>
+                        <label for="bal_debit">To receive</label>
                     </div>
                     <div class="radio-item">
-                        <input type="radio" name="balance_type" id="bal_debit" value="debit" {{ $balType === 'debit' ? 'checked' : '' }}>
-                        <label for="bal_debit">To give</label>
+                        <input type="radio" name="balance_type" id="bal_credit" value="credit" {{ $balType === 'credit' ? 'checked' : '' }}>
+                        <label for="bal_credit">To give</label>
                     </div>
                 </div>
             </div>

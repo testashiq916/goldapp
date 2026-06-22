@@ -141,8 +141,8 @@ class RefineryBillController extends Controller
             $query->whereDate('tdate', $tdate);
         }
 
-        $rows = $query->orderByDesc('slno')
-            ->limit(50)
+        $rows = $query
+            ->orderByDesc('slno')
             ->get(['slno', 'docno', 'tdate', 'refcode']);
 
         $refCodes = $rows->pluck('refcode')->filter()->map(fn ($c) => trim((string) $c))->unique()->values()->all();

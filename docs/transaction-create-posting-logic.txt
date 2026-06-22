@@ -1,0 +1,691 @@
+Transaction Create And Posting Logic
+====================================
+
+Modules covered
+---------------
+Sales
+Purchase
+Sales Return
+Purchase Return
+Payment
+Receipt
+Journal
+Shared daybook / ledger posting logic
+
+
+Common accounting rules
+-----------------------
+All posted transactions use a common serial number:
+slno
+
+The main ledger posting table is:
+daybook
+
+The voucher header / narration table is:
+daybookpart
+
+Important sign rule:
+Negative daybook.amount = Debit
+Positive daybook.amount = Credit
+
+Every completed transaction should balance:
+SUM(daybook.amount) by slno = 0
+
+Most modules create or reuse:
+generali.SERIALNO
+
+Most edit flows delete old rows for the same slno and insert fresh recalculated rows.
+
+
+Core tables
+-----------
+Sales:
+salesm
+salesd
+daybook
+daybookpart
+
+Purchase:
+purchasem
+purchased
+daybook
+daybookpart
+
+Sales Return:
+salesrm
+salesrd
+daybook
+daybookpart
+
+Purchase Return:
+purchaserm
+purchaserd
+daybook
+daybookpart
+
+Receipt:
+daybook
+daybookpart
+pdclist when PDC
+
+Payment:
+daybook
+daybookpart
+pdclist when PDC
+
+Journal:
+daybook
+daybookpart
+
+
+Sales Bill
+==========
+
+Main page
+---------
+/sales-bill
+/sales-bill/{mode}
+
+Main APIs
+---------
+GET /api/sales-bill/next-number
+GET /api/sales-bill/check-bill-no
+GET /api/sales-bill/get
+GET /api/sales-bill/customer-details
+GET /api/sales-bill/item-lookup
+POST /api/sales-bill/recalc
+POST /api/sales-bill/save
+POST /api/sales-bill/cancel
+POST /api/sales-bill/confirm
+POST /api/sales-bill/reprint
+
+Controller
+----------
+app/Http/Controllers/SalesBillController.php
+
+Create flow
+-----------
+1. Open /sales-bill.
+2. Browser loads customer, bill type, item, and rate details.
+3. Browser calls next-number for the suggested bill number.
+4. User selects customer or cash/bank settlement.
+5. User adds item rows.
+6. Browser can call recalc to calculate totals.
+7. User saves.
+8. Server validates bill number, customer, and item rows.
+9. Server reserves final bill number and slno.
+10. Server inserts or updates salesm.
+11. Server deletes old salesd rows for edit mode.
+12. Server inserts salesd rows.
+13. Server updates item stock by reducing sold quantity/weight.
+14. If exchange or return rows are included, related purchase/sales-return rows can also be written.
+15. Server writes daybook/daybookpart postings.
+16. Server inserts ROUND posting if daybook total is not zero.
+
+Important posting accounts
+--------------------------
+Customer or cash/bank account
+RS = sales account
+ESR = sales return / exchange sales return side
+EP = old gold purchase or exchange purchase side
+DISC = discount
+SGST
+CGST
+IGST
+AST = cess/additional sales tax
+VA = value addition when separately configured
+ROUND = round-off / balance row
+
+Posting idea
+------------
+Sales increases customer receivable or cash/bank settlement.
+Sales credits sales/tax/income accounts.
+The controller balances remaining difference with ROUND.
+
+Cancel logic
+------------
+POST /api/sales-bill/cancel
+
+Cancel finds salesm by bill number, marks or deletes according to current module logic, reverses stock where needed, and removes/rebuilds daybook rows as required.
+
+
+Purchase Bill
+=============
+
+Main page
+---------
+/purchase-bill
+/purchase-bill/{mode}
+
+Main APIs
+---------
+GET /api/purchase-bill/next-number
+GET /api/purchase-bill/supplier-search
+GET /api/purchase-bill/supplier-details
+GET /api/purchase-bill/item-lookup
+GET /api/purchase-bill/item-search
+POST /api/purchase-bill/recalc
+POST /api/purchase-bill/save
+GET /api/purchase-bill/get
+POST /api/purchase-bill/cancel
+POST /api/purchase-bill/reprint
+POST /api/purchase-bill/create-supplier
+POST /api/purchase-bill/rebuild-daybook
+
+Controller
+----------
+app/Http/Controllers/PurchaseBillController.php
+
+Create flow
+-----------
+1. Open /purchase-bill.
+2. Browser loads supplier and item data.
+3. Browser calls next-number for document number.
+4. User selects supplier.
+5. User adds purchase item rows.
+6. Browser can call recalc to calculate totals.
+7. User saves.
+8. Server validates supplier, document number, and item rows.
+9. Server reserves slno and document number.
+10. Server inserts or updates purchasem with pr = P.
+11. Server deletes old purchased rows in edit mode.
+12. Server inserts purchased rows.
+13. Server updates item stock by increasing purchased quantity/weight.
+14. Server writes daybook/daybookpart postings.
+15. Server inserts ROUND posting if daybook total is not zero.
+
+Important posting accounts
+--------------------------
+CASH = cash payment
+Bank account = bank payment
+CNP = cheque not presented / PDC style cheque account
+Supplier account
+EP = purchase account
+ADD = additional amount
+HMC = making charge
+TCSAC = TCS
+DISC = discount
+SGST
+CGST
+IGST
+PTAXEXP
+ROUND
+
+Posting idea
+------------
+Purchase increases stock and supplier payable.
+Payments by cash/bank reduce payable.
+Tax and additional amount rows are posted separately.
+ROUND balances small differences.
+
+
+Sales Return
+============
+
+Main page
+---------
+/sales-return
+/sales-return/{mode}
+
+Main APIs
+---------
+GET /api/sales-return/customers
+GET /api/sales-return/salesmen
+GET /api/sales-return/cash-banks
+GET /api/sales-return/items
+GET /api/sales-return/bill-types
+GET /api/sales-return/gold-rate
+GET /api/sales-return/next-number
+GET /api/sales-return/list
+GET /api/sales-return/get
+GET /api/sales-return/search-sale-bill
+GET /api/sales-return/search-sale-bills
+GET /api/sales-return/item-details
+GET /api/sales-return/customer-balance
+POST /api/sales-return/save
+POST /api/sales-return/delete
+
+Controller
+----------
+app/Http/Controllers/SalesReturnController.php
+
+Create flow
+-----------
+1. Open /sales-return.
+2. Browser loads customer, cash/bank, item, bill type, and rate details.
+3. Browser calls next-number for return bill number.
+4. User selects customer and optionally original sale bill.
+5. User adds returned item rows.
+6. User saves.
+7. Server validates items and totals.
+8. Server reserves slno and return bill number.
+9. Server inserts or updates salesrm with sr = R.
+10. Server deletes old salesrd rows in edit mode.
+11. Server inserts salesrd rows.
+12. Server updates item stock by increasing returned quantity/weight.
+13. Server writes daybookpart and daybook rows.
+
+Important posting accounts
+--------------------------
+Cash/bank account
+Customer account
+DISC
+SGST
+CGST
+IGST
+ESR = sales return account
+
+Posting idea
+------------
+Sales return reverses sales.
+Customer receivable is reduced, or cash/bank is paid/refunded.
+Returned stock increases back into items.
+Tax rows reverse sales tax.
+
+Delete logic
+------------
+Delete removes salesrm, salesrd, daybook, and daybookpart rows for the slno.
+Stock changes are reversed before deleting.
+
+
+Purchase Return
+===============
+
+Main page
+---------
+/purchase-return
+/purchase-return/{mode}
+
+Main APIs
+---------
+GET /api/purchase-return/next-number
+GET /api/purchase-return/supplier-search
+GET /api/purchase-return/supplier-details
+GET /api/purchase-return/item-lookup
+GET /api/purchase-return/item-search
+POST /api/purchase-return/recalc
+POST /api/purchase-return/save
+GET /api/purchase-return/get
+POST /api/purchase-return/cancel
+POST /api/purchase-return/reprint
+
+Controller
+----------
+app/Http/Controllers/PurchaseReturnController.php
+
+Create flow
+-----------
+1. Open /purchase-return.
+2. Browser loads supplier and item data.
+3. Browser calls next-number for document number.
+4. User selects supplier.
+5. User adds returned item rows.
+6. User saves.
+7. Server validates that each item has code and quantity or weight.
+8. Server validates item rate.
+9. Server calculates bill total, tax, net total, paid amount, and balance.
+10. Server reserves slno and document number.
+11. Server inserts or updates purchaserm with pr = R.
+12. Server deletes old purchaserd rows in edit mode.
+13. Server inserts purchaserd item rows.
+14. Server decreases item stock because goods are returned to supplier.
+15. Server deletes old daybook/daybookpart rows for the slno.
+16. Server writes purchase return daybook/daybookpart rows.
+17. Server inserts ROUND posting if daybook total is not zero.
+
+Important posting accounts
+--------------------------
+EP = purchase account
+Supplier account
+CASH
+CNP = cheque not presented / PDC cheque account
+ADD = additional amount
+SGST
+CGST
+IGST
+ROUND
+
+Posting idea
+------------
+Purchase return is opposite of purchase.
+Stock decreases.
+Supplier payable is reduced.
+Cash/bank or cheque rows are posted if money is received back.
+GST rows reverse input tax credit.
+
+Daybook row idea from controller
+--------------------------------
+EP is posted for bill total.
+Supplier is posted for net amount.
+Supplier/cash/bank rows are added when refund/paid amount exists.
+ADD is posted for other amount.
+GST rows are posted when tax is not external.
+ROUND balances the slno.
+
+
+Receipt Voucher
+===============
+
+Main page
+---------
+/accounts/receipt
+
+Main API
+--------
+POST /api/accounts/receipt
+
+Controller
+----------
+app/Http/Controllers/ReceiptController.php
+
+API actions
+-----------
+init
+account_list
+load_account
+load
+save
+delete
+list
+navigate
+
+Create flow
+-----------
+1. Open /accounts/receipt.
+2. Browser calls action init.
+3. Server returns cash/bank accounts, salesman list, next voucher number, today date, and discount account.
+4. User selects cash/bank account.
+5. User selects party/account code.
+6. User enters amount, discount, cheque details, tax fields, narration, and PDC flag if needed.
+7. Browser posts action save.
+8. Server validates date, cash/bank account, party account, and amount.
+9. Server reserves slno.
+10. Server reserves receipt voucher number unless editing.
+11. If PDC, server inserts pdclist only.
+12. If normal receipt, server inserts daybookpart.
+13. Server inserts daybook rows.
+
+Normal receipt posting
+----------------------
+Party account:
+amount + discount as positive
+
+Cash/bank account:
+amount as negative
+
+Discount account:
+discount as negative when discount exists
+
+Discount account source:
+generals.RDISCAC
+Fallback:
+DISC
+
+PDC receipt
+-----------
+PDC receipt writes to pdclist:
+rp = R
+pend = Y
+
+No immediate daybook posting is created for PDC.
+
+
+Payment Voucher
+===============
+
+Main page
+---------
+/accounts/payment
+
+Main API
+--------
+POST /api/accounts/payment
+
+Controller
+----------
+app/Http/Controllers/PaymentController.php
+
+API actions
+-----------
+init
+account_list
+load_account
+load
+save
+delete
+list
+navigate
+
+Create flow
+-----------
+1. Open /accounts/payment.
+2. Browser calls action init.
+3. Server returns cash/bank accounts, salesman list, cash balance, next voucher number, and today date.
+4. User selects cash/bank account.
+5. User selects party/account code.
+6. User enters amount, cheque details, tax fields, narration, and PDC flag if needed.
+7. Browser posts action save.
+8. Server validates date, cash/bank account, party account, and amount.
+9. Server reserves slno.
+10. Server reserves payment voucher number unless editing.
+11. If PDC, server inserts pdclist only.
+12. If normal payment, server inserts daybookpart.
+13. Server inserts daybook rows.
+
+Normal payment posting
+----------------------
+Cash/bank account:
+amount as positive
+
+Party account:
+amount as negative
+
+PDC payment
+-----------
+PDC payment writes to pdclist:
+rp = P
+pend = Y
+
+No immediate daybook posting is created for PDC.
+
+
+Journal Voucher
+===============
+
+Main page
+---------
+/accounts/journal
+
+Main API
+--------
+POST /api/accounts/journal
+
+Controller
+----------
+app/Http/Controllers/JournalController.php
+
+API actions
+-----------
+init
+next_vchno
+account_list
+account_balance
+entry_list
+load
+save
+delete
+
+Create flow
+-----------
+1. Open /accounts/journal.
+2. Browser calls action init.
+3. Server returns today date and next journal voucher number.
+4. User enters debit and credit rows.
+5. User enters narration.
+6. Browser posts action save.
+7. Server validates date.
+8. Server validates each account code in accountm.
+9. Server rejects rows where both debit and credit are entered.
+10. Server totals debit and credit.
+11. Server blocks save if debit total and credit total are not equal.
+12. Server reserves slno and journal voucher number unless editing.
+13. Server inserts daybook rows.
+14. Server inserts daybookpart row.
+
+Journal posting
+---------------
+Debit row:
+daybook.amount = negative debit amount
+
+Credit row:
+daybook.amount = positive credit amount
+
+opaccode:
+Debit rows use first credit account.
+Credit rows use first debit account.
+
+Voucher number
+--------------
+Level 1:
+JLB/00001 style from generali.VCHNOJB
+
+Other levels:
+JLE/00001 style from generali.VCHNOJE
+
+
+Voucher number rules
+====================
+
+Receipt voucher prefixes
+------------------------
+VRB/ = normal level 1 receipt / bank receipt
+VRE/ = other level receipt
+VRC/ = cash receipt when separate cash/bank numbering is enabled
+PDCR/ or PDCR = PDC receipt
+
+Payment voucher prefixes
+------------------------
+VPB/ = normal level 1 payment / bank payment
+VPE/ = other level payment
+VPC/ = cash payment when separate cash/bank numbering is enabled
+PDCP/ or PDCP = PDC payment
+
+Journal voucher prefixes
+------------------------
+JLB/ = level 1 journal
+JLE/ = other level journal
+
+
+Delete and edit common logic
+============================
+
+Edit logic
+----------
+For most modules:
+1. Find existing slno.
+2. Delete old detail rows.
+3. Delete old daybook rows.
+4. Delete old daybookpart rows.
+5. Reverse old stock if needed.
+6. Insert fresh master/detail/posting rows.
+
+Delete/cancel logic
+-------------------
+Sales and purchase modules may mark, cancel, or delete depending on module rules.
+Voucher modules delete:
+daybook
+daybookpart
+pdclist when present
+daybookratewgt when present
+
+
+All transaction reports
+=======================
+
+Important report controllers
+----------------------------
+app/Http/Controllers/DayBookController.php
+app/Http/Controllers/AllTransReportController.php
+app/Http/Controllers/AccountLedgerController.php
+
+Report source
+-------------
+Reports mainly read:
+daybook
+daybookpart
+accountm
+
+Sales/purchase reports also read:
+salesm
+salesd
+purchasem
+purchased
+salesrm
+salesrd
+purchaserm
+purchaserd
+
+Receipt report filter
+---------------------
+daybookpart.vchno like VR%
+Positive party rows and negative cash/bank rows identify receipt side.
+
+Payment report filter
+---------------------
+daybookpart.vchno like VP%
+Positive cash/bank rows and negative party rows identify payment side.
+
+Journal report filter
+---------------------
+daybookpart.vchno like JL%
+
+
+Important source files
+======================
+
+Sales:
+app/Http/Controllers/SalesBillController.php
+resources/views/sales-bill/index.blade.php
+
+Purchase:
+app/Http/Controllers/PurchaseBillController.php
+resources/views/purchase-bill/index.blade.php
+
+Sales Return:
+app/Http/Controllers/SalesReturnController.php
+resources/views/sales-return/index.blade.php
+
+Purchase Return:
+app/Http/Controllers/PurchaseReturnController.php
+resources/views/purchase-return/index.blade.php
+
+Receipt:
+app/Http/Controllers/ReceiptController.php
+resources/views/account/receipt.blade.php
+
+Payment:
+app/Http/Controllers/PaymentController.php
+resources/views/account/payment.blade.php
+
+Journal:
+app/Http/Controllers/JournalController.php
+resources/views/account/journal.blade.php
+
+Existing deeper accounting note:
+docs/accounting-posting-logic.md
+
+
+Debug checklist
+===============
+
+When a transaction is wrong:
+1. Find slno.
+2. Check module master table by slno.
+3. Check detail table by slno.
+4. Check daybookpart by slno.
+5. Check daybook by slno.
+6. Verify SUM(daybook.amount) = 0.
+7. Verify every daybook.accode exists in accountm.
+8. For stock mismatch, check item detail rows and items qty/weight.
+9. For voucher mismatch, check generali counters and daybookpart.vchno.
+10. For PDC, check pdclist because daybook rows may not exist yet.

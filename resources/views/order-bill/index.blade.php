@@ -26,7 +26,7 @@ window.OB_CONFIG = {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:hidden;height:100vh;
+body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:13px;color:#1a202c;overflow:hidden;height:100vh;
   background:radial-gradient(circle at 10% -10%,#f0fdf4 0%,#f7fdf9 40%,#f0faf4 100%)}
 input,select,button{transition:all .15s ease}
 ::-webkit-scrollbar{width:5px}
@@ -37,14 +37,14 @@ input,select,button{transition:all .15s ease}
   box-shadow:0 10px 30px rgba(33,89,52,.10);margin:6px;overflow:hidden;position:relative;
   display:flex;flex-direction:column;height:calc(100vh - 12px)}
 .title-bar{background:linear-gradient(135deg,#14532d,#166534);color:#fff;
-  padding:6px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:.3px;flex-shrink:0}
+  padding:6px 14px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;letter-spacing:.3px;flex-shrink:0}
 .title-bar .icon{width:14px;height:14px;background:#86efac;border-radius:4px;flex-shrink:0}
 
 .top-section{background:#f9fdfb;padding:5px 8px;display:grid;
   grid-template-columns:1.2fr 1fr 1.1fr;gap:2px 12px;border-bottom:1px solid #c6e2d6;flex-shrink:0}
 .top-section .row{display:flex;align-items:center;gap:4px;padding:0;min-height:24px}
-.top-section label{font-weight:600;font-size:11px;min-width:70px;color:#6b7280}
-.top-section input,.top-section select{font-size:11px;padding:1px 5px;border:1px solid #c6e2d6;
+.top-section label{font-weight:600;font-size:12px;min-width:70px;color:#6b7280}
+.top-section input,.top-section select{font-size:12px;padding:1px 5px;border:1px solid #c6e2d6;
   background:#fff;height:24px;border-radius:6px;color:#2d3748;
   box-shadow:inset 0 1px 2px rgba(17,24,39,.03)}
 .top-section input:focus,.top-section select:focus{border-color:#86efac;
@@ -55,11 +55,11 @@ input,select,button{transition:all .15s ease}
 .top-section .row.cust-row{position:relative}
 #custDrop{position:absolute;top:26px;left:70px;width:380px;max-height:200px;overflow-y:auto;
   background:#111827;border:1px solid #374151;border-radius:6px;
-  box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:500;display:none;font-size:11px;color:#f9fafb}
+  box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:500;display:none;font-size:12px;color:#f9fafb}
 #custDrop .s-row{padding:4px 8px;cursor:pointer;border-bottom:1px solid #374151}
 #custDrop .s-row:hover{background:#1f2937}
 #custDrop .s-row .s-code{font-weight:600;color:#86efac;margin-right:5px}
-.sup-btns button{font-size:10px;padding:1px 6px;border:1px solid #c6e2d6;border-radius:5px;
+.sup-btns button{font-size:11px;padding:1px 6px;border:1px solid #c6e2d6;border-radius:5px;
   cursor:pointer;background:#fff;height:24px;color:#374151}
 .sup-btns button:hover{background:#f0fdf4}
 
@@ -67,26 +67,26 @@ input,select,button{transition:all .15s ease}
 .table-area{flex:1;display:flex;flex-direction:column;overflow:hidden;margin:4px 6px 0}
 .table-container{border:1px solid #c6e2d6;border-radius:8px;
   background:#fff;overflow:auto;box-shadow:0 2px 8px rgba(32,92,55,.05);flex:1}
-table.items{width:100%;border-collapse:collapse;font-size:11px}
-table.items thead th{background:linear-gradient(180deg,#14532d,#166534);color:#f0fdf4;
-  padding:4px 4px;border:1px solid #15803d;font-weight:600;font-size:10px;
+table.items{width:100%;border-collapse:collapse;font-size:12px}
+table.items thead th{background:#eef8ee;color:#14532d;
+  padding:4px 4px;border:1px solid #15803d;font-weight:700;font-size:11px;
   text-align:center;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px;
   position:sticky;top:0;z-index:2}
 table.items tbody td{border:1px solid #e0f0e8;padding:1px 2px;text-align:center;height:24px}
 table.items tbody tr:nth-child(odd){background:#fff}
 table.items tbody tr:nth-child(even){background:#f7fdf9}
 table.items tbody tr:hover{background:#f0fdf4}
-table.items tbody tr.sel td{background:#bbf7d0}
-table.items tbody input{font-size:11px;border:none;background:transparent;
+table.items tbody tr.sel td{background:#d7f0e5}
+table.items tbody input{font-size:12px;border:none;background:transparent;
   text-align:center;width:100%;height:100%}
-table.items tbody input:focus{background:#fffff0;outline:2px solid #22c55e;border-radius:2px}
+table.items tbody input:focus{background:#fffff0;outline:2px solid #00d44a;border-radius:2px}
 table.items tbody input.num{text-align:right}
 
 .table-footer{display:flex;align-items:center;background:#f9fdfb;
-  padding:3px 8px;gap:8px;font-size:11px;font-weight:600;
+  padding:3px 8px;gap:8px;font-size:12px;font-weight:600;
   color:#2d3748;border-top:1px solid #c6e2d6;flex-shrink:0}
 .table-footer button{background:#fff;border:1px solid #c6e2d6;border-radius:7px;
-  padding:1px 10px;font-size:11px;cursor:pointer;font-weight:600;color:#3f4a5b}
+  padding:1px 10px;font-size:12px;cursor:pointer;font-weight:600;color:#3f4a5b}
 .table-footer button:hover{background:#f0fdf4;border-color:#86efac}
 .table-footer button:active{transform:translateY(1px)}
 .tf-label{color:#14532d;font-weight:700}
@@ -94,31 +94,38 @@ table.items tbody input.num{text-align:right}
 
 .bottom-section{background:#f9fdfb;padding:3px 8px 4px;
   display:flex;align-items:flex-start;gap:8px;
-  border-top:1px solid #c6e2d6;font-size:11px;flex-shrink:0}
+  border-top:1px solid #c6e2d6;font-size:12px;flex-shrink:0}
 .fp1,.fp2,.fp3{display:flex;flex-direction:column;gap:2px}
 .fp1,.fp2{flex-shrink:0}
-.fp3{flex:1;min-width:0}
+.fp3{border:1px solid #c6e2d6;border-radius:8px;background:#fff;padding:4px 6px;flex:0 0 390px;min-width:390px}
 .fp1 .fr,.fp2 .fr,.fp3 .fr{display:flex;align-items:center;gap:3px;height:22px;white-space:nowrap}
-.fl1{font-weight:600;font-size:11px;color:#4a5568;min-width:68px;flex-shrink:0;white-space:nowrap;padding-right:3px}
-.fl2{font-weight:600;font-size:11px;color:#4a5568;min-width:62px;flex-shrink:0;white-space:nowrap;padding-right:3px}
-.fl{font-weight:600;font-size:11px;color:#4a5568;padding:0 2px 0 4px;white-space:nowrap;flex-shrink:0}
-input.fv,select.fv{font-size:11px;padding:1px 4px;border:1px solid #c6e2d6;
+.pay-title{height:22px;border-bottom:1px solid #c6e2d6;color:#14532d;font-size:12px;font-weight:800;text-transform:uppercase;display:flex;align-items:center;margin-bottom:2px}
+.fp3 .pay-received{display:grid;grid-template-columns:78px 92px 20px 58px;align-items:center;gap:4px;height:22px;white-space:nowrap}
+.fp3 .pay-account{display:grid;grid-template-columns:78px 132px 92px;align-items:center;gap:4px;height:22px;white-space:nowrap}
+.fp3 .pay-received .fl,.fp3 .pay-account .fl{padding:0;text-align:left}
+.fp3 .pay-account select.fv{width:132px}
+.fp3 .pay-received input.fv,.fp3 .pay-account input.fv{width:92px;text-align:right}
+.fp3 .pay-received input[type=checkbox]{width:18px;height:18px;margin:0}
+.fl1{font-weight:600;font-size:12px;color:#4a5568;min-width:68px;flex-shrink:0;white-space:nowrap;padding-right:3px}
+.fl2{font-weight:600;font-size:12px;color:#4a5568;min-width:62px;flex-shrink:0;white-space:nowrap;padding-right:3px}
+.fl{font-weight:600;font-size:12px;color:#4a5568;padding:0 2px 0 4px;white-space:nowrap;flex-shrink:0}
+input.fv,select.fv{font-size:12px;padding:1px 4px;border:1px solid #c6e2d6;
   background:#fff;height:22px;border-radius:5px;color:#2d3748;flex-shrink:0;
   box-shadow:inset 0 1px 2px rgba(17,24,39,.03)}
 input.fv:focus,select.fv:focus{border-color:#86efac;box-shadow:0 0 0 2px rgba(34,197,94,.14);outline:none}
 .fw36{width:38px}.fw46{width:48px}.fw70{width:72px}.fw84{width:86px}.fw94{width:96px}.fwx{flex:1;min-width:60px}
-.flbl{font-size:11px;color:#4a5568;padding-right:4px;flex-shrink:0}
+.flbl{font-size:12px;color:#4a5568;padding-right:4px;flex-shrink:0}
 .fchk{display:inline-flex;align-items:center;gap:2px;flex-shrink:0}
 .fchk input[type=checkbox]{width:13px;height:13px;margin:0;cursor:pointer}
 .foot-btns{display:flex;flex-direction:column;gap:3px;min-width:108px;flex-shrink:0;padding-left:4px}
 .fbtn{background:linear-gradient(180deg,#f5f5f5,#e8e8e8);border:1px solid #adadad;
-  border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;font-weight:600;
+  border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;font-weight:600;
   color:#111;height:26px;font-family:inherit;text-align:center;white-space:nowrap}
 .fbtn:hover{background:linear-gradient(180deg,#fff,#f0f0f0)}
 .fbtn:active{background:#e0e0e0;transform:translateY(1px)}
 .fbtn.fb-save{background:linear-gradient(180deg,#dcfce7,#bbf7d0);border-color:#22c55e;color:#14532d}
 .fbtn.fb-save:hover{background:linear-gradient(180deg,#f0fdf4,#dcfce7)}
-.inline-chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#4a5568}
+.inline-chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4a5568}
 .secondary-sync-inline{display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:11px;font-weight:600;color:#334155}
 
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);
@@ -127,20 +134,20 @@ input.fv:focus,select.fv:focus{border-color:#86efac;box-shadow:0 0 0 2px rgba(34
 .modal-box{background:#fff;border:1px solid #c6e2d6;border-radius:10px;
   min-width:380px;max-width:580px;box-shadow:0 8px 32px rgba(0,0,0,.15);overflow:hidden}
 .modal-head{background:linear-gradient(135deg,#14532d,#166534);color:#fff;
-  padding:8px 12px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+  padding:8px 12px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .modal-head .cls{background:rgba(255,255,255,.15);border:none;color:#fff;width:22px;height:20px;
   font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px}
 .modal-head .cls:hover{background:#fc8181}
 .modal-body{padding:10px 12px}
 .modal-footer{padding:6px 12px;border-top:1px solid #e2e8f0;display:flex;gap:6px;justify-content:flex-end}
-.mbtn{padding:4px 18px;font-size:11px;font-weight:600;border:1px solid #d0d9ea;
+.mbtn{padding:4px 18px;font-size:12px;font-weight:600;border:1px solid #d0d9ea;
   border-radius:8px;background:#fff;cursor:pointer;color:#2d3748}
 .mbtn:hover{background:#f0fdf4}
-.ok-modal-text{padding:18px 14px;font-size:13px;color:#111827;line-height:1.5}
+.ok-modal-text{padding:18px 14px;font-size:14px;color:#111827;line-height:1.5}
 .ok-modal-footer{padding:10px 14px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;background:#f8fafc}
 .ok-modal-btn{min-width:84px;height:34px;border-radius:18px;border:2px solid #6b46c1;background:#6b46c1;color:#fff;font-weight:700;cursor:pointer}
 .ok-modal-btn:hover{background:#553c9a;border-color:#553c9a}
-.srch-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.srch-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .srch-tbl th{background:linear-gradient(180deg,#14532d,#166534);color:#f0fdf4;
   padding:4px 8px;text-align:left;font-weight:600}
 .srch-tbl td{padding:3px 8px;border-bottom:1px solid #e0f0e8;cursor:pointer}
@@ -148,44 +155,49 @@ input.fv:focus,select.fv:focus{border-color:#86efac;box-shadow:0 0 0 2px rgba(34
 
 /* Exchange section */
 .exch-bar{display:flex;align-items:center;background:#fffbeb;
-  padding:4px 10px;gap:10px;font-size:11px;font-weight:600;
+  padding:4px 10px;gap:10px;font-size:12px;font-weight:600;
   color:#744210;border-top:1px solid #fde68a}
-table.exch{width:100%;border-collapse:collapse;font-size:11px}
+table.exch{width:100%;border-collapse:collapse;font-size:12px}
 table.exch thead th{background:linear-gradient(180deg,#92400e,#78350f);color:#fef3c7;
-  padding:4px 5px;border:1px solid #92400e;font-weight:600;font-size:10px;
+  padding:4px 5px;border:1px solid #92400e;font-weight:600;font-size:11px;
   text-align:center;white-space:nowrap;letter-spacing:.4px}
 table.exch tbody td{border:1px solid #fde68a;padding:1px 2px;text-align:center;height:22px}
 table.exch tbody tr:nth-child(odd){background:#fffdf5}
 table.exch tbody tr:nth-child(even){background:#fef9e7}
 table.exch tbody tr:hover{background:#fef3c7}
-table.exch tbody input{font-size:11px;border:none;background:transparent;
+table.exch tbody input{font-size:12px;border:none;background:transparent;
   text-align:center;width:100%;height:100%}
 table.exch tbody input:focus{background:#fffff0;outline:2px solid #f59e0b;border-radius:2px}
 table.exch tbody input.num{text-align:right}
 
 /* Sales Bill style modal windows (for Exchange + Sales Return) */
-.exchange-window{width:980px;max-width:calc(100vw - 40px);background:#fff;border:1px solid #d69e2e;border-radius:8px;overflow:hidden;
+.exchange-window{width:calc(100vw - 32px);max-width:calc(100vw - 32px);background:#fff;border:1px solid #d69e2e;border-radius:8px;overflow:hidden;
   box-shadow:0 10px 34px rgba(0,0,0,.25)}
-.exchange-title{background:linear-gradient(180deg,#2c5282,#2b6cb0);color:#fff;padding:6px 10px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.exchange-title{background:linear-gradient(180deg,#2c5282,#2b6cb0);color:#fff;padding:6px 10px;font-size:15px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .exchange-title .close-btn,.sr-title .close-btn{background:rgba(255,255,255,.15);color:#fff;border:none;width:22px;height:20px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px}
 .exchange-title .close-btn:hover,.sr-title .close-btn:hover{background:#fc8181}
 .exchange-body,.sr-body{background:#fefce8;padding:8px;border-bottom:1px solid #d69e2e}
-table.exchange-table,table.sr-table{width:100%;border-collapse:collapse;font-size:11px}
+.exchange-body{overflow-x:auto}
+.exchange-body>div{min-width:0}
+table.exchange-table{width:100%;min-width:1340px;border-collapse:collapse;font-size:12px;table-layout:fixed}
+table.sr-table{width:100%;border-collapse:collapse;font-size:12px}
 table.exchange-table thead th,table.sr-table thead th{background:linear-gradient(180deg,#975a16,#744210);color:#fef3c7;border:1px solid #d69e2e;padding:4px 5px;text-align:center;font-weight:700}
 table.exchange-table tbody td,table.sr-table tbody td{border:1px solid #e8d8a4;background:#fefcbf;padding:1px 2px;height:22px;text-align:center}
-table.exchange-table tbody input,table.sr-table tbody input{width:100%;height:100%;border:none;background:transparent;font-size:11px;text-align:center}
+table.exchange-table tbody input,table.sr-table tbody input{width:100%;height:100%;border:none;background:transparent;font-size:12px;text-align:center}
 table.exchange-table tbody input.num,table.sr-table tbody input.num{text-align:right}
 table.exchange-table tbody input:focus,table.sr-table tbody input:focus{background:#fffff0;outline:2px solid #d69e2e;border-radius:2px}
-.exchange-footer-bar,.sr-footer-bar{display:flex;align-items:center;gap:6px;background:#fef9c3;padding:4px 8px;font-size:11px;font-weight:700;color:#744210;border-top:1px solid #d69e2e}
-.exchange-footer-bar button,.sr-footer-bar button{padding:2px 12px;font-size:11px;border:1px solid #d69e2e;border-radius:3px;background:#fff;cursor:pointer;color:#744210;font-weight:700}
+table.exchange-table tbody select.exch-code-sel{width:100%;height:20px;border:none;background:#fff;font-size:12px;text-align:left;text-align-last:left;padding:0 18px 0 4px;cursor:pointer;color:#1a202c;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.exchange-table tbody select.exch-code-sel:focus{background:#fffff0;outline:2px solid #d69e2e;border-radius:2px}
+.exchange-footer-bar,.sr-footer-bar{display:flex;align-items:center;gap:6px;background:#fef9c3;padding:4px 8px;font-size:12px;font-weight:700;color:#744210;border-top:1px solid #d69e2e}
+.exchange-footer-bar button,.sr-footer-bar button{padding:2px 12px;font-size:12px;border:1px solid #d69e2e;border-radius:3px;background:#fff;cursor:pointer;color:#744210;font-weight:700}
 .exchange-footer-bar .count,.sr-footer-bar .count{padding:0 8px;border:1px solid #d69e2e;border-radius:10px;line-height:18px;min-width:24px;text-align:center;background:#fff4ce}
 .exchange-footer-bar .s-badge{font-weight:700;color:#b91c1c}
 .exchange-totals{display:flex;align-items:center;justify-content:space-between;background:#fef3c7;padding:5px 10px;border-top:1px solid #d69e2e}
-.exchange-totals .group{display:flex;gap:20px;font-size:11px;font-weight:700;color:#744210}
+.exchange-totals .group{display:flex;gap:20px;font-size:12px;font-weight:700;color:#744210}
 .exchange-totals .val{color:#1f2937}
 .exchange-bottom{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff}
 .exchange-btn-group,.sr-btn-group{display:flex;gap:8px}
-.exchange-btn-group button,.sr-btn-group button{padding:4px 16px;font-size:12px;font-weight:700;border-radius:4px;border:none;cursor:pointer}
+.exchange-btn-group button,.sr-btn-group button{padding:4px 16px;font-size:13px;font-weight:700;border-radius:4px;border:none;cursor:pointer}
 .exchange-btn-group .save,.sr-btn-group .save{background:#48bb78;color:#fff}
 .exchange-btn-group .cancel,.sr-btn-group .cancel{background:#f56565;color:#fff}
 .salesreturn-window{width:980px;max-width:calc(100vw - 40px);background:#fff;border:1px solid #d69e2e;border-radius:8px;overflow:hidden;
@@ -194,10 +206,32 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
 .sr-eva-bar{display:flex;align-items:center;background:#2f855a;color:#fff;font-size:11px;font-weight:700;padding:4px 10px}
 .sr-bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#fef3c7;border-top:1px solid #d69e2e}
 .sr-bottom .field-group{display:flex;align-items:center;gap:4px}
-.sr-bottom label{font-weight:700;font-size:11px;color:#744210}
-.sr-bottom input{height:24px;border:1px solid #d69e2e;border-radius:3px;padding:0 6px;font-size:11px;width:60px;text-align:right;background:#fff}
+.sr-bottom label{font-weight:700;font-size:12px;color:#744210}
+.sr-bottom input{height:24px;border:1px solid #d69e2e;border-radius:3px;padding:0 6px;font-size:12px;width:60px;text-align:right;background:#fff}
 .sr-bottom input.wide{width:80px}
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .row{min-height:28px}
+.top-section label{font-size:14px}
+.top-section input,.top-section select{font-size:14px;height:28px}
+.sup-btns button{font-size:13px;height:28px}
+table.items{font-size:14px}
+table.items thead th{font-size:13px;padding:5px 4px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:14px}
+table.exch{font-size:14px}
+table.exch thead th{font-size:13px}
+table.exch tbody td{height:28px}
+table.exch tbody input{font-size:14px}
+.table-footer{font-size:14px}
+.table-footer button{font-size:14px;padding:3px 10px}
+.bottom-section{font-size:14px}
+.fl,.fl1,.fl2,.flbl{font-size:14px}
+input.fv,select.fv{font-size:14px;height:26px}
+.fbtn{font-size:14px}
+.inline-chk{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>
@@ -257,14 +291,14 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
       </div>
       <div class="row">
         <label>Sales Man</label>
-        <select id="fSalesMan" style="flex:1;min-width:0;font-size:11px;height:26px;border-radius:7px;border:1px solid #c6e2d6">
+        <select id="fSalesMan" required style="flex:1;min-width:0;font-size:12px;height:26px;border-radius:7px;border:1px solid #c6e2d6">
           <option value="">--</option>
           @foreach($salesmen as $s)<option value="{{ $s->code }}">{{ $s->name }}</option>@endforeach
         </select>
       </div>
       <div class="row">
         <label>Counter</label>
-        <select id="fCounter" style="flex:1;min-width:0;font-size:11px;height:26px;border-radius:7px;border:1px solid #c6e2d6">
+        <select id="fCounter" style="flex:1;min-width:0;font-size:12px;height:26px;border-radius:7px;border:1px solid #c6e2d6">
           <option value="">--</option>
           @foreach($counters as $c)<option value="{{ $c->code }}">{{ $c->name }}</option>@endforeach
         </select>
@@ -351,8 +385,6 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
     </div>
 
     <div class="fp2">
-      <div class="fr"><span class="fl2">Advance</span>
-        <input id="fAdvance" class="fv fw84" value=".00" oninput="triggerRecalc()"></div>
       <div class="fr"><span class="fl2">G.Advance</span>
         <input id="fGadvance" class="fv fw84" value=".00" readonly style="background:#f1f5f9"></div>
       <div class="fr"><span class="fl2">Schm Less</span>
@@ -370,19 +402,24 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
     </div>
 
     <div class="fp3">
-      <div class="fr"><span class="fl">Cash/Bank</span>
+      <div class="pay-title">Payment Method</div>
+      <div class="pay-received"><span class="fl">Received Amt</span>
+        <input id="fAdvance" class="fv" value=".00" oninput="triggerRecalc()">
+        <input type="checkbox" disabled>
+        <span>Credit</span>
+      </div>
+      <div class="pay-account"><span class="fl">Cash/Bank</span>
         <select id="fCashBank" class="fv" style="width:84px">
-          <option value="CASH">CASH</option>
           @foreach($cashBanks as $b)<option value="{{ $b['code'] }}">{{ $b['name'] }}</option>@endforeach
         </select>
+        <input id="fCashAmt" class="fv" value=".00">
       </div>
-      <div class="fr"><span class="fl">Chq Bank</span>
+      <div class="pay-account"><span class="fl">Chq Bank</span>
         <select id="fChqBank" class="fv" style="width:84px">
           <option value=""></option>
           @foreach($cashBanks as $b)<option value="{{ $b['code'] }}">{{ $b['name'] }}</option>@endforeach
         </select>
-        <span class="fl">Chq Amt</span>
-        <input id="fChqAmt" class="fv fw84" value=".00">
+        <input id="fChqAmt" class="fv fw84" value=".00" oninput="syncCashAmt()">
       </div>
       <div class="fr"><span class="fl">Chq No</span>
         <input id="fChqNo" class="fv fw84" value="">
@@ -440,7 +477,7 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
       <div style="max-height:260px;overflow-y:auto;border:1px solid #d69e2e;border-radius:4px">
         <table class="exchange-table" id="etbl">
           <thead><tr>
-            <th style="width:70px">Item Code</th><th style="width:140px">Item Name</th>
+            <th style="width:170px">Item Code</th><th style="width:140px">Item Name</th>
             <th style="width:62px">Rate</th><th style="width:38px">Qty</th><th style="width:72px">Weight</th>
             <th style="width:52px">Mud</th><th style="width:52px">Stone</th><th style="width:60px">Touch %</th>
             <th style="width:46px">Less%</th><th style="width:64px">Less Wgt</th><th style="width:64px">Extra Wgt</th>
@@ -643,7 +680,7 @@ table.exchange-table tbody input:focus,table.sr-table tbody input:focus{backgrou
 </div>
 
 <script>
-let items=[], exchItems=[], salesRetItems=[], gaItems=[], modelItems=[], currentSlno=0, selRowIdx=-1, exchSelIdx=-1, sretSelIdx=-1, gaSelIdx=-1, recalcTimer=null;
+let items=[], exchItems=[], salesRetItems=[], gaItems=[], modelItems=[], currentSlno=0, selRowIdx=-1, exchSelIdx=-1, sretSelIdx=-1, gaSelIdx=-1, recalcTimer=null, loadingBill=false;
 let exchSnapshot='', salesRetSnapshot='', gaSnapshot='', salesRetAmtSnapshot=0, salesRetCfgSnapshot={discount:0,taxPerc:0,tax:0,cessPerc:0,cess:0,tva:0};
 const $=id=>document.getElementById(id);
 const gv=id=>($(id)?($(id).value??''):'');
@@ -655,6 +692,22 @@ const fmt2=n=>parseFloat(n||0).toFixed(2);
 const fmt3=n=>parseFloat(n||0).toFixed(3);
 const csrf=()=>document.querySelector('meta[name="csrf-token"]').content;
 const url=p=>OB_CONFIG.siteUrl+p;
+
+function shouldAutoSelectGridInput(el){
+  if(!el || el.tagName !== 'INPUT' || el.readOnly || el.disabled) return false;
+  return !!el.closest('#itbody,#echbody,#sretBody,#gaBody');
+}
+function autoSelectGridInput(el){
+  if(!shouldAutoSelectGridInput(el)) return;
+  setTimeout(()=>{ try{ el.select(); }catch(_){} },0);
+}
+document.addEventListener('focusin',e=>autoSelectGridInput(e.target));
+document.addEventListener('mouseup',e=>{
+  if(shouldAutoSelectGridInput(e.target)){
+    e.preventDefault();
+    autoSelectGridInput(e.target);
+  }
+});
 
 function newItemRow(){return{code:'',name:'',model:'',rate:OB_CONFIG.rates.gold||0,qty:0,weight:0,stwgt:0,stprice:0,mcharge:0,wastage:0,amount:0,narration:'',purity:'',smith:'',stage:1,cost:0};}
 function calcRow(i){
@@ -668,7 +721,8 @@ function renderItems(){
   items.forEach((r,i)=>{
     const tr=document.createElement('tr');
     if(i===selRowIdx)tr.classList.add('sel');
-    tr.onclick=()=>{selRowIdx=i;document.querySelectorAll('#itbody tr').forEach((t,j)=>t.classList.toggle('sel',j===i));};
+    tr.onclick=()=>selectItemRow(i);
+    tr.addEventListener('focusin',()=>selectItemRow(i));
     tr.innerHTML=`
       <td style="display:flex;align-items:center;gap:2px;padding:1px 2px">
         <input class="num" value="${esc(r.code)}" style="flex:1;min-width:0"
@@ -680,7 +734,7 @@ function renderItems(){
       </td>
       <td><input value="${esc(r.name)}" oninput="items[${i}].name=this.value" onkeydown="rKey(event,${i},1)"></td>
       <td><input value="${esc(r.model||'')}" oninput="items[${i}].model=this.value" onkeydown="rKey(event,${i},2)"></td>
-      <td><input class="num" value="${fmt2(r.rate)}" oninput="items[${i}].rate=+this.value||0;calcRow(${i});rfRow(${i});updateFoot()" onkeydown="rKey(event,${i},3)"></td>
+      <td><input class="num" value="${fmt2(r.rate)}" onfocus="this.select()" onclick="this.select()" oninput="items[${i}].rate=+this.value||0;calcRow(${i});rfRow(${i});updateFoot()" onkeydown="rKey(event,${i},3)"></td>
       <td><input class="num" value="${r.qty}" oninput="items[${i}].qty=+this.value||0;calcRow(${i});rfRow(${i});updateFoot()" onkeydown="rKey(event,${i},4)"></td>
       <td><input class="num" value="${fmt3(r.weight)}" oninput="items[${i}].weight=+this.value||0;calcRow(${i});rfRow(${i});updateFoot()" onkeydown="rKey(event,${i},5)"></td>
       <td><input class="num" value="${fmt3(r.stwgt)}" oninput="items[${i}].stwgt=+this.value||0;calcRow(${i});rfRow(${i});updateFoot()" onkeydown="rKey(event,${i},6)"></td>
@@ -693,6 +747,10 @@ function renderItems(){
   sv('cntItems',items.length);
 }
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function selectItemRow(i){
+  selRowIdx=i;
+  document.querySelectorAll('#itbody tr').forEach((t,j)=>t.classList.toggle('sel',j===i));
+}
 function rfRow(i){const r=items[i],tr=$('itbody').rows[i];if(!tr)return;tr.cells[10].querySelector('input').value=fmt2(r.amount);}
 function rKey(e,i,col){
   if((e.key==='Tab'&&!e.shiftKey) || e.key==='Enter'){
@@ -737,7 +795,7 @@ function updateFoot(){
   items.forEach(r=>{if(!r.code)return;qty+=r.qty||0;wgt+=r.weight;stwgt+=r.stwgt;stprice+=r.stprice;mc+=r.mcharge;wastage+=r.wastage;amt+=r.amount;});
   sv('ftQty',qty);sv('ftWgt',fmt3(wgt));sv('ftStwgt',fmt3(stwgt));sv('ftStprice',fmt2(stprice));
   sv('ftMc',fmt2(mc));sv('ftWastage',fmt3(wastage));sv('ftAmt',fmt2(amt));
-  sv('fBillTotal',fmt2(amt));triggerRecalc();
+  sv('fBillTotal',fmt2(amt));if(!loadingBill)triggerRecalc();
 }
 function addRow(){items.push(newItemRow());selRowIdx=items.length-1;renderItems();const tr=$('itbody').rows[items.length-1];if(tr)tr.cells[0].querySelector('input').focus();}
 function delRow(){if(!items.length)return;const idx=selRowIdx>=0?selRowIdx:items.length-1;items.splice(idx,1);selRowIdx=Math.min(idx,items.length-1);renderItems();updateFoot();}
@@ -764,6 +822,25 @@ function findExchCatalog(code){
   const rows=Array.isArray(OB_CONFIG.exchItems)?OB_CONFIG.exchItems:[];
   return rows.find(r=>String(r.code||'').trim().toUpperCase()===c)||null;
 }
+function exchItemOptionsHtml(selectedCode){
+  const rows=Array.isArray(OB_CONFIG.exchItems)?OB_CONFIG.exchItems:[];
+  const sel=String(selectedCode||'').trim().toUpperCase();
+  let html='<option value=""></option>';
+  let matched=false;
+  rows.forEach(r=>{
+    if(+r.disabled) return;
+    const code=String(r.code||'').trim();
+    if(!code) return;
+    const name=String(r.name||'').trim();
+    const isSel=code.toUpperCase()===sel;
+    if(isSel) matched=true;
+    html+=`<option value="${esc(code)}"${isSel?' selected':''}>${esc(code)}${name?' - '+esc(name):''}</option>`;
+  });
+  if(sel && !matched){
+    html+=`<option value="${esc(selectedCode)}" selected>${esc(selectedCode)}</option>`;
+  }
+  return html;
+}
 function calcExchRow(i){
   const r=exchItems[i];
   const w=+r.weight||0,mud=+r.mud||0,stw=+r.stone||0,tch=+r.touch||0,lp=+r.lessperc||0,extra=+r.extrawgt||0;
@@ -789,27 +866,60 @@ function calcExchRow(i){
   r.amount=roundAmt(Math.max(amt,0));
 }
 function renderExchItems(){
-  const tb=$('echbody');tb.innerHTML='';
+  const tb=$('echbody');
+  // Preserve focus and selection across re-render
+  const ae=document.activeElement;
+  let focusRow=-1,focusCell=-1,selStart=0,selEnd=0;
+  if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT') && tb.contains(ae)){
+    const td=ae.closest('td'),tr=ae.closest('tr');
+    if(td && tr){ focusRow=tr.rowIndex-1; focusCell=td.cellIndex; }
+    if(ae.tagName==='INPUT'){ try{ selStart=ae.selectionStart||0; selEnd=ae.selectionEnd||0; }catch(_){ } }
+  }
+  tb.innerHTML='';
   exchItems.forEach((r,i)=>{
     const tr=document.createElement('tr');if(i===exchSelIdx)tr.className='sel';tr.onclick=()=>{exchSelIdx=i;};
     tr.innerHTML=`
-      <td><input value="${esc(r.code)}" oninput="exchItems[${i}].code=this.value" onblur="exchItemLookup(${i})"></td>
-      <td><input value="${esc(r.name)}" oninput="exchItems[${i}].name=this.value"></td>
-      <td><input class="num" value="${fmt2(r.rate)}" oninput="exchItems[${i}].rate=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${r.qty}" oninput="exchItems[${i}].qty=+this.value||0"></td>
-      <td><input class="num" value="${fmt3(r.weight)}" oninput="exchItems[${i}].weight=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt3(r.mud||0)}" oninput="exchItems[${i}].mud=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt3(r.stone||0)}" oninput="exchItems[${i}].stone=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt2(r.touch||0)}" oninput="exchItems[${i}].touch=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt2(r.lessperc)}" oninput="exchItems[${i}].lessperc=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt3(r.lesswgt)}" oninput="exchItems[${i}].lesswgt=+this.value||0;exchItems[${i}].lessperc=0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt3(r.extrawgt||0)}" oninput="exchItems[${i}].extrawgt=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt2(r.rate2||0)}" oninput="exchItems[${i}].rate2=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
-      <td><input class="num" value="${fmt2(r.stprice)}" oninput="exchItems[${i}].stprice=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()"></td>
+      <td><select class="exch-code-sel" onchange="exchItems[${i}].code=this.value;exchItemLookup(${i})" onkeydown="eKey(event,${i},0)">${exchItemOptionsHtml(r.code)}</select></td>
+      <td><input value="${esc(r.name)}" oninput="exchItems[${i}].name=this.value" onkeydown="eKey(event,${i},1)"></td>
+      <td><input class="num" value="${fmt2(r.rate)}" oninput="exchItems[${i}].rate=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},2)"></td>
+      <td><input class="num" value="${r.qty}" oninput="exchItems[${i}].qty=+this.value||0" onkeydown="eKey(event,${i},3)"></td>
+      <td><input class="num" value="${fmt3(r.weight)}" oninput="exchItems[${i}].weight=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},4)"></td>
+      <td><input class="num" value="${fmt3(r.mud||0)}" oninput="exchItems[${i}].mud=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},5)"></td>
+      <td><input class="num" value="${fmt3(r.stone||0)}" oninput="exchItems[${i}].stone=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},6)"></td>
+      <td><input class="num" value="${fmt2(r.touch||0)}" oninput="exchItems[${i}].touch=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},7)"></td>
+      <td><input class="num" value="${fmt2(r.lessperc)}" oninput="exchItems[${i}].lessperc=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},8)"></td>
+      <td><input class="num" value="${fmt3(r.lesswgt)}" oninput="exchItems[${i}].lesswgt=+this.value||0;exchItems[${i}].lessperc=0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},9)"></td>
+      <td><input class="num" value="${fmt3(r.extrawgt||0)}" oninput="exchItems[${i}].extrawgt=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},10)"></td>
+      <td><input class="num" value="${fmt2(r.rate2||0)}" oninput="exchItems[${i}].rate2=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},11)"></td>
+      <td><input class="num" value="${fmt2(r.stprice)}" oninput="exchItems[${i}].stprice=+this.value||0;calcExchRow(${i});rfExchRow(${i});updateExchFoot()" onkeydown="eKey(event,${i},12)"></td>
       <td><input class="num" value="${fmt3(r.netwgt||0)}" readonly style="background:transparent;color:#6b7280"></td>
-      <td><input class="num" value="${fmt2(r.amount)}" readonly style="background:transparent;font-weight:600" onkeydown="srKey(event,${i},12)"></td>`;
+      <td><input class="num" value="${fmt2(r.amount)}" readonly style="background:transparent;font-weight:600"></td>`;
     tb.appendChild(tr);
   });
+  // Restore focus to the same row/cell after re-render
+  if(focusRow>=0 && focusCell>=0){
+    const tr=tb.rows[focusRow];
+    if(tr && tr.cells[focusCell]){
+      const inp=tr.cells[focusCell].querySelector('input,select');
+      if(inp){ inp.focus(); if(inp.tagName==='INPUT'){ try{ inp.setSelectionRange(selStart,selEnd); }catch(_){ } } }
+    }
+  }
+}
+function eKey(e,i,col){
+  if((e.key==='Tab'&&!e.shiftKey) || e.key==='Enter'){
+    e.preventDefault();
+    const editCols=[0,1,2,3,4,5,6,7,8,9,10,11,12];
+    const cur=editCols.indexOf(col),next=editCols[cur+1];
+    if(next!==undefined){$('echbody').rows[i].cells[next].querySelector('input,select').focus();return;}
+    if(i<exchItems.length-1){
+      $('echbody').rows[i+1].cells[0].querySelector('input,select').focus();
+    }else{
+      addExchRow();
+    }
+  }else if(e.key==='Escape'){
+    e.preventDefault();
+    cancelExchModal();
+  }
 }
 function rfExchRow(i){
   const r=exchItems[i],tr=$('echbody').rows[i];if(!tr)return;
@@ -826,7 +936,7 @@ function updateExchFoot(){
   sv('exNetAmt',fmt2(gf('fBillTotal')-a));
   sv('exSaleWgt',fmt3(saleNetWeight()));
 }
-function addExchRow(){exchItems.push(newExchRow());exchSelIdx=exchItems.length-1;renderExchItems();const tr=$('echbody').rows[exchItems.length-1];if(tr)tr.cells[0].querySelector('input').focus();}
+function addExchRow(){exchItems.push(newExchRow());exchSelIdx=exchItems.length-1;renderExchItems();const tr=$('echbody').rows[exchItems.length-1];if(tr)tr.cells[0].querySelector('input,select').focus();}
 function delExchRow(){if(!exchItems.length)return;const idx=exchSelIdx>=0?exchSelIdx:exchItems.length-1;exchItems.splice(idx,1);exchSelIdx=Math.min(idx,exchItems.length-1);renderExchItems();updateExchFoot();}
 function toggleExch(){
   exchSnapshot=JSON.stringify(exchItems||[]);
@@ -1202,7 +1312,12 @@ function triggerRecalc(){clearTimeout(recalcTimer);recalcTimer=setTimeout(doReca
 function doRecalc(){
   const p={bill_total:gf('fBillTotal'),tax:gf('fTax'),advance:gf('fAdvance'),exchange:gf('fExchange'),sretamt:gf('fSretamt'),scheme_amt:gf('fSchemeAmt'),refund:gf('fRefund'),ob:gf('fOB')};
   fetch(url('/api/order-bill/recalc'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf()},body:JSON.stringify(p)})
-    .then(r=>r.ok?r.json():null).then(d=>{if(!d||!d.ok)return;sv('fNetTotal',fmt2(d.net_total||0));sv('fBalance',fmt2(d.balance||0));sv('fCB',fmt2(d.cb||0));sv('fNetBal',fmt2(d.net_bal||0));}).catch(()=>{});
+    .then(r=>r.ok?r.json():null).then(d=>{if(!d||!d.ok)return;sv('fNetTotal',fmt2(d.net_total||0));sv('fBalance',fmt2(d.balance||0));sv('fCB',fmt2(d.cb||0));sv('fNetBal',fmt2(d.net_bal||0));syncCashAmt();}).catch(()=>{});
+}
+function syncCashAmt(){
+  if(document.activeElement && document.activeElement.id==='fCashAmt') return;
+  const cash=Math.max((gf('fAdvance')||0)-(gf('fChqAmt')||0),0);
+  sv('fCashAmt',fmt2(cash));
 }
 function onRateChange(){const rate=gf('fGoldRate');sv('fRate8gm',fmt2(rate*8));items.forEach((r,i)=>{if(!r.rate||r.rate===OB_CONFIG.rates.gold){r.rate=rate;calcRow(i);rfRow(i);}});OB_CONFIG.rates.gold=rate;updateFoot();}
 
@@ -1273,7 +1388,7 @@ let custMTimer=null;
 function custModalSearch(q){clearTimeout(custMTimer);if(!q)return;custMTimer=setTimeout(()=>{fetch(url('/api/order-bill/customer-search?q=')+encodeURIComponent(q)).then(r=>r.json()).then(d=>{const tb=$('custModalBody');tb.innerHTML='';(d.results||[]).forEach(s=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${s.code}</td><td>${s.name}</td><td>${s.mobile||''}</td>`;tr.onclick=()=>{selectCust(s.code,s.name);closeCustModal();};tb.appendChild(tr);});}).catch(()=>{});},250);}
 
 // Item lookup
-function itemLookup(i){const code=items[i].code.trim();if(!code)return;fetch(`${url('/api/order-bill/item-lookup')}?code=${encodeURIComponent(code)}&gold_rate=${gf('fGoldRate')}`).then(r=>r.json()).then(d=>{if(!d.ok)return;items[i].name=d.name||'';items[i].purity=d.purity||'';items[i].rate=parseFloat(d.rate)||items[i].rate;items[i].wastage=parseFloat(d.wastage)||0;items[i].mcharge=parseFloat(d.mcharge)||0;calcRow(i);renderItems();updateFoot();try{$('itbody').rows[i].cells[3].querySelector('input').focus();}catch(e){}}).catch(()=>{});}
+function itemLookup(i){const code=items[i].code.trim();if(!code)return;fetch(`${url('/api/order-bill/item-lookup')}?code=${encodeURIComponent(code)}&gold_rate=${gf('fGoldRate')}`).then(r=>r.json()).then(d=>{if(!d.ok)return;items[i].name=d.name||'';items[i].purity=d.purity||'';items[i].rate=parseFloat(d.rate)||items[i].rate;items[i].wastage=parseFloat(d.wastage)||0;items[i].mcharge=parseFloat(d.mcharge)||0;calcRow(i);renderItems();updateFoot();try{const rateInput=$('itbody').rows[i].cells[3].querySelector('input');rateInput.focus();rateInput.select();}catch(e){}}).catch(()=>{});}
 
 // Item Search popup
 let _iSrchIdx=0,_iSrchAll=[],_iSrchFil=[],_iSrchSel=-1;
@@ -1304,9 +1419,22 @@ $('saveOkBtn').addEventListener('click', () => {
   if(cb) cb();
 });
 
+function buildOrderModelItems(){
+  return items
+    .filter(r => String(r.code || '').trim() && String(r.model || r.narration || '').trim())
+    .map((r, idx) => ({
+      sno: idx + 1,
+      code: String(r.code || '').trim().toUpperCase(),
+      qty: +r.qty || 0,
+      weight: +r.weight || 0,
+      part: String(r.model || r.narration || '').trim()
+    }));
+}
+
 // Save
 function saveBill(){
   if(!gv('fCustCode').trim()){alert('Please enter a customer.');return;}
+  if(!gv('fSalesMan').trim()){alert('Please select Sales Man.');$('fSalesMan').focus();return;}
   if(!items.filter(r=>r.code).length){alert('Please add at least one item.');return;}
   $('btnSave').disabled=true;
   const payload={mode:OB_CONFIG.mode||'bill',slno:currentSlno,doc_no:gv('fDocNo'),bill_date:gv('fDate'),
@@ -1335,7 +1463,7 @@ function saveBill(){
       ...r,
       itemcode:r.code
     })),
-    model_items:modelItems
+    model_items:buildOrderModelItems()
   };
   fetch(url('/api/order-bill/save'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf()},body:JSON.stringify(payload)})
     .then(r=>r.json()).then(d=>{
@@ -1357,6 +1485,7 @@ function saveBill(){
 // Load bill
 function loadBill(billNo){if(!billNo)return;fetch(url('/api/order-bill/get?bill_no=')+encodeURIComponent(billNo)).then(r=>r.json()).then(d=>{if(!d.ok){alert(d.message||'Not found');return;}applyBill(d);}).catch(()=>{});}
 function applyBill(d){
+  loadingBill=true;
   currentSlno=d.slno||0;sv('fDocNo',d.doc_no||'');sv('fDate',d.date||'');
   sv('fCustCode',d.cust_code||'');sv('fCustName',d.cust_name||'');sv('fAddress',d.address||'');sv('fPhone',d.phone||'');
   sv('fMobile',d.mobile||'');sv('fPan',d.pan||'');sv('fGstNo',d.gst_no||'');
@@ -1368,7 +1497,7 @@ function applyBill(d){
   sv('fTax',fmt2(d.tax||0));sv('fSretamt',fmt2(d.sretamt||0));sv('fSchemeAmt',fmt2(d.scheme_amt||0));sv('fSchemeLedger',d.scheme_ledger||'APP');
   sv('fNetTotal',fmt2(d.net_total||0));sv('fBalance',fmt2(d.balance||0));
   sv('fCB',fmt2(d.cb||0));sv('fNetBal',fmt2(d.net_bal||0));
-  sv('fCashBank',d.cbcode||'CASH');sv('fChqBank',d.chq_bank||'');sv('fChqAmt',fmt2(d.chq_amt||0));
+  sv('fCashBank',d.cbcode||'CASH');sv('fChqBank',d.chq_bank||'');sv('fChqAmt',fmt2(d.chq_amt||0));syncCashAmt();
   sv('fChqNo',d.chq_no||'');sv('fChqDate',d.chq_date||'');
   if(d.chq_pdc==='Y')$('fPdc').checked=true;else $('fPdc').checked=false;
   items=(d.items||[]).map(r=>({code:r.code||'',name:r.name||'',model:r.model||r.narration||'',rate:+r.rate||0,qty:+r.qty||0,weight:+r.weight||0,stwgt:+r.stwgt||0,stprice:+r.stprice||0,mcharge:+r.mcharge||0,wastage:+r.wastage||0,amount:+r.amount||0,narration:r.model||r.narration||'',purity:r.iqtype||'',smith:r.smith||'',stage:+r.stage||1,cost:+r.cost||0}));
@@ -1413,6 +1542,9 @@ function applyBill(d){
   renderItems();updateFoot();renderExchItems();updateExchFoot();
   renderSalesReturnItems();updateSalesReturnFoot('discount');
   renderGaItems();updateGaFoot();
+  sv('fNetTotal',fmt2(d.net_total||0));sv('fBalance',fmt2(d.balance||0));
+  sv('fCB',fmt2(d.cb||0));sv('fNetBal',fmt2(d.net_bal||0));
+  loadingBill=false;
 }
 
 // Navigation

@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title }}</title>
     <style>
         body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f3f6fb; color: #1f2937; }
-        .wrap { max-width: 1550px; margin: 12px auto; background: #fff; border: 1px solid #d7dfeb; border-radius: 10px; padding: 14px; }
+        .wrap { width: 100%; max-width: none; min-height: calc(100vh - 2px); margin: 0; background: #fff; border: 1px solid #d7dfeb; border-radius: 0; padding: 12px 14px; box-sizing: border-box; }
         h1 { margin: 0 0 10px; font-size: 20px; color: #173b63; }
         .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
         .field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
@@ -19,14 +20,19 @@
         .checkline input[type="checkbox"] { height: auto; }
         .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
         .pill { border: 1px solid #cad7e6; background: #f8fbff; border-radius: 999px; padding: 6px 12px; font-size: 12px; }
-        .table-wrap { border: 1px solid #d8e2ef; border-radius: 8px; overflow: auto; max-height: 72vh; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border-bottom: 1px solid #e5ecf5; padding: 7px 8px; vertical-align: top; }
+        .table-wrap { border: 1px solid #d8e2ef; border-radius: 8px; overflow: auto; max-height: calc(100vh - 250px); width: 100%; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border-bottom: 1px solid #e5ecf5; padding: 9px 10px; vertical-align: middle; }
         th { position: sticky; top: 0; background: #edf4fc; text-align: left; z-index: 1; }
         td.num, th.num { text-align: right; white-space: nowrap; }
         tr.selected td { background: #f2fff2; }
         .status-tr { color: #a72c2c; font-weight: 700; }
         .status-tg { color: #2457a6; font-weight: 700; }
+        .due-inline { display: flex; align-items: center; gap: 8px; min-width: 245px; }
+        .due-date-input { width: 150px; height: 38px; padding: 0 10px; font-size: 14px; font-weight: 700; }
+        .save-due-btn { height: 38px; padding: 0 16px; font-size: 13px; background: #e6f8ec; border-color: #2a7a42; color: #1b5b31; }
+        .due-status { min-width: 52px; font-size: 12px; font-weight: 800; color: #166534; }
+        .due-status.error { color: #b91c1c; }
         .empty { padding: 24px; text-align: center; color: #64748b; border: 1px dashed #c7d4e4; border-radius: 8px; background: #fbfdff; }
         .loading-mask {
             position: fixed;
@@ -66,15 +72,27 @@
             .wrap { max-width: none; margin: 0; border: 0; }
             .table-wrap { max-height: none; overflow: visible; border: 0; }
             th { position: static; }
+            .save-due-btn, .due-status { display: none; }
+            .due-date-input { border: 0; padding: 0; height: auto; background: transparent; }
         }
-    </style>
+    
+/* ── Font size overrides ── */
+body { font-size: 20px !important; }
+label { font-size: 17px !important; }
+input, select, button { font-size: 18px !important; height: 36px !important; }
+table { font-size: 18px !important; }
+th { font-size: 15px !important; }
+td { font-size: 18px !important; }
+.btn, button { font-size: 17px !important; height: 36px !important; }</style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="loading-mask" id="loadingMask" aria-hidden="true">
     <div class="loading-card">
         <strong>Please wait</strong>
-        <span>Loading receivable/payable summary...</span>
+        <span>Loading {{ $customerBalanceOnly ? 'customer balance' : 'receivable/payable summary' }}...</span>
     </div>
 </div>
 <div class="wrap">
@@ -90,6 +108,7 @@
             <label>To Date</label>
             <input type="date" name="date2" value="{{ $date2 }}">
         </div>
+        @if(!$customerBalanceOnly)
         <div class="field">
             <label>Type</label>
             <select name="type">
@@ -113,17 +132,33 @@
                 <option value="kuri" {{ $filters['partyType'] === 'kuri' ? 'selected' : '' }}>Kuri/Scheme Party</option>
             </select>
         </div>
+        @else
+        <div class="field">
+            <label>Type</label>
+            <select name="type">
+                <option value="receivable" {{ $filters['type'] === 'receivable' ? 'selected' : '' }}>To Receive (TR)</option>
+                <option value="payable" {{ $filters['type'] === 'payable' ? 'selected' : '' }}>To Give (TG)</option>
+                <option value="all" {{ $filters['type'] === 'all' ? 'selected' : '' }}>All</option>
+            </select>
+        </div>
+            <input type="hidden" name="party_type" value="customers">
+        @endif
         <div class="field">
             <label>Sort On</label>
             <select name="sort">
                 <option value="name" {{ $filters['sort'] === 'name' ? 'selected' : '' }}>Clients Name</option>
                 <option value="code" {{ $filters['sort'] === 'code' ? 'selected' : '' }}>Clients Code</option>
                 <option value="balance" {{ $filters['sort'] === 'balance' ? 'selected' : '' }}>Balance</option>
+                @if($customerBalanceOnly)
+                <option value="duedate" {{ $filters['sort'] === 'duedate' ? 'selected' : '' }}>Duedate</option>
+                @else
                 <option value="duedate" {{ $filters['sort'] === 'duedate' ? 'selected' : '' }}>Duedate</option>
                 <option value="lbdate" {{ $filters['sort'] === 'lbdate' ? 'selected' : '' }}>LBDate</option>
                 <option value="lcdate" {{ $filters['sort'] === 'lcdate' ? 'selected' : '' }}>LCDate</option>
+                @endif
             </select>
         </div>
+        @if(!$customerBalanceOnly)
         <div class="field">
             <label>C/o</label>
             <select name="cocode">
@@ -133,6 +168,7 @@
                 @endforeach
             </select>
         </div>
+        @endif
         <div class="field">
             <label>Group</label>
             <select name="group">
@@ -172,6 +208,7 @@
             <label>In Name</label>
             <input name="name_search" value="{{ $filters['nameSearch'] }}" placeholder="Search in name/address">
         </div>
+        @if(!$customerBalanceOnly)
         <div class="field">
             <label>&nbsp;</label>
             <label class="checkline"><input type="checkbox" name="based_on_duedate" value="1" {{ $filters['basedOnDueDate'] ? 'checked' : '' }}> Based On Duedate</label>
@@ -184,6 +221,7 @@
             <label>&nbsp;</label>
             <label class="checkline"><input type="checkbox" name="selected_only" value="1" {{ $filters['selectedOnly'] ? 'checked' : '' }}> Selected Only</label>
         </div>
+        @endif
         <div class="field">
             <label>&nbsp;</label>
             <button class="primary" type="submit" name="show" value="1">Show</button>
@@ -199,7 +237,7 @@
         @if($show)
             <div class="field">
                 <label>&nbsp;</label>
-                <button type="submit" name="export" value="csv">To Excel</button>
+                <button type="submit" name="export" value="excel">📥 To Excel</button>
             </div>
         @endif
     </form>
@@ -207,9 +245,15 @@
     @if($show)
         <div class="summary">
             <div class="pill">Rows: {{ $totals['count'] }}</div>
-            <div class="pill">To Get: {{ number_format(abs($totals['to_get']), 2) }}</div>
-            <div class="pill">To Give: {{ number_format(abs($totals['to_give']), 2) }}</div>
-            <div class="pill">Net Total: {{ number_format(abs($totals['net']), 2) }} {{ $totals['net'] > 0 ? '(TG)' : ($totals['net'] < 0 ? '(TR)' : '') }}</div>
+            @if($customerBalanceOnly)
+                <div class="pill">To Receive: {{ number_format(abs($totals['to_get']), 2) }}</div>
+                <div class="pill">To Give: {{ number_format(abs($totals['to_give']), 2) }}</div>
+                <div class="pill">Customer Balance: {{ number_format(abs($totals['net']), 2) }} {{ $totals['net'] > 0 ? '(TG)' : ($totals['net'] < 0 ? '(TR)' : '') }}</div>
+            @else
+                <div class="pill">To Get: {{ number_format(abs($totals['to_get']), 2) }}</div>
+                <div class="pill">To Give: {{ number_format(abs($totals['to_give']), 2) }}</div>
+                <div class="pill">Net Total: {{ number_format(abs($totals['net']), 2) }} {{ $totals['net'] > 0 ? '(TG)' : ($totals['net'] < 0 ? '(TR)' : '') }}</div>
+            @endif
             @if($filters['showWeight'])
                 <div class="pill">Wgt Bal: {{ number_format($totals['wgt'], 3) }}</div>
             @endif
@@ -220,12 +264,22 @@
                 <table>
                     <thead>
                     <tr>
+                        @if(!$customerBalanceOnly)
                         <th style="width: 40px;">Sel</th>
+                        @endif
                         <th style="width: 90px;">Code</th>
                         <th>Name</th>
+                        @if($customerBalanceOnly)
+                            <th style="width: 120px;">Mobile</th>
+                            <th style="width: 110px;">Phone</th>
+                            <th>Address</th>
+                            <th style="width: 270px;">DueDate</th>
+                        @endif
+                        @if(!$customerBalanceOnly)
                         <th style="width: 90px;">LBDate</th>
                         <th style="width: 90px;">LCDate</th>
-                        <th style="width: 90px;">DueDate</th>
+                        <th style="width: 270px;">DueDate</th>
+                        @endif
                         <th class="num" style="width: 110px;">Balance</th>
                         <th style="width: 70px;">Status</th>
                         @if($filters['showWeight'])
@@ -236,6 +290,7 @@
                     <tbody>
                     @foreach($rows as $row)
                         <tr class="{{ $row['selected'] ? 'selected' : '' }}" ondblclick="window.location='{{ url('/accounts/ac-ledger?show=1&accode=' . rawurlencode($row['accode']) . '&date1=' . ($sessionStart) . '&date2=' . ($filters['basedOnDueDate'] ? $date2 : $date1)) }}'">
+                            @if(!$customerBalanceOnly)
                             <td>
                                 <input
                                     type="checkbox"
@@ -245,11 +300,42 @@
                                     onclick="event.stopPropagation(); this.closest('tr').classList.toggle('selected', this.checked);"
                                 >
                             </td>
+                            @endif
                             <td>{{ $row['accode'] }}</td>
-                            <td>{{ $row['address'] }}</td>
+                            <td>{{ $customerBalanceOnly ? $row['name'] : $row['address'] }}</td>
+                            @if($customerBalanceOnly)
+                                <td>{{ $row['mobile'] }}</td>
+                                <td>{{ $row['telephone'] }}</td>
+                                <td>{{ $row['address_only'] }}</td>
+                                <td>
+                                    <div class="due-inline" onclick="event.stopPropagation();" ondblclick="event.stopPropagation();">
+                                        <input
+                                            type="date"
+                                            class="due-date-input"
+                                            value="{{ $row['cduedate'] }}"
+                                            data-code="{{ $row['accode'] }}"
+                                        >
+                                        <button type="button" class="save-due-btn" data-code="{{ $row['accode'] }}">Save</button>
+                                        <span class="due-status" aria-live="polite"></span>
+                                    </div>
+                                </td>
+                            @endif
+                            @if(!$customerBalanceOnly)
                             <td>{{ $row['billdate'] !== '' ? \Carbon\Carbon::parse($row['billdate'])->format('d/m/y') : '' }}</td>
                             <td>{{ $row['lcdate'] !== '' ? \Carbon\Carbon::parse($row['lcdate'])->format('d/m/y') : '' }}</td>
-                            <td>{{ $row['cduedate'] !== '' ? \Carbon\Carbon::parse($row['cduedate'])->format('d/m/y') : '' }}</td>
+                            <td>
+                                <div class="due-inline" onclick="event.stopPropagation();" ondblclick="event.stopPropagation();">
+                                    <input
+                                        type="date"
+                                        class="due-date-input"
+                                        value="{{ $row['cduedate'] }}"
+                                        data-code="{{ $row['accode'] }}"
+                                    >
+                                    <button type="button" class="save-due-btn" data-code="{{ $row['accode'] }}">Save</button>
+                                    <span class="due-status" aria-live="polite"></span>
+                                </div>
+                            </td>
+                            @endif
                             <td class="num">{{ number_format($row['balance_abs'], 2) }}</td>
                             <td class="{{ $row['status'] === '(TR)' ? 'status-tr' : 'status-tg' }}">{{ $row['status'] }}</td>
                             @if($filters['showWeight'])
@@ -270,6 +356,8 @@
 <script>
 const reportForm = document.querySelector('form');
 const loadingMask = document.getElementById('loadingMask');
+const dueUpdateUrl = @json(url('/api/accounts/ac-receivable-payable-summary/duedate'));
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 function showLoading() {
     if (!loadingMask) {
@@ -309,6 +397,77 @@ document.querySelectorAll('input[name="based_on_duedate"]').forEach(function (el
         syncSelectedRows();
         showLoading();
         this.form.submit();
+    });
+});
+
+async function saveDueDate(button) {
+    const wrap = button.closest('.due-inline');
+    const input = wrap?.querySelector('.due-date-input');
+    const status = wrap?.querySelector('.due-status');
+    const code = button.dataset.code || input?.dataset.code || '';
+    const duedate = input?.value || '';
+
+    if (!input || !status) {
+        return;
+    }
+    if (!duedate) {
+        status.textContent = 'Date?';
+        status.classList.add('error');
+        input.focus();
+        return;
+    }
+
+    button.disabled = true;
+    status.textContent = 'Saving';
+    status.classList.remove('error');
+
+    try {
+        const res = await fetch(dueUpdateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ code: code, duedate: duedate }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+            throw new Error(data.message || 'Save failed');
+        }
+        input.value = data.duedate || duedate;
+        status.textContent = 'Saved';
+        setTimeout(function () {
+            if (status.textContent === 'Saved') {
+                status.textContent = '';
+            }
+        }, 1800);
+    } catch (err) {
+        status.textContent = err.message || 'Error';
+        status.classList.add('error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+document.querySelectorAll('.save-due-btn').forEach(function (button) {
+    button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        saveDueDate(button);
+    });
+});
+
+document.querySelectorAll('.due-date-input').forEach(function (input) {
+    input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            const button = input.closest('.due-inline')?.querySelector('.save-due-btn');
+            if (button) {
+                saveDueDate(button);
+            }
+        }
     });
 });
 </script>

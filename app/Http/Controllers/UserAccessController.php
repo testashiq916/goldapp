@@ -10,6 +10,7 @@ use App\Services\PasswordService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 class UserAccessController extends Controller
@@ -52,6 +53,7 @@ class UserAccessController extends Controller
 
         return view('user-access.index', [
             'permissions' => Permission::groupedLabels(),
+            'companies' => $this->availableCompanies(),
         ]);
     }
 
@@ -89,6 +91,7 @@ class UserAccessController extends Controller
             'ok' => true,
             'user' => $user,
             'permissions' => $user->permissionList(),
+            'companies' => $this->companyAccessList($code),
         ]);
     }
 
@@ -135,14 +138,8 @@ class UserAccessController extends Controller
                 $user->update($payload);
             }
 
-            $perms = $validated['permissions'] ?? [];
-            $hasAnyMdiAccess = collect($perms)->contains(
-                fn ($perm) => str_starts_with(strtoupper(trim((string) $perm)), 'MDI_')
-            );
-            if ($hasAnyMdiAccess && !in_array('MDI_DASHBOARD', $perms, true)) {
-                $perms[] = 'MDI_DASHBOARD';
-            }
-            $user->syncPermissions($perms);
+            $user->syncPermissions($validated['permissions'] ?? []);
+            $this->syncCompanyAccess($code, $validated['companies'] ?? []);
         });
 
         $this->logDelpart($request, 'User Access(' . $code . ') ' . ($mode === 'add' ? 'Added' : 'Updated'), ['utype' => $mode === 'add' ? 'A' : 'E', 'ttype' => 'R']);
@@ -169,6 +166,9 @@ class UserAccessController extends Controller
 
         DB::transaction(function () use ($code): void {
             DB::table('userd')->whereRaw('UPPER(TRIM(code)) = ?', [$code])->delete();
+            if (Schema::hasTable('user_company_access')) {
+                DB::table('user_company_access')->whereRaw('UPPER(TRIM(code)) = ?', [$code])->delete();
+            }
 
             if ($this->hasTable('userhist')) {
                 DB::table('userhist')->whereRaw('UPPER(TRIM(code)) = ?', [$code])->delete();
@@ -179,5 +179,105 @@ class UserAccessController extends Controller
 
         $this->logDelpart($request, 'User Access(' . $code . ') Deleted', ['utype' => 'D', 'ttype' => 'R']);
         return response()->json(['ok' => true, 'message' => 'User deleted']);
+    }
+
+    private function ensureCompanyAccessTable(): void
+    {
+        if (Schema::hasTable('user_company_access')) {
+            return;
+        }
+
+        DB::statement("
+            CREATE TABLE user_company_access (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(20) NOT NULL,
+                database_name VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY user_company_access_unique (code, database_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+
+    private function syncCompanyAccess(string $code, array $companies): void
+    {
+        $this->ensureCompanyAccessTable();
+        $code = strtoupper(trim($code));
+
+        DB::table('user_company_access')->whereRaw('UPPER(TRIM(code)) = ?', [$code])->delete();
+
+        $rows = collect($companies)
+            ->map(fn ($db) => trim((string) $db))
+            ->filter()
+            ->unique(fn ($db) => strtolower($db))
+            ->map(fn ($db) => [
+                'code' => $code,
+                'database_name' => $db,
+            ])
+            ->values()
+            ->all();
+
+        if (!empty($rows)) {
+            DB::table('user_company_access')->insert($rows);
+        }
+    }
+
+    private function companyAccessList(string $code): array
+    {
+        $this->ensureCompanyAccessTable();
+
+        return DB::table('user_company_access')
+            ->whereRaw('UPPER(TRIM(code)) = ?', [strtoupper(trim($code))])
+            ->pluck('database_name')
+            ->map(fn ($db) => trim((string) $db))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function availableCompanies(): array
+    {
+        $companies = [];
+        $registryPath = storage_path('app/company-select.json');
+
+        if (File::exists($registryPath)) {
+            $decoded = json_decode((string) File::get($registryPath), true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $company) {
+                    if (!is_array($company)) {
+                        continue;
+                    }
+                    $database = trim((string) ($company['database'] ?? ''));
+                    if ($database === '') {
+                        continue;
+                    }
+                    $companies[$database] = [
+                        'name' => trim((string) ($company['company_name'] ?? $database)),
+                        'database' => $database,
+                    ];
+                }
+            }
+        }
+
+        if (Schema::hasTable('owner_branches')) {
+            DB::table('owner_branches')
+                ->where('is_active', 1)
+                ->orderBy('name')
+                ->get()
+                ->each(function ($branch) use (&$companies): void {
+                    $database = trim((string) ($branch->db_name ?? ''));
+                    if ($database === '') {
+                        return;
+                    }
+                    $companies[$database] = [
+                        'name' => trim((string) ($branch->name ?? $database)),
+                        'database' => $database,
+                    ];
+                });
+        }
+
+        return collect($companies)
+            ->sortBy('name')
+            ->values()
+            ->all();
     }
 }

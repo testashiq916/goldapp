@@ -254,7 +254,7 @@ class CashBookController extends Controller
         if ($this->hasTable('salesm')) {
             $rows = DB::table('salesm')
                 ->whereIn('slno', $slnos)
-                ->get(['slno', 'billno', 'custname']);
+                ->get(['slno', 'billno', 'custname', 'orderno']);
 
             foreach ($rows as $row) {
                 $slno = (int) ($row->slno ?? 0);
@@ -264,7 +264,8 @@ class CashBookController extends Controller
 
                 $billNo = trim((string) ($row->billno ?? ''));
                 $custName = trim((string) ($row->custname ?? ''));
-                $particular = 'By Sales';
+                $orderNo = trim((string) ($row->orderno ?? ''));
+                $particular = $orderNo !== '' ? 'By Order Sales' : 'By Sales';
                 if ($billNo !== '') {
                     $particular .= ' (' . $billNo . ')';
                 }
@@ -401,19 +402,25 @@ class CashBookController extends Controller
         if ($this->hasTable('salesm')) {
             $sales = DB::table('salesm')
                 ->where('slno', $slno)
-                ->first(['billno']);
+                ->first(['billno', 'orderno']);
             $billNo = trim((string) ($sales->billno ?? ''));
             if ($billNo !== '') {
-                return url('/sales-bill/edit?bill_no=' . urlencode($billNo));
+                $orderNo = trim((string) ($sales->orderno ?? ''));
+                return $orderNo !== ''
+                    ? url('/order-sale/bill?bill_no=' . urlencode($billNo))
+                    : url('/sales-bill/edit?bill_no=' . urlencode($billNo));
             }
 
             $billNo = $this->extractBillNumberFromNarration($particular);
             if ($billNo !== '') {
                 $sales = DB::table('salesm')
                     ->whereRaw('TRIM(billno) = ?', [$billNo])
-                    ->first(['billno']);
+                    ->first(['billno', 'orderno']);
                 if ($sales) {
-                    return url('/sales-bill/edit?bill_no=' . urlencode($billNo));
+                    $orderNo = trim((string) ($sales->orderno ?? ''));
+                    return $orderNo !== ''
+                        ? url('/order-sale/bill?bill_no=' . urlencode($billNo))
+                        : url('/sales-bill/edit?bill_no=' . urlencode($billNo));
                 }
             }
         }

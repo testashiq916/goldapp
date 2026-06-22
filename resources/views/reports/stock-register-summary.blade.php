@@ -6,20 +6,20 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Segoe UI",system-ui,sans-serif;background:#f4f7fb;color:#1e293b;font-size:13px}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:#f4f7fb;color:#1e293b;font-size:20px}
 .wrap{max-width:1500px;margin:12px auto;background:#fff;border:1px solid #d7dfeb;border-radius:10px;padding:14px}
 h1{margin:0 0 6px;font-size:22px;color:#173b63}
-.sub{margin:0 0 12px;color:#5b7088;font-size:12px}
+.sub{margin:0 0 12px;color:#5b7088;font-size:18px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:4px;min-width:150px}
-label{font-size:11px;font-weight:700;color:#375b84}
-input,select,button{height:34px;border:1px solid #bfd0e6;border-radius:6px;padding:0 8px;font-size:12px;box-sizing:border-box}
+label{font-size:17px;font-weight:700;color:#375b84}
+input,select,button{height:34px;border:1px solid #bfd0e6;border-radius:6px;padding:0 8px;font-size:14px;box-sizing:border-box}
 button{cursor:pointer;background:#e8f2ff;border-color:#2a6398;color:#17456e;font-weight:700}
 button.primary{background:#e6f8ec;border-color:#2a7a42;color:#1b5b31}
-.checkline{display:flex;align-items:center;gap:6px;height:34px;color:#41566d;font-size:12px}
-.meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:#48627c}
+.checkline{display:flex;align-items:center;gap:6px;height:34px;color:#41566d;font-size:18px}
+.meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:16px;color:#48627c}
 .table-wrap{border:1px solid #d8e2ef;border-radius:8px;overflow:auto;max-height:72vh}
-table{width:100%;border-collapse:collapse;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:18px}
 th,td{border-bottom:1px solid #e5ecf5;padding:7px 8px;vertical-align:top}
 th{position:sticky;top:0;background:#edf4fc;text-align:left;z-index:1;white-space:nowrap}
 td.num,th.num{text-align:right;white-space:nowrap}
@@ -29,7 +29,9 @@ tfoot td{background:#f7fbff;font-weight:700;color:#264968;position:sticky;bottom
 @media (max-width:980px){.field{min-width:100%}}
 @media print{.toolbar,.status{display:none}body{background:#fff}.wrap{max-width:none;margin:0;border:0}.table-wrap{max-height:none;overflow:visible;border:0}th,tfoot td{position:static}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -118,7 +120,7 @@ tfoot td{background:#f7fbff;font-weight:700;color:#264968;position:sticky;bottom
   <div class="status" id="statusText"></div>
 </div>
 
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 const API_LOOKUPS = @json(url('/api/stock-register/lookups'));
 const API_SUMMARY = @json(url('/api/stock-register-summary/data'));

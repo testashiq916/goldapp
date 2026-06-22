@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\LogsDelpartAudit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -82,6 +83,19 @@ class GoldsmithTransactionController extends Controller
             ? DB::table('sman')->orderBy('name')->get(['code', 'name'])->toArray()
             : [];
 
+        $cashBanks = [];
+        if ($this->hasTable('accountm')) {
+            $cashBanks = DB::table('accountm')
+                ->whereIn('actype2', ['H', 'B'])
+                ->orderByRaw("CASE WHEN actype2='H' THEN 0 ELSE 1 END, accode")
+                ->get(['accode as code', 'name', 'actype2'])
+                ->map(fn ($r) => ['code' => trim((string) $r->code), 'name' => trim((string) ($r->name ?? '')), 'type' => trim((string) ($r->actype2 ?? ''))])
+                ->toArray();
+        }
+        if ($cashBanks === []) {
+            $cashBanks[] = ['code' => 'CASH', 'name' => 'CASH', 'type' => 'H'];
+        }
+
         $goldRate = $this->hasTable('generald')
             ? (float) (DB::table('generald')->where('code', 'THRATE')->value('cvalue') ?? 0)
             : 0.0;
@@ -107,6 +121,7 @@ class GoldsmithTransactionController extends Controller
             'mode' => $mode,
             'billNo' => $this->nextDocNo($type, $eb, false, $module),
             'salesmen' => $salesmen,
+            'cashBanks' => $cashBanks,
             'goldRate' => $goldRate,
             'smithCfg' => $smithCfg,
             'smithWastagePerc' => $smithWastagePerc,
@@ -149,7 +164,10 @@ class GoldsmithTransactionController extends Controller
             });
         }
 
-        $rows = $query->orderByDesc('sm.tdate')->orderByDesc('sm.slno')->limit(50)->get()
+        $rows = $query
+            ->orderByDesc('sm.tdate')
+            ->orderByDesc('sm.slno')
+            ->get()
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
                 'doc_no' => trim((string) ($r->docno ?? '')),
@@ -217,7 +235,8 @@ class GoldsmithTransactionController extends Controller
         $type = strtoupper((string) $request->query('type', 'G'));
         $eb = strtoupper((string) $request->query('eb', 'B'));
         $module = (string) $request->query('module', 'goldsmith-bill');
-        return response()->json(['success' => true, 'billNo' => $this->nextDocNo($type, $eb, false, $module)]);
+        $isReceipt = $request->boolean('receipt');
+        return response()->json(['success' => true, 'billNo' => $this->nextDocNo($type, $eb, false, $module, $isReceipt)]);
     }
 
     public function get(Request $request): JsonResponse
@@ -241,6 +260,7 @@ class GoldsmithTransactionController extends Controller
         $this->applyTransactionScope($masterQuery, 'sm.docno', 'c.ctype', 'sm.control', $type, $module, $gilevel);
         $master = $masterQuery->first();
         if (!$master) return response()->json(['success' => false, 'message' => 'Transaction not found'], 404);
+        $master->cbcode = $this->daybookCashBankCode($slno, trim((string) ($master->smithcode ?? '')));
 
         $details = DB::table('smithd')->where('slno', $slno)->orderBy('sno')->get()->map(function ($r) {
             $bcode = (int) ($r->bcode ?? 0);
@@ -368,7 +388,7 @@ class GoldsmithTransactionController extends Controller
         $company = [];
         if ($this->hasTable('generals')) {
             $company = DB::table('generals')
-                ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE', 'KGST'])
+                ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE', 'Mobile', 'GSTIN', 'GSTNO', 'KGST'])
                 ->get(['code', 'cvalue'])
                 ->mapWithKeys(fn ($r) => [trim((string) $r->code) => trim((string) ($r->cvalue ?? ''))])
                 ->toArray();
@@ -431,11 +451,31 @@ class GoldsmithTransactionController extends Controller
     {
         abort_unless($request->session()->has('user_code'), 401);
         $in = $request->all();
-        $rows = $in['rows'] ?? [];
+        $rawRows = $in['rows'] ?? [];
+        $rows = $rawRows;
         if (is_string($rows)) $rows = json_decode($rows, true) ?: [];
         if (!is_array($rows)) $rows = [];
-        $rows = $this->normalizeRows($rows);
-        if (!$rows) return response()->json(['success' => false, 'message' => 'No valid rows to save'], 422);
+
+        Log::info('goldsmith_save_buffer_received', $this->goldsmithSaveLogContext($request, $in, $rows));
+
+        try {
+            $rows = $this->normalizeRows($rows);
+        } catch (\Throwable $e) {
+            Log::warning('goldsmith_save_buffer_invalid', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'error' => $e->getMessage(),
+            ]));
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        if (!$rows) {
+            Log::warning('goldsmith_save_buffer_rejected', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'reason' => 'No valid rows to save',
+                'raw_rows_type' => get_debug_type($rawRows),
+            ]));
+
+            return response()->json(['success' => false, 'message' => 'No valid rows to save'], 422);
+        }
 
         $saded = strtoupper((string) ($in['saded'] ?? 'A'));
         $type = strtoupper((string) ($in['istype'] ?? 'G'));
@@ -446,7 +486,13 @@ class GoldsmithTransactionController extends Controller
         $docno = trim((string) ($in['docno'] ?? ''));
         $smithCode = trim((string) ($in['smithcode'] ?? ''));
         $smithName = trim((string) ($in['smithname'] ?? ''));
-        if ($smithCode === '') return response()->json(['success' => false, 'message' => 'Enter goldsmith code'], 422);
+        if ($smithCode === '') {
+            Log::warning('goldsmith_save_buffer_rejected', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'reason' => 'Enter goldsmith code',
+            ]));
+
+            return response()->json(['success' => false, 'message' => 'Enter goldsmith code'], 422);
+        }
 
         $createbc = strtoupper(trim((string) ($in['createbc'] ?? 'N'))) === 'Y';
 
@@ -459,6 +505,11 @@ class GoldsmithTransactionController extends Controller
             abs((float) $tot['dttcamt']) > 0.0001 ||
             abs((float) $tot['dthmc']) > 0.0001;
         if (!$hasTransaction) {
+            Log::warning('goldsmith_save_buffer_rejected', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'reason' => 'Incomplete transaction. Nothing to save.',
+                'totals' => $tot,
+            ]));
+
             return response()->json(['success' => false, 'message' => 'Incomplete transaction. Nothing to save.'], 422);
         }
 
@@ -480,7 +531,7 @@ class GoldsmithTransactionController extends Controller
                 if ($this->hasTable('itemadj')) DB::table('itemadj')->where('slno', $slno)->delete();
             } else {
                 $slno = $this->nextSerialNo();
-                $docno = $this->nextDocNo($type, $eb, true, $module);
+                $docno = $this->nextDocNo($type, $eb, true, $module, $this->usesReceiptDocNo($type, $rows));
             }
 
             DB::table('smithm')->insert($this->f('smithm', [
@@ -558,6 +609,7 @@ class GoldsmithTransactionController extends Controller
             $this->writeDaybook($slno, $tdate, $icontrol, $smithCode, $type, $tot, [
                 'acid' => (float) ($in['acidcharge'] ?? 0), 'disc' => (float) ($in['discount'] ?? 0), 'tds' => (float) ($in['tdsamt'] ?? 0),
                 'tax' => (float) ($in['taxamt'] ?? 0), 'tcs' => (float) ($in['tcsamt'] ?? 0), 'paid' => $signedPaid,
+                'cbcode' => trim((string) ($in['cbcode'] ?? 'CASH')) ?: 'CASH',
                 'interstate' => strtoupper((string) ($in['interstate'] ?? 'N')) === 'Y' ? 'Y' : 'N',
                 'taxreverse' => strtoupper((string) ($in['taxreverse'] ?? 'N')) === 'Y' ? 'Y' : 'N',
             ]);
@@ -571,11 +623,44 @@ class GoldsmithTransactionController extends Controller
 
             DB::commit();
             $this->logDelpart($request, 'Goldsmith(' . $docno . ') ' . ($saded === 'E' ? 'Updated' : 'Saved'), ['utype' => $saded === 'E' ? 'E' : 'A', 'ttype' => 'T', 'slno' => $slno, 'tdate' => $tdate, 'control' => $icontrol]);
+            Log::info('goldsmith_save_buffer_saved', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'docno' => $docno,
+                'slno' => $slno,
+                'totals' => $tot,
+            ]));
+
             return response()->json(['success' => true, 'message' => 'Saved successfully', 'docno' => $docno, 'slno' => $slno]);
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('goldsmith_save_buffer_error', $this->goldsmithSaveLogContext($request, $in, $rows, [
+                'docno' => $docno,
+                'slno' => $slno,
+                'error' => $e->getMessage(),
+            ]));
+
             return response()->json(['success' => false, 'message' => 'Database error: ' . $e->getMessage()], 500);
         }
+    }
+
+    private function goldsmithSaveLogContext(Request $request, array $input, array $rows, array $extra = []): array
+    {
+        return array_merge([
+            'module' => (string) ($input['module'] ?? 'goldsmith-bill'),
+            'mode' => strtoupper((string) ($input['saded'] ?? 'A')),
+            'type' => strtoupper((string) ($input['istype'] ?? 'G')),
+            'eb' => strtoupper((string) ($input['eb'] ?? 'B')),
+            'slno' => (int) ($input['slno'] ?? 0),
+            'docno' => trim((string) ($input['docno'] ?? '')),
+            'smithcode' => trim((string) ($input['smithcode'] ?? '')),
+            'smithname' => trim((string) ($input['smithname'] ?? '')),
+            'tdate' => (string) ($input['tdate'] ?? ''),
+            'rate' => (string) ($input['rate'] ?? ''),
+            'paid' => (string) ($input['paid'] ?? ''),
+            'row_count' => count($rows),
+            'rows' => $rows,
+            'user_code' => (string) $request->session()->get('user_code', ''),
+            'ip' => $request->ip(),
+        ], $extra);
     }
 
     public function prev(Request $request): JsonResponse
@@ -587,7 +672,7 @@ class GoldsmithTransactionController extends Controller
         $gilevel = max(1, (int) $request->session()->get('gilevel', 1));
 
         $query = DB::table('smithm')
-            ->join('clients', 'clients.code', '=', 'smithm.smithcode');
+            ->leftJoin('clients', 'clients.code', '=', 'smithm.smithcode');
         $this->applyTransactionScope($query, 'smithm.docno', 'clients.ctype', 'smithm.control', $type, $module, $gilevel);
         if ($slno > 0) {
             $query->where('smithm.slno', '<', $slno);
@@ -607,7 +692,7 @@ class GoldsmithTransactionController extends Controller
         $gilevel = max(1, (int) $request->session()->get('gilevel', 1));
 
         $query = DB::table('smithm')
-            ->join('clients', 'clients.code', '=', 'smithm.smithcode');
+            ->leftJoin('clients', 'clients.code', '=', 'smithm.smithcode');
         $this->applyTransactionScope($query, 'smithm.docno', 'clients.ctype', 'smithm.control', $type, $module, $gilevel);
         if ($slno > 0) {
             $query->where('smithm.slno', '>', $slno)->orderBy('smithm.slno');
@@ -729,7 +814,20 @@ class GoldsmithTransactionController extends Controller
         abort_unless($request->session()->has('user_code'), 401);
         $q = '%' . trim((string) $request->query('q', '')) . '%';
         $ctype = strtoupper((string) $request->query('ctype', 'G'));
-        $rows = DB::table('clients')->where('ctype', $ctype)->where(function ($b) use ($q) { $b->where('code', 'like', $q)->orWhere('name', 'like', $q); })->limit(50)->get(['code', 'name', 'mobile']);
+        $types = [$ctype];
+        if ($ctype === 'J' && !DB::table('clients')->where('ctype', 'J')->exists()) {
+            $types = ['J', 'S', 'G', 'F', 'C'];
+        }
+
+        $rows = DB::table('clients')
+            ->whereIn('ctype', $types)
+            ->where(function ($b) use ($q) {
+                $b->where('code', 'like', $q)->orWhere('name', 'like', $q);
+            })
+            ->orderByRaw("CASE ctype WHEN 'J' THEN 0 WHEN 'S' THEN 1 WHEN 'G' THEN 2 WHEN 'F' THEN 3 ELSE 4 END")
+            ->orderBy('code')
+            ->limit(50)
+            ->get(['code', 'name', 'mobile', 'ctype']);
         return response()->json($rows);
     }
 
@@ -1052,7 +1150,32 @@ class GoldsmithTransactionController extends Controller
             $this->db($slno, $tdate, $control, $ta, $v, $party);
             $this->db($slno, $tdate, $control, $party, -$v, $ta);
         }
-        if (abs((float) $c['paid']) > 0.0001) $this->dbl($slno, $tdate, $control, 'CASH', (float) $c['paid'], $party, $party, -(float) $c['paid'], 'CASH');
+        if (abs((float) $c['paid']) > 0.0001) {
+            $cbcode = trim((string) ($c['cbcode'] ?? 'CASH')) ?: 'CASH';
+            $this->dbl($slno, $tdate, $control, $cbcode, (float) $c['paid'], $party, $party, -(float) $c['paid'], $cbcode);
+        }
+    }
+
+    private function daybookCashBankCode(int $slno, string $party): string
+    {
+        if (!$this->hasTable('daybook') || $slno <= 0) {
+            return 'CASH';
+        }
+
+        $query = DB::table('daybook')
+            ->where('slno', $slno)
+            ->whereRaw('TRIM(daybook.accode) <> ?', [$party])
+            ->whereRaw('TRIM(daybook.opaccode) = ?', [$party])
+            ->orderByRaw("CASE WHEN TRIM(daybook.accode)='CASH' THEN 0 ELSE 1 END");
+
+        if ($this->hasTable('accountm')) {
+            $query->join('accountm', DB::raw('TRIM(accountm.accode)'), '=', DB::raw('TRIM(daybook.accode)'))
+                ->whereIn('accountm.actype2', ['H', 'B']);
+        }
+
+        $row = $query->first(['daybook.accode']);
+
+        return trim((string) ($row->accode ?? 'CASH')) ?: 'CASH';
     }
 
     private function dbl(int $slno, string $tdate, int $control, string $a1, float $v1, string $o1, string $a2, float $v2, string $o2): void
@@ -1087,43 +1210,103 @@ class GoldsmithTransactionController extends Controller
         return date('Y-m-d', $t);
     }
 
-    private function nextDocNo(string $type, string $eb, bool $increment = false, string $module = ''): string
+    private function nextDocNo(string $type, string $eb, bool $increment = false, string $module = '', bool $isReceipt = false): string
     {
         $eb = in_array($eb, ['B', 'E'], true) ? $eb : 'B';
         $module = strtolower(trim($module));
         $type = strtoupper($type);
+
+        if ($type === 'J' && $isReceipt) {
+            $this->ensureCounter('JEWLRB');
+            $counter = (int) (DB::table('generali')->whereRaw('TRIM(code)=?', ['JEWLRB'])->value('cvalue') ?? 0);
+            $pref = $this->general('JRBPREF', 'JR/');
+            $len = (int) $this->general('JRBLEN', '5');
+            if ($len <= 0) $len = 5;
+            $run = $this->nextRunNumberFromExistingDocs('JEWLRB', $counter, $pref, $increment);
+            return $pref . str_pad((string) $run, $len, '0', STR_PAD_LEFT);
+        }
+
         $base = 'SMITH';
         if ($type === 'J') $base = 'JEWL';
         elseif ($type === 'C') $base = 'PDEP';
         elseif ($type === 'R') $base = str_contains($module, 'rcpt-memo-from-smith') ? 'RM3' : 'RM2';
 
-        $code = $base . $eb; $this->ensureCounter($code);
-        if ($increment) DB::table('generali')->whereRaw('TRIM(code)=?', [$code])->update(['cvalue' => DB::raw('cvalue + 1')]);
-        $n = (int) (DB::table('generali')->whereRaw('TRIM(code)=?', [$code])->value('cvalue') ?? 0);
-        $run = $increment ? $n : ($n + 1);
+        $code = $base . $eb;
+        $this->ensureCounter($code);
+        $counter = (int) (DB::table('generali')->whereRaw('TRIM(code)=?', [$code])->value('cvalue') ?? 0);
 
-        if ($type === 'R') return ($base === 'RM3' ? ($eb === 'B' ? 'RM3/' : 'RM3 ') : ($eb === 'B' ? 'RM2/' : 'RM2 ')) . str_pad((string) $run, 5, '0', STR_PAD_LEFT);
+        if ($type === 'R') {
+            $pref = $base === 'RM3' ? ($eb === 'B' ? 'RM3/' : 'RM3 ') : ($eb === 'B' ? 'RM2/' : 'RM2 ');
+            $run = $this->nextRunNumberFromExistingDocs($code, $counter, $pref, $increment);
+            return $pref . str_pad((string) $run, 5, '0', STR_PAD_LEFT);
+        }
 
         $pc = $type === 'J' ? ($eb === 'B' ? 'JBPREF' : 'JEPREF') : ($type === 'C' ? ($eb === 'B' ? 'DBPREF' : 'DEPREF') : ($eb === 'B' ? 'GSBPREF' : 'GSEPREF'));
         $lc = $type === 'J' ? ($eb === 'B' ? 'JBLEN' : 'JELEN') : ($type === 'C' ? ($eb === 'B' ? 'DBLEN' : 'DELEN') : ($eb === 'B' ? 'GSBLEN' : 'GSELEN'));
         $dp = $type === 'J' ? ($eb === 'B' ? 'JLB/' : 'JLE/') : ($type === 'C' ? ($eb === 'B' ? 'DPB/' : 'DPE/') : ($eb === 'B' ? 'GSB/' : 'GSE/'));
         $pref = $this->general($pc, $dp); $len = (int) $this->general($lc, '5'); if ($len <= 0) $len = 5;
+        $run = $this->nextRunNumberFromExistingDocs($code, $counter, $pref, $increment);
         return $pref . str_pad((string) $run, $len, '0', STR_PAD_LEFT);
+    }
+
+    private function usesReceiptDocNo(string $type, array $rows): bool
+    {
+        if (strtoupper($type) !== 'J') {
+            return false;
+        }
+
+        foreach ($rows as $row) {
+            if (strtoupper(trim((string) ($row['givrec'] ?? ''))) === 'R') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function nextRunNumberFromExistingDocs(string $counterCode, int $counter, string $prefix, bool $increment): int
+    {
+        $maxExisting = $this->maxDocSerialForPrefix($prefix);
+        $current = max($counter, $maxExisting);
+        $run = $current + 1;
+
+        if ($this->hasTable('generali') && ($increment || $counter < $maxExisting)) {
+            DB::table('generali')->whereRaw('TRIM(code)=?', [$counterCode])->update(['cvalue' => $increment ? $run : $maxExisting]);
+        }
+
+        return $run;
+    }
+
+    private function maxDocSerialForPrefix(string $prefix): int
+    {
+        $prefix = trim($prefix);
+        if ($prefix === '' || !$this->hasTable('smithm') || !Schema::hasColumn('smithm', 'docno')) {
+            return 0;
+        }
+
+        return DB::table('smithm')
+            ->where('docno', 'like', $prefix . '%')
+            ->pluck('docno')
+            ->reduce(function (int $max, $docno): int {
+                return preg_match('/(\d+)\s*$/', trim((string) $docno), $m)
+                    ? max($max, (int) $m[1])
+                    : $max;
+            }, 0);
     }
 
     private function pickerDocPrefixes(string $type, string $module): array
     {
         $defaults = match ($type) {
-            'J' => ['JLB/', 'JLE/'],
+            'J' => ['JLB/', 'JLE/', 'JRB/', 'JI/', 'JR/'],
             'C' => ['DPB/', 'DPE/'],
             'R' => str_contains($module, 'rcpt-memo-from-smith') ? ['RM3/'] : ['RM2/'],
-            default => ['GSB/', 'GSE/'],
+            default => ['GSB/', 'GSE/', 'GSR/', 'GI/', 'GR/'],
         };
 
         $configured = match ($type) {
-            'J' => [$this->general('JBPREF', ''), $this->general('JEPREF', '')],
+            'J' => [$this->general('JBPREF', ''), $this->general('JEPREF', ''), $this->general('JRBPREF', '')],
             'C' => [$this->general('DBPREF', ''), $this->general('DEPREF', '')],
-            'S', 'G' => [$this->general('GSBPREF', ''), $this->general('GSEPREF', '')],
+            'S', 'G' => [$this->general('GSBPREF', ''), $this->general('GSEPREF', ''), $this->general('GSRBPREF', '')],
             default => [],
         };
 

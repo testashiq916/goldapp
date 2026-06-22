@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,14 +23,14 @@ class AccountLedgerController extends Controller
             ?: date('Y-m-01');
         $dateTo = $this->normalizeDate((string) $request->query('date2', '')) ?: date('Y-m-d');
         $accountQuery = trim((string) $request->query('accode', ''));
-        $code = $this->resolveAccountCode($accountQuery);
+        $show = $request->boolean('show');
+        $code = $show ? $this->resolveAccountCode($accountQuery) : '';
         $type = (string) $request->query('type', 'ordinary');
         $search = trim((string) $request->query('search', ''));
         $amountSearch = trim((string) $request->query('amount', ''));
         $suspOnly = $request->boolean('susp_only');
-        $show = $request->boolean('show') || $accountQuery !== '';
 
-        $accountOptions = $this->accountOptions();
+        $accountOptions = [];
         $account = null;
         $rows = [];
         $totals = ['debit' => 0.0, 'credit' => 0.0];
@@ -42,7 +43,6 @@ class AccountLedgerController extends Controller
         if ($show && $code !== '') {
             $account = $this->loadAccount($code, $gilevel);
             if ($account) {
-                $this->repairMissingSalesLedgerPostings($code, $dateFrom, $dateTo, $gilevel);
                 $openingBalance = $this->openingBalance($code, $dateFrom, $gilevel, $account);
                 $rows = $this->ledgerRows($code, $dateFrom, $dateTo, $gilevel, $type, $suspOnly, $search, $amountSearch, $openingBalance);
                 foreach ($rows as $row) {
@@ -103,7 +103,6 @@ class AccountLedgerController extends Controller
             return response()->json(['ok' => false, 'message' => 'Account not found']);
         }
 
-        $this->repairMissingSalesLedgerPostings($code, $dateFrom, $dateTo, $gilevel);
         $openingBalance = $this->openingBalance($code, $dateFrom, $gilevel, $account);
         $rows           = $this->ledgerRows($code, $dateFrom, $dateTo, $gilevel, 'ordinary', false, '', '', $openingBalance);
 
@@ -137,6 +136,63 @@ class AccountLedgerController extends Controller
         ]);
     }
 
+    public function searchAccounts(Request $request): JsonResponse
+    {
+        if (!$request->session()->has('user_code')) {
+            return response()->json(['ok' => false, 'accounts' => []], 401);
+        }
+        if (!$this->hasTable('accountm')) {
+            return response()->json(['ok' => true, 'accounts' => [], 'total' => 0]);
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        $type = trim((string) $request->query('type', ''));
+        $limit = min(120, max(20, (int) $request->query('limit', 80)));
+
+        $query = DB::table('accountm')
+            ->selectRaw('TRIM(accode) as accode, TRIM(name) as name, TRIM(actype2) as actype2')
+            ->orderBy('accode');
+
+        if (Schema::hasColumn('accountm', 'removed')) {
+            $query->where(function ($inner) {
+                $inner->where('removed', '!=', 1)->orWhereNull('removed');
+            });
+        }
+
+        $this->applyAccountTypeFilter($query, $type);
+
+        $phoneMatchedAccounts = $this->accountCodesByPhoneSearch($q);
+        if ($q !== '') {
+            $like = '%' . strtoupper($q) . '%';
+            $query->where(function ($inner) use ($like, $phoneMatchedAccounts) {
+                $inner->whereRaw('UPPER(TRIM(accode)) like ?', [$like])
+                    ->orWhereRaw('UPPER(TRIM(name)) like ?', [$like]);
+                if ($phoneMatchedAccounts !== []) {
+                    $inner->orWhereIn(DB::raw('TRIM(accode)'), $phoneMatchedAccounts);
+                }
+            });
+        }
+
+        $rows = $query->limit($limit)->get();
+        $phoneMap = $this->accountPhoneMap(
+            $rows->pluck('accode')->map(fn ($code) => trim((string) $code))->filter()->values()->all()
+        );
+
+        $accounts = $rows->map(fn ($row) => [
+            'accode' => (string) $row->accode,
+            'name' => (string) $row->name,
+            'actype2' => (string) $row->actype2,
+            'mobile' => $phoneMap[trim((string) $row->accode)] ?? '',
+        ])->all();
+
+        return response()->json([
+            'ok' => true,
+            'accounts' => $accounts,
+            'total' => count($accounts),
+            'limited' => count($accounts) >= $limit,
+        ]);
+    }
+
     public function repairSalesLedger(Request $request): RedirectResponse
     {
         if (!$request->session()->has('user_code')) {
@@ -164,6 +220,30 @@ class AccountLedgerController extends Controller
             'amount' => (string) $request->input('amount', ''),
             'susp_only' => $request->boolean('susp_only') ? 1 : 0,
         ]))->with('status', "Repaired {$count} missing sales ledger posting(s) for {$scope}.");
+    }
+
+    public function clearLedgerIssue(Request $request): RedirectResponse
+    {
+        if (!$request->session()->has('user_code')) {
+            return redirect('/login');
+        }
+
+        $slno = (int) $request->input('slno', 0);
+        $module = trim((string) $request->input('module', ''));
+        $deleted = $this->clearOrphanSourceLedger($slno, $module);
+
+        return redirect(url('/accounts/ac-ledger') . '?' . http_build_query([
+            'show' => 1,
+            'accode' => (string) $request->input('accode', ''),
+            'date1' => (string) $request->input('date1', ''),
+            'date2' => (string) $request->input('date2', ''),
+            'type' => (string) $request->input('type', 'ordinary'),
+            'search' => (string) $request->input('search', ''),
+            'amount' => (string) $request->input('amount', ''),
+            'susp_only' => $request->boolean('susp_only') ? 1 : 0,
+        ]))->with('status', $deleted > 0
+            ? "Cleared orphan ledger posting #{$slno}."
+            : "No ledger posting cleared for #{$slno}; source bill may exist or row is not safe to clear.");
     }
 
     private function normalizeDate(string $value): ?string
@@ -197,11 +277,99 @@ class AccountLedgerController extends Controller
             });
         }
 
-        return $q->get()->map(fn ($row) => [
+        $rows = $q->get();
+        $phoneMap = $this->accountPhoneMap(
+            $rows->pluck('accode')->map(fn ($code) => trim((string) $code))->filter()->values()->all()
+        );
+
+        return $rows->map(fn ($row) => [
             'accode' => (string) $row->accode,
             'name' => (string) $row->name,
             'actype2' => (string) $row->actype2,
+            'mobile' => $phoneMap[trim((string) $row->accode)] ?? '',
         ])->all();
+    }
+
+    private function applyAccountTypeFilter($query, string $type): void
+    {
+        $type = strtolower(trim($type));
+        if ($type === '' || $type === 'all') {
+            return;
+        }
+
+        $query->where(function ($inner) use ($type) {
+            if ($type === 'customer') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%CUST%'])
+                    ->orWhereRaw('UPPER(TRIM(COALESCE(actype2, ""))) = ?', ['C']);
+            } elseif ($type === 'supplier') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%SUP%'])
+                    ->orWhereRaw('UPPER(TRIM(COALESCE(actype2, ""))) = ?', ['S']);
+            } elseif ($type === 'staff') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%STAF%'])
+                    ->orWhereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%EMP%']);
+            } elseif ($type === 'goldsmith') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%GOLD%'])
+                    ->orWhereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%SMITH%']);
+            } elseif ($type === 'agent') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%AGENT%']);
+            } elseif ($type === 'bank') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%BANK%']);
+            } elseif ($type === 'cash') {
+                $inner->whereRaw('UPPER(TRIM(COALESCE(actype2, ""))) like ?', ['%CASH%']);
+            } elseif ($type === 'other') {
+                $inner->whereRaw('TRIM(COALESCE(actype2, "")) = ?', ['']);
+            }
+        });
+    }
+
+    private function accountCodesByPhoneSearch(string $phone): array
+    {
+        $phone = trim($phone);
+        $phoneColumns = $this->clientPhoneColumns();
+        if ($phone === '' || $phoneColumns === []) {
+            return [];
+        }
+
+        $like = '%' . $phone . '%';
+        $digits = preg_replace('/\D+/', '', $phone);
+        if ($digits === '' && strlen($phone) < 3) {
+            return [];
+        }
+
+        $clientCodes = DB::table('clients')
+            ->where(function ($q) use ($phoneColumns, $like, $digits) {
+                foreach ($phoneColumns as $idx => $column) {
+                    $method = $idx === 0 ? 'where' : 'orWhere';
+                    $q->{$method}($column, 'like', $like);
+                    if ($digits !== '') {
+                        $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE({$column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') LIKE ?", ['%' . $digits . '%']);
+                    }
+                }
+            })
+            ->limit(120)
+            ->pluck('code')
+            ->map(fn ($code) => trim((string) $code))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($clientCodes === []) {
+            return [];
+        }
+
+        $accountCodes = $clientCodes;
+        if ($this->hasTable('clients_kuridet')) {
+            $linked = DB::table('clients_kuridet')
+                ->whereIn('code', $clientCodes)
+                ->pluck('custlinkac')
+                ->map(fn ($code) => trim((string) $code))
+                ->filter()
+                ->values()
+                ->all();
+            $accountCodes = array_merge($accountCodes, $linked);
+        }
+
+        return array_values(array_unique(array_filter($accountCodes)));
     }
 
     private function resolveAccountCode(string $query): string
@@ -232,6 +400,14 @@ class AccountLedgerController extends Controller
             return (string) $byNameExact->accode;
         }
 
+        $digits = preg_replace('/\D+/', '', $query);
+        if ($digits !== '' && strlen($digits) >= 3) {
+            $byPhone = $this->resolveAccountCodeByPhone($query);
+            if ($byPhone !== '') {
+                return $byPhone;
+            }
+        }
+
         $byNameLike = DB::table('accountm')
             ->selectRaw('TRIM(accode) as accode')
             ->whereRaw('UPPER(TRIM(name)) like ?', ['%' . $upper . '%'])
@@ -239,9 +415,120 @@ class AccountLedgerController extends Controller
             ->orderBy('accode')
             ->first();
 
-        return $byNameLike && !empty($byNameLike->accode)
-            ? (string) $byNameLike->accode
-            : strtoupper($query);
+        if ($byNameLike && !empty($byNameLike->accode)) {
+            return (string) $byNameLike->accode;
+        }
+
+        if ($digits === '' || strlen($digits) < 3) {
+            $byPhone = $this->resolveAccountCodeByPhone($query);
+            if ($byPhone !== '') {
+                return $byPhone;
+            }
+        }
+
+        return strtoupper($query);
+    }
+
+    private function accountPhoneMap(array $accountCodes): array
+    {
+        $accountCodes = array_values(array_unique(array_filter(array_map(fn ($code) => trim((string) $code), $accountCodes))));
+        if ($accountCodes === [] || !$this->hasTable('clients')) {
+            return [];
+        }
+
+        $phoneColumns = $this->clientPhoneColumns();
+        if ($phoneColumns === []) {
+            return [];
+        }
+
+        $clientToAccount = [];
+        foreach ($accountCodes as $code) {
+            $clientToAccount[$code] = $code;
+        }
+
+        if ($this->hasTable('clients_kuridet')) {
+            DB::table('clients_kuridet')
+                ->whereIn('custlinkac', $accountCodes)
+                ->get(['code', 'custlinkac'])
+                ->each(function ($row) use (&$clientToAccount) {
+                    $clientCode = trim((string) ($row->code ?? ''));
+                    $accountCode = trim((string) ($row->custlinkac ?? ''));
+                    if ($clientCode !== '' && $accountCode !== '') {
+                        $clientToAccount[$clientCode] = $accountCode;
+                    }
+                });
+        }
+
+        $phones = [];
+        DB::table('clients')
+            ->whereIn('code', array_keys($clientToAccount))
+            ->get(array_merge(['code'], $phoneColumns))
+            ->each(function ($row) use (&$phones, $clientToAccount, $phoneColumns) {
+                $clientCode = trim((string) ($row->code ?? ''));
+                $accountCode = $clientToAccount[$clientCode] ?? '';
+                if ($accountCode === '' || ($phones[$accountCode] ?? '') !== '') {
+                    return;
+                }
+                foreach ($phoneColumns as $column) {
+                    $phone = trim((string) ($row->{$column} ?? ''));
+                    if ($phone !== '') {
+                        $phones[$accountCode] = $phone;
+                        break;
+                    }
+                }
+            });
+
+        return $phones;
+    }
+
+    private function clientPhoneColumns(): array
+    {
+        if (!$this->hasTable('clients')) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            ['mobile', 'telephone', 'homemobile'],
+            fn ($column) => Schema::hasColumn('clients', $column)
+        ));
+    }
+
+    private function resolveAccountCodeByPhone(string $phone): string
+    {
+        $phone = trim($phone);
+        $phoneColumns = $this->clientPhoneColumns();
+        if ($phone === '' || $phoneColumns === []) {
+            return '';
+        }
+
+        $like = '%' . $phone . '%';
+        $digits = preg_replace('/\D+/', '', $phone);
+        $client = DB::table('clients')
+            ->where(function ($q) use ($phoneColumns, $like, $digits) {
+                foreach ($phoneColumns as $idx => $column) {
+                    $method = $idx === 0 ? 'where' : 'orWhere';
+                    $q->{$method}($column, 'like', $like);
+                    if ($digits !== '') {
+                        $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE({$column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') LIKE ?", ['%' . $digits . '%']);
+                    }
+                }
+            })
+            ->orderBy('code')
+            ->first(['code']);
+
+        $clientCode = trim((string) ($client->code ?? ''));
+        if ($clientCode === '') {
+            return '';
+        }
+
+        if ($this->hasTable('clients_kuridet')) {
+            $linked = trim((string) (DB::table('clients_kuridet')->where('code', $clientCode)->value('custlinkac') ?? ''));
+            if ($linked !== '') {
+                return strtoupper($linked);
+            }
+        }
+
+        return strtoupper($clientCode);
     }
 
     private function loadAccount(string $code, int $gilevel): ?array
@@ -271,11 +558,16 @@ class AccountLedgerController extends Controller
     {
         $sum = 0.0;
         if ($this->hasTable('daybook')) {
-            $sum = (float) DB::table('daybook')
-                ->whereRaw('TRIM(accode)=?', [$code])
-                ->where('tdate', '<', $dateFrom)
-                ->where('control', '<=', $gilevel)
-                ->sum('amount');
+            $query = DB::table('daybook');
+            if ($this->hasTable('daybookpart')) {
+                $query->leftJoin('daybookpart', 'daybook.slno', '=', 'daybookpart.slno');
+                $this->applyTransferShadowDocFilter($query, 'daybookpart.vchno');
+            }
+            $sum = (float) $query
+                ->whereRaw('TRIM(daybook.accode)=?', [$code])
+                ->where('daybook.tdate', '<', $dateFrom)
+                ->where('daybook.control', '<=', $gilevel)
+                ->sum('daybook.amount');
         }
 
         return (float) $account['opbal'] + $sum;
@@ -406,6 +698,7 @@ class AccountLedgerController extends Controller
             ->where('daybook.control', '<=', $gilevel)
             ->orderBy('daybook.tdate')
             ->orderBy('daybook.slno');
+        $this->applyTransferShadowDocFilter($query, 'daybookpart.vchno');
 
         if ($suspOnly) {
             $query->where(function ($inner) {
@@ -428,6 +721,7 @@ class AccountLedgerController extends Controller
         }
 
         $rows = $query->get()->map(fn ($row) => (array) $row)->all();
+        $oppositeSplits = $this->oppositeAccountSplitsForRows($rows, $code);
 
         $rateMap = [];
         if (($type === 'withrate' || $type === 'withwgt') && $this->hasTable('daybookratewgt')) {
@@ -446,7 +740,6 @@ class AccountLedgerController extends Controller
         $result = [];
         foreach ($rows as $row) {
             $amount = (float) ($row['amount'] ?? 0);
-            $running += $amount;
             $rateRow = $rateMap[$row['slno']] ?? null;
             $part = trim((string) $row['particular']);
             $staff = trim((string) $row['staff']);
@@ -459,26 +752,187 @@ class AccountLedgerController extends Controller
                 (string) ($row['vchno'] ?? ''),
                 $part
             );
+            $orphanModule = $this->orphanSourceModuleForRow($row);
 
-            $result[] = [
-                'slno' => (int) $row['slno'],
-                'date' => (string) $row['tdate'],
-                'vchno' => (string) $row['vchno'],
-                'othacname' => (string) $row['othacname'],
-                'part' => $part,
-                'debit' => $amount < 0 ? abs($amount) : 0.0,
-                'credit' => $amount > 0 ? $amount : 0.0,
-                'running_balance' => $running,
-                'running_side' => $running < 0 ? 'Dr' : 'Cr',
-                'slno2' => (int) ($row['slno2'] ?? 0),
-                'rate' => $rateRow ? (float) ($rateRow->rate ?? 0) : 0.0,
-                'wgt' => $rateRow ? (float) ($rateRow->wgt ?? 0) : 0.0,
-                'mcp' => $rateRow ? (float) ($rateRow->mcp ?? 0) : 0.0,
-                'navigate_url' => $navigateUrl,
-            ];
+            $splits = $oppositeSplits[$this->rowSplitKey($row)] ?? [];
+            if ($splits === []) {
+                $splits = [[
+                    'name' => (string) $row['othacname'],
+                    'amount' => abs($amount),
+                ]];
+            }
+
+            foreach ($splits as $index => $split) {
+                $lineAmount = $amount < 0 ? -abs((float) $split['amount']) : abs((float) $split['amount']);
+                $running += $lineAmount;
+
+                $result[] = [
+                    'slno' => (int) $row['slno'],
+                    'date' => (string) $row['tdate'],
+                    'vchno' => (string) $row['vchno'],
+                    'othacname' => (string) $split['name'],
+                    'part' => $part,
+                    'debit' => $lineAmount < 0 ? abs($lineAmount) : 0.0,
+                    'credit' => $lineAmount > 0 ? $lineAmount : 0.0,
+                    'running_balance' => $running,
+                    'running_side' => $running < 0 ? 'Dr' : 'Cr',
+                    'slno2' => (int) ($row['slno2'] ?? 0),
+                    'rate' => $index === 0 && $rateRow ? (float) ($rateRow->rate ?? 0) : 0.0,
+                    'wgt' => $index === 0 && $rateRow ? (float) ($rateRow->wgt ?? 0) : 0.0,
+                    'mcp' => $index === 0 && $rateRow ? (float) ($rateRow->mcp ?? 0) : 0.0,
+                    'navigate_url' => $navigateUrl,
+                    'can_clear' => $index === 0 && $orphanModule !== '',
+                    'clear_module' => $orphanModule,
+                ];
+            }
         }
 
         return $result;
+    }
+
+    private function oppositeAccountSplitsForRows(array $rows, string $currentCode): array
+    {
+        if ($rows === [] || !$this->hasTable('daybook')) {
+            return [];
+        }
+
+        $slnos = collect($rows)->pluck('slno')->unique()->values()->all();
+        if ($slnos === []) {
+            return [];
+        }
+
+        $otherRows = DB::table('daybook as d')
+            ->leftJoin('accountm as a', DB::raw('TRIM(d.accode)'), '=', DB::raw('TRIM(a.accode)'))
+            ->selectRaw('
+                d.slno,
+                TRIM(COALESCE(d.accode,"")) as accode,
+                COALESCE(d.amount,0) as amount,
+                TRIM(COALESCE(a.name, d.accode, "")) as name
+            ')
+            ->whereIn('d.slno', $slnos)
+            ->whereRaw('TRIM(COALESCE(d.accode,"")) <> ?', [$currentCode])
+            ->whereRaw('ABS(COALESCE(d.amount,0)) > 0.005')
+            ->get()
+            ->groupBy('slno');
+
+        $map = [];
+        foreach ($rows as $row) {
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+            if ($amount == 0.0) {
+                continue;
+            }
+
+            $opposites = collect($otherRows[$row['slno']] ?? [])
+                ->filter(fn ($other) => $amount > 0 ? (float) $other->amount < 0 : (float) $other->amount > 0)
+                ->values();
+            $oppositeTotal = round((float) $opposites->sum(fn ($other) => abs((float) $other->amount)), 2);
+            if ($opposites->isEmpty() || abs($oppositeTotal - abs($amount)) > 0.01) {
+                continue;
+            }
+
+            $parts = $opposites
+                ->map(function ($other) {
+                    $name = trim((string) ($other->name ?: $other->accode));
+                    return [
+                        'name' => $name,
+                        'amount' => abs((float) $other->amount),
+                    ];
+                })
+                ->all();
+
+            $map[$this->rowSplitKey($row)] = $parts;
+        }
+
+        return $map;
+    }
+
+    private function rowSplitKey(array $row): string
+    {
+        return (string) ($row['slno'] ?? '') . '|' . number_format((float) ($row['amount'] ?? 0), 2, '.', '');
+    }
+
+    private function orphanSourceModuleForRow(array $row): string
+    {
+        $slno = (int) ($row['slno'] ?? 0);
+        if ($slno <= 0) {
+            return '';
+        }
+
+        $particular = strtoupper(trim((string) ($row['particular'] ?? '')));
+        $opaccode = strtoupper(trim((string) ($row['opaccode'] ?? '')));
+        $amount = (float) ($row['amount'] ?? 0);
+
+        foreach ($this->sourceLedgerConfigs() as $module => $config) {
+            if (!$this->hasTable($config['table'])) {
+                continue;
+            }
+            if ($opaccode !== $config['opaccode']) {
+                continue;
+            }
+            if (!str_starts_with($particular, $config['particular_prefix'])) {
+                continue;
+            }
+            if ($config['amount_sign'] === 'negative' && $amount >= 0) {
+                continue;
+            }
+            if ($config['amount_sign'] === 'positive' && $amount <= 0) {
+                continue;
+            }
+            if (!DB::table($config['table'])->where('slno', $slno)->exists()) {
+                return $module;
+            }
+        }
+
+        return '';
+    }
+
+    private function clearOrphanSourceLedger(int $slno, string $module): int
+    {
+        $configs = $this->sourceLedgerConfigs();
+        $config = $configs[$module] ?? null;
+        if ($slno <= 0 || !$config || !$this->hasTable('daybook') || !$this->hasTable('daybookpart') || !$this->hasTable($config['table'])) {
+            return 0;
+        }
+        if (DB::table($config['table'])->where('slno', $slno)->exists()) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($slno) {
+            $deleted = DB::table('daybook')->where('slno', $slno)->delete();
+            DB::table('daybookpart')->where('slno', $slno)->delete();
+
+            return $deleted;
+        });
+    }
+
+    private function sourceLedgerConfigs(): array
+    {
+        return [
+            'sales' => [
+                'table' => 'salesm',
+                'opaccode' => 'RS',
+                'amount_sign' => 'negative',
+                'particular_prefix' => 'BY SALES (',
+            ],
+            'purchase' => [
+                'table' => 'purchasem',
+                'opaccode' => 'EP',
+                'amount_sign' => 'positive',
+                'particular_prefix' => 'BY PURCHASE -',
+            ],
+            'sales_return' => [
+                'table' => 'salesrm',
+                'opaccode' => 'ESR',
+                'amount_sign' => 'positive',
+                'particular_prefix' => 'BY SALES RETURN',
+            ],
+            'purchase_return' => [
+                'table' => 'purchaserm',
+                'opaccode' => 'EP',
+                'amount_sign' => 'negative',
+                'particular_prefix' => 'BY PURCHASE RETURN',
+            ],
+        ];
     }
 
     private function resolveDocumentUrl(int $slno, string $tdate, string $vchno, string $particular): string
@@ -512,7 +966,7 @@ class AccountLedgerController extends Controller
                 ->first(['docno', 'pr']);
             $docNo = trim((string) ($purchase->docno ?? ''));
             if ($docNo !== '' && in_array(strtoupper(trim((string) ($purchase->pr ?? 'P'))), ['P', 'E'], true)) {
-                return url('/purchase-bill/edit?' . http_build_query(['doc_no' => $docNo]));
+                return url('/purchase-bill/edit?' . http_build_query(['slno' => $slno, 'doc_no' => $docNo]));
             }
         }
 
@@ -522,7 +976,7 @@ class AccountLedgerController extends Controller
                 ->first(['docno']);
             $docNo = trim((string) ($purchaseReturn->docno ?? ''));
             if ($docNo !== '') {
-                return url('/purchase-return/edit?' . http_build_query(['doc_no' => $docNo]));
+                return url('/purchase-return/edit?' . http_build_query(['slno' => $slno, 'doc_no' => $docNo]));
             }
         }
 

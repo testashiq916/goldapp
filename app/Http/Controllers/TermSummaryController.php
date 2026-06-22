@@ -152,6 +152,7 @@ class TermSummaryController extends Controller
                 ->join('items as i', 'i.code', '=', 'd.code')
                 ->whereBetween('m.tdate', [$dateFrom, $dateTo])
                 ->where('m.control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.billno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw("
                     SUM(CASE WHEN i.itype = 'G' THEN COALESCE(d.weight,0) ELSE 0 END) as gold_sales_wgt,
                     SUM(CASE WHEN i.itype = 'S' THEN COALESCE(d.weight,0) ELSE 0 END) as silver_sales_wgt,
@@ -174,6 +175,7 @@ class TermSummaryController extends Controller
                 ->join('items as i', 'i.code', '=', 'd.code')
                 ->whereBetween('m.tdate', [$dateFrom, $dateTo])
                 ->where('m.control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.billno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw("
                     SUM(CASE WHEN i.itype = 'G' THEN COALESCE(d.weight,0) ELSE 0 END) as gold_sales_ret_wgt
                 ")
@@ -186,6 +188,7 @@ class TermSummaryController extends Controller
             $row = DB::table('salesm')
                 ->whereBetween('tdate', [$dateFrom, $dateTo])
                 ->where('control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(billno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw("
                     SUM(COALESCE(billamt,0) + COALESCE(round,0)) as sales_amount,
                     SUM(COALESCE(discount,0)) as discount_amount,
@@ -206,6 +209,7 @@ class TermSummaryController extends Controller
             $row = DB::table('salesrm')
                 ->whereBetween('tdate', [$dateFrom, $dateTo])
                 ->where('control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(billno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw('SUM(COALESCE(billamt,0) - COALESCE(discount,0) + COALESCE(staxamt,0)) as total')
                 ->first();
 
@@ -241,6 +245,7 @@ class TermSummaryController extends Controller
                 ->join('purchasem as m', 'm.slno', '=', 'd.slno')
                 ->whereBetween('m.tdate', [$dateFrom, $dateTo])
                 ->where('m.control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->where('d.code', 'OG')
                 ->selectRaw('
                     SUM(COALESCE(d.weight,0)) as og_purchase_wgt,
@@ -260,6 +265,7 @@ class TermSummaryController extends Controller
                 ->join('items as i', 'i.code', '=', 'd.code')
                 ->whereBetween('m.tdate', [$dateFrom, $dateTo])
                 ->where('m.control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw("
                     SUM(CASE WHEN i.itype='G' AND d.code <> 'OG' AND COALESCE(i.ornament,'N')='Y' THEN COALESCE(d.weight,0) ELSE 0 END) as gold_orn_purchase_wgt,
                     SUM(CASE WHEN i.itype='G' AND d.code <> 'OG' AND COALESCE(i.ornament,'N')='Y' THEN COALESCE(d.amount,0) ELSE 0 END) as gold_orn_purchase_amt,
@@ -284,6 +290,7 @@ class TermSummaryController extends Controller
                 ->join('items as i', 'i.code', '=', 'd.code')
                 ->whereBetween('m.tdate', [$dateFrom, $dateTo])
                 ->where('m.control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->where('i.itype', 'G')
                 ->selectRaw('SUM(COALESCE(d.weight,0)) as purchase_return_wgt, SUM(COALESCE(d.amount,0)) as purchase_return_amount')
                 ->first();
@@ -296,6 +303,7 @@ class TermSummaryController extends Controller
             $row = DB::table('purchasem')
                 ->whereBetween('tdate', [$dateFrom, $dateTo])
                 ->where('control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw('SUM(COALESCE(billamt,0) - COALESCE(eamt,0) + COALESCE(addamt,0)) as purchase_amount, SUM(COALESCE(pamt,0)) as purchase_paid_amount')
                 ->first();
 
@@ -338,6 +346,7 @@ class TermSummaryController extends Controller
             ->join('clients as c', 'c.code', '=', 'm.smithcode')
             ->whereBetween('m.tdate', [$dateFrom, $dateTo])
             ->where('m.control', '<=', $gilevel)
+            ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
             ->where('i.itype', 'G')
             ->selectRaw("
                 SUM(CASE WHEN c.ctype='G' AND d.givrec='G' THEN COALESCE(d.weight,0) ELSE 0 END) as smith_issue_wgt,
@@ -374,6 +383,7 @@ class TermSummaryController extends Controller
                 ->where('m.smithcode', $code)
                 ->where('m.control', '<=', $gilevel)
                 ->where('m.tdate', '<=', $closingDate)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->where('d.givrec', 'G')
                 ->sum('d.netwgt');
 
@@ -382,6 +392,7 @@ class TermSummaryController extends Controller
                 ->where('m.smithcode', $code)
                 ->where('m.control', '<=', $gilevel)
                 ->where('m.tdate', '<=', $closingDate)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.docno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->where('d.givrec', 'R')
                 ->sum('d.netwgt');
 
@@ -586,6 +597,7 @@ class TermSummaryController extends Controller
                 ->where('status', 1)
                 ->where('tdate', '<=', $dateTo)
                 ->where('control', '<=', $gilevel)
+                ->whereRaw("NOT (LOWER(TRIM(COALESCE(ordno, ''))) REGEXP '[0-9]d[0-9]*$')")
                 ->selectRaw('SUM(COALESCE(advance,0) + COALESCE(sretamt,0) + COALESCE(eamt,0) - COALESCE(refund,0)) as total')
                 ->value('total') ?? 0);
 
@@ -595,6 +607,7 @@ class TermSummaryController extends Controller
                     ->where('m.status', 1)
                     ->where('m.tdate', '<=', $dateTo)
                     ->where('m.control', '<=', $gilevel)
+                    ->whereRaw("NOT (LOWER(TRIM(COALESCE(m.ordno, ''))) REGEXP '[0-9]d[0-9]*$')")
                     ->sum('a.amount');
             }
 
@@ -728,6 +741,16 @@ class TermSummaryController extends Controller
             $query->join($masterFrom, $masterKey, '=', $detailKey)
                 ->where('m.control', '<=', $gilevel)
                 ->where('m.tdate', '<=', $date);
+            $masterName = strtolower(trim($masterTable));
+            if ($masterName === 'salesm') {
+                $this->applyTransferShadowDocFilter($query, 'm.billno');
+            } elseif (in_array($masterName, ['purchasem', 'purchaserm', 'smithm'], true)) {
+                $this->applyTransferShadowDocFilter($query, 'm.docno');
+            } elseif ($masterName === 'salesrm') {
+                $this->applyTransferShadowDocFilter($query, 'm.billno');
+            } elseif ($masterName === 'orderm') {
+                $this->applyTransferShadowDocFilter($query, 'm.ordno');
+            }
         } else {
             $query->where($detailAlias . '.control', '<=', $gilevel)
                 ->where($detailAlias . '.tdate', '<=', $date);

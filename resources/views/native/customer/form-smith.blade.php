@@ -371,8 +371,8 @@
                         <div class="inline-group">
                             <input type="number" step="0.01" name="opbalance" value="{{ number_format(abs($opBal), 2, '.', '') }}">
                             <select name="balance_type">
-                                <option value="credit" {{ $balType === 'credit' ? 'selected' : '' }}>To Receive</option>
-                                <option value="debit" {{ $balType === 'debit' ? 'selected' : '' }}>To Give</option>
+                                <option value="debit" {{ $balType === 'debit' ? 'selected' : '' }}>To Receive</option>
+                                <option value="credit" {{ $balType === 'credit' ? 'selected' : '' }}>To Give</option>
                             </select>
                         </div>
 
@@ -381,8 +381,8 @@
                         <div class="inline-group">
                             <input type="number" step="0.001" name="opweight" value="{{ number_format(abs($opWgt), 3, '.', '') }}">
                             <select name="weight_type">
-                                <option value="credit" {{ $wgtType === 'credit' ? 'selected' : '' }}>To Receive</option>
-                                <option value="debit" {{ $wgtType === 'debit' ? 'selected' : '' }}>To Give</option>
+                                <option value="debit" {{ $wgtType === 'debit' ? 'selected' : '' }}>To Receive</option>
+                                <option value="credit" {{ $wgtType === 'credit' ? 'selected' : '' }}>To Give</option>
                             </select>
                         </div>
 

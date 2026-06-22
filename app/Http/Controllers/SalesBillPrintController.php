@@ -195,10 +195,16 @@ class SalesBillPrintController extends Controller
         // ── Sales return detail rows ────────────────────────────────────────
         $sretRows = [];
         if ($this->hasTable('salesrd')) {
+            $sretSelect = ['sno', 'name', 'qty', 'weight', 'amount'];
+            foreach (['rate', 'stonewgt', 'stoneprice', 'mcharge', 'wastage', 'vaperc'] as $col) {
+                if ($this->hasColumn('salesrd', $col)) {
+                    $sretSelect[] = $col;
+                }
+            }
             $sretRows = DB::table('salesrd')
                 ->where('slno', $slno)
                 ->orderBy('sno')
-                ->get(['sno', 'name', 'qty', 'weight', 'amount'])
+                ->get($sretSelect)
                 ->map(fn($r) => (array)$r)
                 ->all();
         }
@@ -268,12 +274,23 @@ class SalesBillPrintController extends Controller
             }
         } catch (\Throwable) {}
 
-        $companyName  = $generals['SHOPNM']    ?? $this->ini($s, 'Company', 'Name', '');
-        $companyAddr  = $generals['SHOPADDR']   ?? $this->ini($s, 'Company', 'Addr', '');
-        $companyAddr2 = $this->ini($s, 'Company', 'Addr2', '');
-        $companyState = $this->ini($s, 'Company', 'StateCodeName', '');
-        $companyGSTIN = $this->ini($s, 'Company', 'KGST', '');
-        $companyPhone = $generals['SHOPPHONE']  ?? $this->ini($s, 'Company', 'Phone', '');
+        $companyName  = ($generals['SHOPNM']    ?? '') !== ''
+            ? $generals['SHOPNM']
+            : ($this->ini($s, 'Company', 'Name', '') ?: '');
+        $companyAddr  = ($generals['SHOPADDR']   ?? '') !== ''
+            ? $generals['SHOPADDR']
+            : ($this->ini($s, 'Company', 'Addr', '')
+                ?: ($this->ini($s, 'Company', 'Addr1', '')
+                    ?: $this->ini($s, 'Company', 'Address1', '')));
+        $companyAddr2 = $this->ini($s, 'Company', 'Addr2', '')
+            ?: $this->ini($s, 'Company', 'Address2', '');
+        $companyState = $this->ini($s, 'Company', 'State', '')
+            ?: $this->ini($s, 'Company', 'StateCodeName', '');
+        $companyGSTIN = $this->ini($s, 'Company', 'GSTIN', '')
+            ?: $this->ini($s, 'Company', 'KGST', '');
+        $companyPhone = ($generals['SHOPPHONE']  ?? '') !== ''
+            ? $generals['SHOPPHONE']
+            : ($this->ini($s, 'Company', 'Phone', '') ?: '');
         $companyLogo  = $generals['SHOPLOGO']   ?? '';
         $companyBankName = $this->ini($s, 'Company', 'BankName', '');
         $companyBankAccountName = $this->ini($s, 'Company', 'BankAccountName', '');
@@ -305,6 +322,18 @@ class SalesBillPrintController extends Controller
         $advance  = (float)($master->advance ?? 0);
         $ccamt    = (float)($master->ccamt ?? 0);
         $chqamt   = (float)($master->chqamt ?? 0);
+        $cbcode   = trim((string) ($master->cbcode ?? ''));
+        if ($cbcode === '') {
+            $cbcode = 'CASH';
+        }
+        $cashBankName = '';
+        if ($this->hasTable('accountm') && $cbcode !== '') {
+            $nameCol = Schema::hasColumn('accountm', 'acname') ? 'acname' : (Schema::hasColumn('accountm', 'name') ? 'name' : '');
+            if ($nameCol !== '') {
+                $cashBankName = trim((string) (DB::table('accountm')->whereRaw('TRIM(accode)=?', [$cbcode])->value($nameCol) ?? ''));
+            }
+        }
+        $cashBankDisplay = $cashBankName !== '' ? $cashBankName : $cbcode;
         $ob       = (float)($master->ob ?? 0);
         $schmamt  = (float)($master->schmamt ?? 0);
         $tcsperc  = (float)($master->tcsperc ?? 0);
@@ -344,6 +373,67 @@ class SalesBillPrintController extends Controller
         $control  = (int)($master->control ?? 1);
         $addr     = $master->addr ?? '';
         $duedate  = $master->duedate ?? '';
+        $orderno  = trim((string) ($master->orderno ?? ''));
+        $orderPrintDetails = null;
+        $orderCredit = 0.0;
+        if ($orderno !== '' && $this->hasTable('orderm')) {
+            $orderMaster = DB::table('orderm')->whereRaw('TRIM(ordno)=?', [$orderno])->first();
+            if ($orderMaster) {
+                $orderCashAdvance = (float) ($orderMaster->advance ?? 0);
+                $orderAdvanceAfter = 0.0;
+                if ($this->hasTable('advafter')) {
+                    $advQuery = DB::table('advafter')->whereRaw('TRIM(ordno)=?', [$orderno]);
+                    if ($this->hasColumn('advafter', 'amttowgt')) {
+                        $advQuery->where(function ($q) {
+                            $q->where('amttowgt', '!=', 'Y')->orWhereNull('amttowgt');
+                        });
+                    }
+                    $orderAdvanceAfter = (float) ($advQuery->sum('amount') ?? 0);
+                }
+                $orderExchangeWeight = 0.0;
+                $orderExchangeAmount = (float) ($orderMaster->eamt ?? $orderMaster->exchange ?? 0);
+                $orderExchangeRate = 0.0;
+                if ($this->hasTable('purchased')) {
+                    $orderExchangeRows = DB::table('purchased')
+                        ->where('slno', (int) ($orderMaster->slno ?? 0))
+                        ->orderBy('sno')
+                        ->get(['sno', 'name', 'qty', 'weight', 'stwgt', 'mud', 'rate', 'amount']);
+                    $orderExchangeWeight = (float) $orderExchangeRows->sum(fn($r) => (float) ($r->weight ?? 0));
+                    $orderExchangeAmount = (float) $orderExchangeRows->sum(fn($r) => (float) ($r->amount ?? 0));
+                    $firstRate = $orderExchangeRows->first(fn($r) => (float) ($r->rate ?? 0) > 0);
+                    $orderExchangeRate = $firstRate ? (float) ($firstRate->rate ?? 0) : 0.0;
+                    if ($orderExchangeRate <= 0 && $orderExchangeWeight > 0 && $orderExchangeAmount > 0) {
+                        $orderExchangeRate = round($orderExchangeAmount / $orderExchangeWeight, 2);
+                    }
+                    if ($exchangeRows === [] && $orderExchangeRows->isNotEmpty()) {
+                        $exchangeRows = $orderExchangeRows->map(fn($r) => (array) $r)->all();
+                    }
+                }
+                $orderPrintDetails = [
+                    'order_no' => trim((string) ($orderMaster->ordno ?? $orderno)),
+                    'date' => $orderMaster->tdate ?? $orderMaster->date ?? null,
+                    'cash_advance' => $orderCashAdvance,
+                    'advance_after' => $orderAdvanceAfter,
+                    'total_advance' => $advance,
+                    'gold_advance' => (float) ($orderMaster->gadvance ?? 0),
+                    'exchange_rate' => $orderExchangeRate,
+                    'exchange_weight' => $orderExchangeWeight,
+                    'exchange_amount' => $orderExchangeAmount,
+                ];
+            }
+        }
+        if ($orderno !== '' && $custcode !== '' && $advance > 0) {
+            $postedOrderAdvance = $this->postedOrderCashAdvanceForCustomer($orderno, $custcode);
+            $ob = round($ob - min($postedOrderAdvance, max($advance, 0)), 2);
+        }
+        if ($orderno !== '' && $custcode !== '') {
+            $postedOrderAdvance = $this->postedOrderCashAdvanceForCustomer($orderno, $custcode);
+            $orderCredit = round(max($postedOrderAdvance - max($advance, 0), 0), 2);
+            $ob = round($ob - $orderCredit, 2);
+            if (abs($ob) < 0.5) {
+                $ob = 0.0;
+            }
+        }
 
         // ── Customer address lookup ────────────────────────────────────────
         $ad1 = $cust['addr1'] ?? ''; $ad2 = $cust['addr2'] ?? '';
@@ -393,14 +483,22 @@ class SalesBillPrintController extends Controller
         }
 
         // ── Computed totals ───────────────────────────────────────────────
+        $isOrderSalePrint = $orderno !== '';
+        $balanceOrderCredit = $isOrderSalePrint ? 0.0 : $orderCredit;
         $discAdj   = $printDiscount ? $discount : 0;
         $advAdj    = $advance > 0 ? $advance : 0;
         $subtotal  = ($netamt + $eamt + $sretamt - $staxamt - $round) + $schmamt + $discAdj - $astamt + $advAdj;
         $grandTotal= round(($netamt + $eamt + $sretamt - $staxamt - $round) - $astamt + $advAdj + $staxamt, 0) + $schmamt;
         $salesTotal= $grandTotal + ($printDiscount ? $discount : 0);
-        $balance   = $netamt - $discount - $ramt;
+        $balance   = $netamt - $discount - $ramt - $balanceOrderCredit;
+        if (abs($balance) < 0.5) {
+            $balance = 0.0;
+        }
         $cashRcvd  = $ramt - $chqamt - $ccamt;
+        $isCashAccount = in_array(strtoupper($cbcode), ['CASH', 'CASH IN HAND'], true);
         $chqCcTotal= $chqamt + $ccamt;
+        $bankReceived = $chqCcTotal > 0 ? $chqCcTotal : ($isCashAccount ? 0.0 : $ramt);
+        $cashReceived = $chqCcTotal > 0 ? max($ramt - $chqCcTotal, 0.0) : ($isCashAccount ? $ramt : 0.0);
         $clBalance = $ob - $balance;
 
         // ── Row totals ────────────────────────────────────────────────────
@@ -447,10 +545,11 @@ class SalesBillPrintController extends Controller
             'sretamt', 'round', 'astamt', 'advance', 'ccamt', 'chqamt', 'ob', 'schmamt',
             'exchangeRows', 'sretRows',
             'tcsperc', 'tcsamt', 'cst', 'grate', 'srate', 'smcode', 'counter', 'duedate',
-            'gadvAmt', 'smanName', 'dmdWgt',
+            'gadvAmt', 'smanName', 'dmdWgt', 'orderno', 'orderPrintDetails',
             'cst', 'cgst', 'sgst', 'gstLabel', 'sgstLabel', 'effectiveTaxPerc', 'cgstPerc', 'sgstPerc',
             'grateDisplay', 'showDueDate',
             'subtotal', 'grandTotal', 'salesTotal', 'balance', 'cashRcvd', 'chqCcTotal', 'clBalance',
+            'cbcode', 'cashReceived', 'bankReceived',
             'totQty', 'totGrossWgt', 'totStWgt', 'totNetWgt', 'totStPrice', 'totVA', 'totItemAmt', 'totAmt', 'tbcva',
             // settings
             'landscape', 'copies', 'zoom',
@@ -544,5 +643,41 @@ class SalesBillPrintController extends Controller
             $rows[] = $row;
         }
         return $rows;
+    }
+
+    private function postedOrderCashAdvanceForCustomer(string $ordno, string $custCode): float
+    {
+        $custCode = trim($custCode);
+        $ordno = trim($ordno);
+        if ($custCode === '' || $ordno === '' || !$this->hasTable('daybook')) {
+            return 0.0;
+        }
+
+        $slnos = [];
+        if ($this->hasTable('orderm')) {
+            $orderSlno = (int) (DB::table('orderm')->whereRaw('TRIM(ordno)=?', [$ordno])->value('slno') ?? 0);
+            if ($orderSlno > 0) {
+                $slnos[] = $orderSlno;
+            }
+        }
+        if ($this->hasTable('advafter')) {
+            $slnos = array_merge($slnos, DB::table('advafter')
+                ->whereRaw('TRIM(ordno)=?', [$ordno])
+                ->pluck('slno')
+                ->map(fn($v) => (int) $v)
+                ->filter(fn($v) => $v > 0)
+                ->all());
+        }
+
+        $slnos = array_values(array_unique($slnos));
+        if ($slnos === []) {
+            return 0.0;
+        }
+
+        return round((float) (DB::table('daybook')
+            ->whereIn('slno', $slnos)
+            ->whereRaw('TRIM(accode)=?', [$custCode])
+            ->where('amount', '>', 0)
+            ->sum('amount') ?? 0), 2);
     }
 }

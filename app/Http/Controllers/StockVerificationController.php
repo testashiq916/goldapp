@@ -298,6 +298,10 @@ class StockVerificationController extends Controller
 
         if (!$this->hasTable('barcode')) return response()->json(['ok' => true, 'rows' => []]);
 
+        // Amount must be computed per-barcode using that barcode's own rate, then
+        // summed (matching PowerBuilder cb_summary). Summing rate first and then
+        // multiplying by total net weight over-counts when an item code has
+        // multiple barcodes.
         $rows = DB::table('barcode')
             ->leftJoin('items', 'barcode.icode', '=', 'items.code')
             ->whereIn('barcode.bcode', $bcodes)
@@ -308,29 +312,21 @@ class StockVerificationController extends Controller
                 DB::raw('SUM(barcode.qty) as tqty'),
                 DB::raw('SUM(barcode.weight) as tweight'),
                 DB::raw('SUM(barcode.stweight) as tstweight'),
-                DB::raw('SUM(barcode.rate) as trate')
+                DB::raw("SUM(CASE WHEN UPPER(COALESCE(items.stkinnos,'N')) = 'Y' "
+                    . "THEN barcode.qty * barcode.rate "
+                    . "ELSE ROUND((barcode.weight - barcode.stweight) * barcode.rate, 2) END) as tamount")
             )
             ->groupBy('barcode.icode', 'items.name', 'items.stkinnos')
             ->orderBy('barcode.icode')
             ->get()
             ->map(function ($r) {
-                $stkinnos = strtoupper(trim($r->stkinnos ?? 'N'));
-                $tqty     = (int) ($r->tqty ?? 0);
-                $tweight  = (float) ($r->tweight ?? 0);
-                $tstweight = (float) ($r->tstweight ?? 0);
-                $trate    = (float) ($r->trate ?? 0);
-                // Amount: if stkinnos=Y then qty*rate, else (weight-stweight)*rate
-                $amount = $stkinnos === 'Y'
-                    ? $tqty * $trate
-                    : ($tweight - $tstweight) * $trate;
-
                 return [
                     'icode'    => trim($r->icode ?? ''),
                     'itemname' => trim($r->itemname ?? ''),
-                    'qty'      => $tqty,
-                    'weight'   => $tweight,
-                    'stweight' => $tstweight,
-                    'amount'   => round($amount, 2),
+                    'qty'      => (int) ($r->tqty ?? 0),
+                    'weight'   => (float) ($r->tweight ?? 0),
+                    'stweight' => (float) ($r->tstweight ?? 0),
+                    'amount'   => round((float) ($r->tamount ?? 0), 2),
                 ];
             })->values()->all();
 

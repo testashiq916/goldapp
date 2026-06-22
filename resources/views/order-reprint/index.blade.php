@@ -69,29 +69,68 @@ body{margin:0;font-family:Arial,sans-serif;background:#eef2f7;color:#111827}
 
 <script>
 const $ = id => document.getElementById(id);
+const SEARCH_URL = @json(url('/api/order-reprint/search'));
+const RESOLVE_URL = @json(url('/api/order-reprint/resolve'));
+const ORDER_SALE_MODE = @json(!empty($orderSaleMode));
+const SEARCH_MODE = ORDER_SALE_MODE ? 'order-sale' : 'order';
 
-async function api(url){ const r = await fetch(url); return await r.json(); }
+document.querySelector('.row label').textContent = ORDER_SALE_MODE ? 'Enter Bill no :' : 'Enter Order no :';
+document.querySelector('.ph').childNodes[0].textContent = ORDER_SALE_MODE ? 'Order Sale Help ' : 'Order Help ';
+document.querySelector('#q').placeholder = ORDER_SALE_MODE ? 'Bill no / Order no / Customer' : 'Order no / Customer';
+document.querySelector('.tbl thead tr').innerHTML = ORDER_SALE_MODE
+  ? '<th>Bill No</th><th>Date</th><th>Customer</th><th>Order No</th>'
+  : '<th>Order No</th><th>Date</th><th>Customer</th>';
+
+async function api(url){
+  const r = await fetch(url, {headers: {'Accept': 'application/json'}});
+  if (!r.ok) throw new Error('Request failed');
+  return await r.json();
+}
 function msg(t){ $('msg').textContent = t || ''; }
 
 async function doOpen(){
   msg('');
   const doc = $('doc').value.trim().toUpperCase();
-  if (!doc) { msg('Enter order no'); $('doc').focus(); return; }
-  const d = await api('/api/order-reprint/resolve?doc_no=' + encodeURIComponent(doc));
-  if (!d.ok) { msg(d.message || 'Not found'); return; }
-  window.location.href = d.url;
+  if (!doc) { msg(ORDER_SALE_MODE ? 'Enter bill no' : 'Enter order no'); $('doc').focus(); return; }
+  try {
+    const d = await api(RESOLVE_URL + '?doc_no=' + encodeURIComponent(doc));
+    if (!d.ok) { msg(d.message || 'Not found'); return; }
+    window.location.href = d.url;
+  } catch (e) {
+    msg('Unable to load order');
+  }
 }
 
 async function doSearch(){
   const q = $('q').value.trim();
-  const d = await api('/api/order-reprint/search?q=' + encodeURIComponent(q));
   const b = $('rows'); b.innerHTML = '';
-  (d.rows || []).forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.ordno || ''}</td><td>${(r.tdate || '').toString().slice(0,10)}</td><td>${r.custname || ''}</td>`;
-    tr.onclick = () => { $('doc').value = (r.ordno || '').toUpperCase(); $('helpModal').classList.remove('show'); doOpen(); };
-    b.appendChild(tr);
-  });
+  try {
+    const d = await api(SEARCH_URL + '?mode=' + encodeURIComponent(SEARCH_MODE) + '&q=' + encodeURIComponent(q));
+    const rows = d.rows || [];
+    if (rows.length === 0) {
+      b.innerHTML = '<tr><td colspan="' + (ORDER_SALE_MODE ? '4' : '3') + '">' + (ORDER_SALE_MODE ? 'No order sale bills found' : 'No orders found') + '</td></tr>';
+      return;
+    }
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const orderCell = document.createElement('td');
+      const dateCell = document.createElement('td');
+      const customerCell = document.createElement('td');
+      orderCell.textContent = ORDER_SALE_MODE ? (r.docno || '') : (r.ordno || '');
+      dateCell.textContent = (r.tdate || '').toString().slice(0,10);
+      customerCell.textContent = r.custname || '';
+      tr.append(orderCell, dateCell, customerCell);
+      if (ORDER_SALE_MODE) {
+        const orderNoCell = document.createElement('td');
+        orderNoCell.textContent = r.ordno || '';
+        tr.append(orderNoCell);
+      }
+      tr.onclick = () => { $('doc').value = (ORDER_SALE_MODE ? (r.docno || '') : (r.ordno || '')).toUpperCase(); $('helpModal').classList.remove('show'); doOpen(); };
+      b.appendChild(tr);
+    });
+  } catch (e) {
+    b.innerHTML = '<tr><td colspan="' + (ORDER_SALE_MODE ? '4' : '3') + '">Unable to load list</td></tr>';
+  }
 }
 
 $('ok').onclick = doOpen;

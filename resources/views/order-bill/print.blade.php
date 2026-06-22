@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Order Slip Print</title>
-@include('partials.print-layout-head')
 <style>
   body{margin:0;background:#eef2f7;font-family:Arial,sans-serif;color:#111}
   .toolbar{width:820px;margin:18px auto 0;display:flex;align-items:center;gap:10px}
@@ -12,6 +11,7 @@
   .company{text-align:center}
   .company .name{font-size:20px;font-weight:700;letter-spacing:.4px}
   .company .line{font-size:12px;line-height:1.35}
+  .company .meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:12px;line-height:1.35;margin-top:2px}
   .title{margin:10px 0 14px;text-align:center;font-size:18px;font-weight:700;text-decoration:underline}
   .top{display:grid;grid-template-columns:1.1fr .85fr .85fr;gap:12px;font-size:12px}
   .box{border:1px solid #111;padding:8px 10px}
@@ -35,11 +35,28 @@
     .meta-grid{grid-template-columns:1fr 1fr}
   }
   @media print{
-    body{background:#fff}
+    @page{size:A4 portrait;margin:10mm}
+    body{background:#fff;font-size:11px}
     .toolbar{display:none}
-    .page{width:auto;min-height:auto;margin:0;box-shadow:none;border:0}
+    .page{width:auto;min-height:auto;margin:0;box-shadow:none;border:0;padding:0}
+    .company,.title,.top,.meta-grid,.box,.split>div,.sign{
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+    .title{margin:8px 0 10px;font-size:16px}
+    .top{gap:8px;font-size:11px}
+    .box{padding:6px 8px}
+    .meta-row{grid-template-columns:96px 10px 1fr;margin-bottom:3px}
+    .meta-grid{gap:8px;margin-top:8px;font-size:11px}
+    .table{font-size:10.5px;break-inside:auto;page-break-inside:auto}
+    .table thead{display:table-header-group}
+    .table tr{break-inside:avoid;page-break-inside:avoid}
+    .table th,.table td{padding:3px 4px}
+    .split{gap:8px;break-inside:auto;page-break-inside:auto}
+    .sign{margin-top:14px;padding-top:18px}
   }
 </style>
+@include('partials.print-layout-head')
 </head>
 <body>
 @php
@@ -75,10 +92,40 @@
   $cbType = $cbRaw > 0 ? 'Db' : 'Cr';
   $logoPath = public_path('plg.png');
   $logoUrl = trim((string) ($company['logo_url'] ?? ''));
+  $shopFallback = [];
+  try {
+    $shopFallback = \Illuminate\Support\Facades\DB::table('generals')
+      ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE', 'GSTIN', 'GSTNO', 'KGST', 'Mobile'])
+      ->pluck('cvalue', 'code')
+      ->map(fn($value) => trim((string) $value))
+      ->all();
+  } catch (\Throwable $e) {
+    $shopFallback = [];
+  }
+  $iniCompanyFallback = [];
+  try {
+    $iniPath = storage_path('app/software-settings.ini');
+    $iniSettings = is_file($iniPath) ? parse_ini_file($iniPath, true, INI_SCANNER_RAW) : [];
+    $iniCompanyFallback = is_array($iniSettings['Company'] ?? null) ? $iniSettings['Company'] : [];
+  } catch (\Throwable $e) {
+    $iniCompanyFallback = [];
+  }
+  $company['name'] = trim((string) ($company['name'] ?? '')) ?: ($shopFallback['SHOPNM'] ?? '');
+  $company['addr'] = trim((string) ($company['addr'] ?? '')) ?: ($shopFallback['SHOPADDR'] ?? '');
+  $company['phone'] = trim((string) ($company['phone'] ?? '')) ?: ($shopFallback['SHOPPHONE'] ?? '');
+  $company['mobile'] = trim((string) ($company['mobile'] ?? '')) ?: ($shopFallback['Mobile'] ?? '');
+  $company['gstin'] = trim((string) ($company['gstin'] ?? ''))
+    ?: ($shopFallback['GSTIN'] ?? '')
+    ?: ($shopFallback['GSTNO'] ?? '')
+    ?: ($shopFallback['KGST'] ?? '')
+    ?: trim((string) ($software['KGST'] ?? ''))
+    ?: trim((string) ($iniCompanyFallback['KGST'] ?? ''))
+    ?: trim((string) ($iniCompanyFallback['GSTIN'] ?? ''));
   $cashBankLabel = trim((string) ($order['cbcode'] ?? ''));
   $chqBankLabel = trim((string) ($order['chq_bank'] ?? ''));
   $cashPaid = max(0, round($cashAdvance, 2));
   $cardAmount = max(0, round((float) ($order['ccamt'] ?? 0), 2));
+  $schemeAmount = max(0, round((float) ($order['scheme_amt'] ?? 0), 2));
   $showChequeAmount = (float) ($order['chq_amt'] ?? 0) > 0;
 @endphp
 
@@ -99,6 +146,19 @@
         <div style="margin-bottom:6px"><img src="{{ asset('plg.png') }}" alt="Logo" style="max-height:72px;max-width:110px"></div>
       @endif
       <div class="name">{{ $company['name'] !== '' ? $company['name'] : config('app.name') }}</div>
+      @if(trim((string) ($company['addr'] ?? '')) !== '' || trim((string) ($company['addr2'] ?? '')) !== '')
+        <div class="line">
+          {!! nl2br(e(trim((string) ($company['addr'] ?? '')))) !!}
+          @if(trim((string) ($company['addr2'] ?? '')) !== '')<br>{{ trim((string) ($company['addr2'] ?? '')) }}@endif
+        </div>
+      @endif
+      @if(trim((string) ($company['phone'] ?? '')) !== '' || trim((string) ($company['mobile'] ?? '')) !== '' || trim((string) ($company['gstin'] ?? '')) !== '')
+        <div class="meta">
+          @if(trim((string) ($company['phone'] ?? '')) !== '')<span>Phone: {{ trim((string) ($company['phone'] ?? '')) }}</span>@endif
+          @if(trim((string) ($company['mobile'] ?? '')) !== '')<span>Mobile: {{ trim((string) ($company['mobile'] ?? '')) }}</span>@endif
+          @if(trim((string) ($company['gstin'] ?? '')) !== '')<span>GSTIN: {{ trim((string) ($company['gstin'] ?? '')) }}</span>@endif
+        </div>
+      @endif
     </div>
     </div>
   @endif
@@ -110,7 +170,7 @@
       <div class="meta-row"><div class="lbl">Order No</div><div>:</div><div>{{ $order['doc_no'] }}</div></div>
       <div class="meta-row">
         <div class="lbl">Name</div><div>:</div>
-        <div>{{ $order['cust_name'] }}@if($showPartyCode && trim((string) $order['cust_code']) !== '') ({{ $order['cust_code'] }})@endif</div>
+        <div>{{ $order['cust_name'] }}@if(trim((string) $order['cust_code']) !== '') ({{ $order['cust_code'] }})@endif</div>
       </div>
       <div class="meta-row"><div class="lbl">Address</div><div>:</div><div>{{ trim((string) $order['address']) }}</div></div>
       <div class="meta-row"><div class="lbl">Phone</div><div>:</div><div>{{ trim((string) $order['phone']) }}</div></div>
@@ -139,6 +199,9 @@
     </div>
     <div class="box tight">
       <div class="meta-row"><div class="lbl">Card Amount</div><div>:</div><div>{{ $fmtAmt($cardAmount) }}</div></div>
+      @if($schemeAmount > 0)
+        <div class="meta-row"><div class="lbl">Scheme Amount</div><div>:</div><div>{{ $fmtAmt($schemeAmount) }}</div></div>
+      @endif
     </div>
     <div class="box tight">
       <div class="meta-row"><div class="lbl">Due Date</div><div>:</div><div>{{ $fmtDate($order['due_date'] ?? '') }}</div></div>
@@ -162,9 +225,7 @@
         <th style="width:80px">Stone Wgt</th>
         <th style="width:90px">Stone Price</th>
         <th style="width:70px">MC</th>
-        <th style="width:80px">Wastage</th>
         <th style="width:95px">Amount</th>
-        <th style="width:120px">Narration</th>
       </tr>
     </thead>
     <tbody>
@@ -178,12 +239,10 @@
           <td class="num">{{ $fmtWgt($row['stwgt']) }}</td>
           <td class="num">{{ $fmtAmt($row['stprice']) }}</td>
           <td class="num">{{ $fmtAmt($row['mcharge']) }}</td>
-          <td class="num">{{ $fmtWgt($row['wastage']) }}</td>
           <td class="num">{{ $fmtAmt($row['amount']) }}</td>
-          <td>{{ $row['narration'] }}</td>
         </tr>
       @empty
-        <tr><td colspan="11" class="center">No order items</td></tr>
+        <tr><td colspan="9" class="center">No order items</td></tr>
       @endforelse
     </tbody>
   </table>

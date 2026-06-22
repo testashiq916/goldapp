@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{{ $title }}</title>
+@php
+  $showWeightAmount = in_array(($docType ?? ''), ['purchase', 'purchase-bill'], true);
+@endphp
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#f0f2f5;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#1e293b;display:flex;align-items:center;justify-content:center;min-height:100vh}
@@ -44,7 +47,7 @@
   /* Help Modal */
   .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
   .modal-bg.show{display:flex}
-  .modal{width:min(640px,100%);max-height:80vh;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
+  .modal{width:min(900px,100%);max-height:80vh;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
   .modal-head{display:flex;gap:8px;align-items:center;padding:16px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
   .modal-head input{flex:1;height:40px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 12px;font-size:13px;outline:none}
   .modal-head input:focus{border-color:#3b82f6}
@@ -105,8 +108,12 @@
         <thead>
           <tr>
             <th style="width:20%">Doc No</th>
-            <th style="width:18%">Date</th>
+            <th style="width:16%">Date</th>
             <th>Party</th>
+            @if($showWeightAmount)
+            <th style="width:14%;text-align:right">Weight</th>
+            <th style="width:14%;text-align:right">Amount</th>
+            @endif
           </tr>
         </thead>
         <tbody id="helpRows"></tbody>
@@ -120,7 +127,10 @@ const SEARCH_URL = @json($searchUrl);
 const RESOLVE_URL = @json($resolveUrl);
 const ACTION_MODE = @json($actionMode);
 const TARGET_BASE_URL = @json($targetBaseUrl);
+const DOC_TYPE = @json($docType);
+const SHOW_WEIGHT_AMOUNT = @json($showWeightAmount);
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
+let selectedHelpSlno = 0;
 
 function $(id){ return document.getElementById(id); }
 function setStatus(msg='', ok=false){
@@ -132,6 +142,14 @@ function toDdMmYyyy(v){
   if (!v) return '';
   const [y,m,d] = v.split('-');
   return `${d}/${m}/${y}`;
+}
+function fmtWgt(v){
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(3) : '0.000';
+}
+function fmtAmt(v){
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 function closeFrame(){
   window.parent.postMessage({ type:'goldapp:close-module-frame' }, '*');
@@ -153,6 +171,7 @@ async function searchDocs(){
       <td>${r.doc_no || ''}</td>
       <td>${r.tdate || ''}</td>
       <td>${r.party_name || ''}</td>
+      ${SHOW_WEIGHT_AMOUNT ? `<td style="text-align:right">${fmtWgt(r.weight)}</td><td style="text-align:right">${fmtAmt(r.amount)}</td>` : ''}
     </tr>
   `).join('');
   $('helpRows')._rows = rows;
@@ -161,8 +180,8 @@ async function searchDocs(){
 async function openDoc(){
   const docNo = $('docNo').value.trim().toUpperCase();
   const tdate = toDdMmYyyy($('docDate').value);
-  if (!docNo || !tdate) {
-    setStatus('Doc no and date are required.');
+  if (!docNo || (DOC_TYPE !== 'goldsmith-transaction' && !tdate)) {
+    setStatus(DOC_TYPE === 'goldsmith-transaction' ? 'Doc no is required.' : 'Doc no and date are required.');
     return;
   }
 
@@ -174,8 +193,9 @@ async function openDoc(){
       'X-CSRF-TOKEN': csrf,
     },
     body: JSON.stringify({
+      slno: selectedHelpSlno,
       doc_no: docNo,
-      tdate,
+      tdate: DOC_TYPE === 'goldsmith-transaction' ? '' : tdate,
       action: ACTION_MODE,
       view_only: $('viewOnly') ? $('viewOnly').checked : false,
     }),
@@ -197,6 +217,12 @@ $('helpBtn').addEventListener('click', async () => {
   $('helpQuery').focus();
 });
 $('helpSearchBtn').addEventListener('click', searchDocs);
+$('helpQuery').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    searchDocs();
+  }
+});
 $('helpCloseBtn').addEventListener('click', () => $('helpModal').classList.remove('show'));
 $('topClose').addEventListener('click', closeFrame);
 $('exitBtn').addEventListener('click', closeFrame);
@@ -204,6 +230,10 @@ $('okBtn').addEventListener('click', openDoc);
 $('docNo').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
+    if (DOC_TYPE === 'goldsmith-transaction' && !$('docNo').value.trim()) {
+      $('helpBtn').click();
+      return;
+    }
     $('docDate').focus();
   }
 });
@@ -218,6 +248,7 @@ $('helpRows').addEventListener('click', (e) => {
   if (!tr) return;
   const row = ($('helpRows')._rows || [])[Number(tr.dataset.idx)];
   if (!row) return;
+  selectedHelpSlno = Number(row.slno || 0);
   $('docNo').value = row.doc_no || '';
   const parts = String(row.tdate || '').split('/');
   if (parts.length === 3) {
@@ -225,6 +256,9 @@ $('helpRows').addEventListener('click', (e) => {
   }
   $('helpModal').classList.remove('show');
   openDoc();
+});
+$('docNo').addEventListener('input', () => {
+  selectedHelpSlno = 0;
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {

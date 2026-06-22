@@ -47,6 +47,8 @@
         }
         tbody td{ border-bottom:1px solid #edf2fb; padding:4px 6px; }
         .cell{ width:100%; box-sizing:border-box; height:30px; }
+        .name-cell{ background:#f4f8ff; color:#1a3a5c; font-weight:600; cursor:default; }
+        .name-cell.not-found{ color:#c53030; font-style:italic; }
         .num{ text-align:right; }
         .toolbar{ margin-top:8px; display:flex; gap:8px; }
         .toolbar .small{ min-width:82px; }
@@ -118,9 +120,11 @@
             <table>
                 <thead>
                 <tr>
-                    <th style="width:58%;">Particulars (A/C Code)</th>
-                    <th style="width:21%;text-align:right;">Debit</th>
-                    <th style="width:21%;text-align:right;">Credit</th>
+                    <th style="width:14%;">A/C Code</th>
+                    <th style="width:20%;">Ledger Name</th>
+                    <th style="width:32%;">Narration</th>
+                    <th style="width:17%;text-align:right;">Debit</th>
+                    <th style="width:17%;text-align:right;">Credit</th>
                 </tr>
                 </thead>
                 <tbody id="rows"></tbody>
@@ -236,12 +240,18 @@
         $('narration').disabled = !edit;
     }
 
+    let accountMap = {};   // accode (upper) → name
+
     function rowHtml(r = {}) {
         const p = (r.particulars || '').replace(/"/g, '&quot;');
+        const n = (r.name || accountMap[(r.particulars || '').toUpperCase()] || '').replace(/"/g, '&quot;');
+        const rn = (r.rownote || '').replace(/"/g, '&quot;');
         const d = (Number(r.amountd || 0) || 0).toFixed(2);
         const c = (Number(r.amountc || 0) || 0).toFixed(2);
         return `<tr>
             <td><input class="cell p" list="acList" maxlength="20" value="${p}" style="text-transform:uppercase"></td>
+            <td><input class="cell n name-cell" readonly tabindex="-1" value="${n}" placeholder="—"></td>
+            <td><input class="cell rn" maxlength="100" value="${rn}" placeholder="note…" style="text-transform:uppercase"></td>
             <td><input class="cell d num" type="number" step="0.01" value="${d}"></td>
             <td><input class="cell c num" type="number" step="0.01" value="${c}"></td>
         </tr>`;
@@ -269,16 +279,19 @@
         $('closingBalance').textContent = data ? balanceText(data.closing_balance, data.closing_side) : '0.00';
     }
 
-    async function refreshBalanceForCode(code) {
+    async function refreshBalanceForCode(code, nameCell = null) {
         const accode = (code || '').trim().toUpperCase();
         if (!accode) {
             setBalancePanel(null);
+            if (nameCell) { nameCell.classList.remove('not-found'); nameCell.value = ''; }
             return;
         }
         const tdate = ($('tdate').value || '').trim();
         const cacheKey = `${accode}|${tdate}`;
         if (balanceCache.has(cacheKey)) {
-            setBalancePanel(balanceCache.get(cacheKey));
+            const cached = balanceCache.get(cacheKey);
+            setBalancePanel(cached);
+            if (nameCell) { nameCell.classList.remove('not-found'); if (cached && cached.name) nameCell.value = cached.name; }
             return;
         }
         try {
@@ -286,10 +299,19 @@
             const info = res.data || null;
             if (info) {
                 balanceCache.set(cacheKey, info);
+                accountMap[accode] = info.name || '';
             }
             setBalancePanel(info);
+            if (nameCell) {
+                nameCell.classList.remove('not-found');
+                if (info && info.name) nameCell.value = info.name;
+            }
         } catch (e) {
             setBalancePanel(null);
+            if (nameCell) {
+                nameCell.value = 'No code found';
+                nameCell.classList.add('not-found');
+            }
         }
     }
 
@@ -303,8 +325,22 @@
         $('creditTotal').textContent = ct.toFixed(2);
     }
 
-    function addRow(data = null, focusPart = false) {
-        $('rows').insertAdjacentHTML('beforeend', rowHtml(data || {}));
+    function addRow(data = null, focusPart = false, autoBalance = false) {
+        let rowData = data;
+        if (!rowData && autoBalance && $('autoAmt').checked) {
+            let dt = 0, ct = 0;
+            document.querySelectorAll('#rows tr').forEach(tr => {
+                dt += parseNum(tr.querySelector('.d').value);
+                ct += parseNum(tr.querySelector('.c').value);
+            });
+            const diff = Math.round((dt - ct) * 100) / 100;
+            if (Math.abs(diff) > 0.001) {
+                rowData = diff > 0
+                    ? { amountc: diff, amountd: 0 }
+                    : { amountd: Math.abs(diff), amountc: 0 };
+            }
+        }
+        $('rows').insertAdjacentHTML('beforeend', rowHtml(rowData || {}));
         bindRowEvents();
         updateTotals();
         if (focusPart) {
@@ -324,6 +360,9 @@
             const r = $('rows').querySelector('tr');
             if (r) {
                 r.querySelector('.p').value = '';
+                const nEl = r.querySelector('.n');
+                if (nEl) { nEl.value = ''; nEl.classList.remove('not-found'); }
+                r.querySelector('.rn').value = '';
                 r.querySelector('.d').value = '0.00';
                 r.querySelector('.c').value = '0.00';
             }
@@ -350,6 +389,8 @@
         const rows = document.querySelectorAll('#rows tr');
         rows.forEach((tr, idx) => {
             const p = tr.querySelector('.p');
+            const n = tr.querySelector('.n');
+            const rn = tr.querySelector('.rn');
             const d = tr.querySelector('.d');
             const c = tr.querySelector('.c');
 
@@ -357,29 +398,47 @@
             c.oninput = () => autoAdjustForRow(tr, 'c');
             p.onchange = () => {
                 p.value = (p.value || '').trim().toUpperCase();
-                refreshBalanceForCode(p.value);
+                if (n) { n.classList.remove('not-found'); n.value = accountMap[p.value] || ''; }
+                refreshBalanceForCode(p.value, n);
             };
-            p.onfocus = () => refreshBalanceForCode(p.value);
-            p.onblur = () => refreshBalanceForCode(p.value);
+            p.onfocus = () => {
+                if (n && n.classList.contains('not-found')) { n.classList.remove('not-found'); n.value = ''; }
+                refreshBalanceForCode(p.value, n && !n.value ? n : null);
+            };
+            p.onblur = () => {
+                p.value = (p.value || '').trim().toUpperCase();
+                if (n) { n.classList.remove('not-found'); n.value = accountMap[p.value] || ''; }
+                if (p.value) refreshBalanceForCode(p.value, n);
+                else { setBalancePanel(null); if (n) n.value = ''; }
+            };
 
-            [p, d, c].forEach(inp => {
+            // Helper: which amount field to go to after narration (smart side)
+            const smartAmtField = () => (parseNum(c.value) > 0 && parseNum(d.value) === 0) ? c : d;
+
+            [p, rn, d, c].forEach(inp => {
                 inp.onkeydown = (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        if (inp === p) d.focus();
+                        if (inp === p) rn.focus();
+                        else if (inp === rn) smartAmtField().focus();
                         else if (inp === d) c.focus();
                         else {
                             const isLast = idx === rows.length - 1;
-                            if (isLast) addRow(null, true);
+                            if (isLast) addRow(null, true, true);
                             else rows[idx + 1].querySelector('.p').focus();
                         }
                     }
-                    if (e.key === 'Tab' && inp === c && !e.shiftKey) {
-                        const isLast = idx === rows.length - 1;
-                        if (isLast) {
-                            e.preventDefault();
-                            addRow(null, true);
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                        if (inp === c) {
+                            const isLast = idx === rows.length - 1;
+                            if (isLast) { e.preventDefault(); addRow(null, true, true); }
                         }
+                        if (inp === p) { e.preventDefault(); rn.focus(); }
+                        if (inp === rn) { e.preventDefault(); smartAmtField().focus(); }
+                    }
+                    if (e.key === 'Tab' && e.shiftKey) {
+                        if (inp === rn) { e.preventDefault(); p.focus(); }
+                        if (inp === d) { e.preventDefault(); rn.focus(); }
                     }
                     if (e.key === 'F1' && inp === p) {
                         e.preventDefault();
@@ -395,6 +454,7 @@
         document.querySelectorAll('#rows tr').forEach(tr => {
             out.push({
                 particulars: (tr.querySelector('.p').value || '').trim().toUpperCase(),
+                rownote: (tr.querySelector('.rn').value || '').trim(),
                 amountd: parseNum(tr.querySelector('.d').value),
                 amountc: parseNum(tr.querySelector('.c').value),
             });
@@ -410,6 +470,9 @@
         $('tdate').value = d.today || '';
         $('vchno').value = d.nextVchno || '';
         $('autoAmt').checked = !!d.autoAmtDefault;
+        (acc.data || []).forEach(r => {
+            if (r.accode) accountMap[String(r.accode).toUpperCase()] = r.name || '';
+        });
         $('acList').innerHTML = (acc.data || []).map(r => `<option value="${String(r.accode || '').replace(/"/g,'&quot;')}">${String(r.name || '').replace(/</g,'&lt;')}</option>`).join('');
         setBalancePanel(null);
     }
@@ -520,7 +583,7 @@
         if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'goldapp:close-module-frame' }, '*');
         else window.close();
     });
-    $('btnAddRow').addEventListener('click', () => addRow(null, true));
+    $('btnAddRow').addEventListener('click', () => addRow(null, true, true));
     $('btnDeleteRow').addEventListener('click', deleteCurrentRow);
 
     $('helpClose').addEventListener('click', closeHelp);
@@ -534,7 +597,10 @@
             const code = (tr.dataset.code || '').trim().toUpperCase();
             if ($('help')._targetInputRef) {
                 $('help')._targetInputRef.value = code;
-                refreshBalanceForCode(code);
+                const rowEl = $('help')._targetInputRef.closest('#rows tr');
+                const nc = rowEl ? rowEl.querySelector('.n') : null;
+                if (nc) { nc.classList.remove('not-found'); nc.value = accountMap[code] || ''; }
+                refreshBalanceForCode(code, nc);
             }
             closeHelp();
             return;

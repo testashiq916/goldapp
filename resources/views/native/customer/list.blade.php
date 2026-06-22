@@ -19,6 +19,8 @@
         .msg{margin:12px 16px;padding:10px;border:1px solid #d1d5db}
         .ok{background:#ecfdf5;border-color:#86efac}.err{background:#fef2f2;border-color:#fca5a5}
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="card">

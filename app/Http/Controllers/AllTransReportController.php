@@ -85,6 +85,8 @@ class AllTransReportController extends Controller
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'va', 'label' => 'VA', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'billamt', 'label' => 'Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'sgst', 'label' => 'SGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'cgst', 'label' => 'CGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'staxamt', 'label' => 'Tax Amt.', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'astamt', 'label' => 'Cess', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'discount', 'label' => 'Discount', 'type' => 'number', 'decimals' => 2, 'total' => true],
@@ -97,9 +99,12 @@ class AllTransReportController extends Controller
                     ['key' => 'tdate', 'label' => 'Date', 'type' => 'date'],
                     ['key' => 'billno', 'label' => 'Bill No'],
                     ['key' => 'custname', 'label' => 'Customer'],
+                    ['key' => 'grosswgt', 'label' => 'Gr.Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'billamt', 'label' => 'Bill Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'discount', 'label' => 'Discount', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'sgst', 'label' => 'SGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'cgst', 'label' => 'CGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'staxamt', 'label' => 'Tax Amt.', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'netamt', 'label' => 'Net Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
                 ],
@@ -108,12 +113,15 @@ class AllTransReportController extends Controller
                 'uses_billtype' => true,
                 'columns' => [
                     ['key' => 'tdate', 'label' => 'Date', 'type' => 'date'],
-                    ['key' => 'docno', 'label' => 'Bill No'],
-                    ['key' => 'name', 'label' => 'Customer'],
+                    ['key' => 'docno', 'label' => 'Doc No'],
+                    ['key' => 'billno', 'label' => 'Bill No'],
+                    ['key' => 'name', 'label' => 'Supplier'],
                     ['key' => 'maxrate', 'label' => 'Rate', 'type' => 'number', 'decimals' => 2],
                     ['key' => 'grwgt', 'label' => 'Gross Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'billamt', 'label' => 'Bill Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'sgst', 'label' => 'SGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'cgst', 'label' => 'CGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'taxamt', 'label' => 'Tax Amt.', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'netamt', 'label' => 'Net Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
                 ],
@@ -122,12 +130,15 @@ class AllTransReportController extends Controller
                 'uses_billtype' => false,
                 'columns' => [
                     ['key' => 'tdate', 'label' => 'Date', 'type' => 'date'],
-                    ['key' => 'docno', 'label' => 'Bill No'],
-                    ['key' => 'name', 'label' => 'Customer'],
+                    ['key' => 'docno', 'label' => 'Doc No'],
+                    ['key' => 'billno', 'label' => 'Bill No'],
+                    ['key' => 'name', 'label' => 'Supplier'],
                     ['key' => 'maxrate', 'label' => 'Rate', 'type' => 'number', 'decimals' => 2],
                     ['key' => 'grwgt', 'label' => 'Gross Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'billamt', 'label' => 'Bill Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'sgst', 'label' => 'SGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
+                    ['key' => 'cgst', 'label' => 'CGST', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'taxamt', 'label' => 'Tax Amt.', 'type' => 'number', 'decimals' => 2, 'total' => true],
                     ['key' => 'netamt', 'label' => 'Net Amount', 'type' => 'number', 'decimals' => 2, 'total' => true],
                 ],
@@ -150,6 +161,7 @@ class AllTransReportController extends Controller
                     ['key' => 'tdate', 'label' => 'Date', 'type' => 'date'],
                     ['key' => 'docno', 'label' => 'Doc No'],
                     ['key' => 'cname', 'label' => 'Party'],
+                    ['key' => 'grosswgt', 'label' => 'Gross Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'issuedwgt', 'label' => 'Issued Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'rcvdwgt', 'label' => 'Rcvd Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
@@ -161,6 +173,7 @@ class AllTransReportController extends Controller
                     ['key' => 'tdate', 'label' => 'Date', 'type' => 'date'],
                     ['key' => 'docno', 'label' => 'Doc No'],
                     ['key' => 'cname', 'label' => 'Party'],
+                    ['key' => 'grosswgt', 'label' => 'Gross Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'totwgt', 'label' => 'Net Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'issuedwgt', 'label' => 'Issued Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
                     ['key' => 'rcvdwgt', 'label' => 'Rcvd Wgt.', 'type' => 'number', 'decimals' => 3, 'total' => true],
@@ -221,6 +234,8 @@ class AllTransReportController extends Controller
             ->selectRaw('m.tdate, TRIM(m.billno) as billno, TRIM(COALESCE(m.custname, "")) as custname')
             ->selectRaw('COALESCE(m.billamt, 0) as billamt')
             ->selectRaw($this->hasCol('salesm', 'discount') ? 'COALESCE(m.discount, 0) as discount' : '0 as discount')
+            ->selectRaw($this->hasCol('salesm', 'sgst') ? 'COALESCE(m.sgst, 0) as sgst' : '0 as sgst')
+            ->selectRaw($this->hasCol('salesm', 'cgst') ? 'COALESCE(m.cgst, 0) as cgst' : '0 as cgst')
             ->selectRaw($this->hasCol('salesm', 'staxamt') ? 'COALESCE(m.staxamt, 0) as staxamt' : '0 as staxamt')
             ->selectRaw($this->hasCol('salesm', 'astamt') ? 'COALESCE(m.astamt, 0) as astamt' : '0 as astamt')
             ->whereBetween('m.tdate', [$date1, $date2]);
@@ -234,6 +249,7 @@ class AllTransReportController extends Controller
         if ($billtype !== '' && $this->hasCol('salesm', 'billtype')) {
             $q->where('m.billtype', $billtype);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.billno');
 
         if ($this->hasTable('salesd')) {
             $q->selectRaw('(select coalesce(sum(sd.weight - sd.stonewgt),0) from salesd sd where sd.slno = m.slno) as totwgt');
@@ -248,6 +264,12 @@ class AllTransReportController extends Controller
             $billamt = (float) ($row->billamt ?? 0);
             $discount = (float) ($row->discount ?? 0);
             $staxamt = (float) ($row->staxamt ?? 0);
+            $sgst = (float) ($row->sgst ?? 0);
+            $cgst = (float) ($row->cgst ?? 0);
+            if (abs($sgst) < 0.0001 && abs($cgst) < 0.0001 && abs($staxamt) > 0.0001) {
+                $sgst = round($staxamt / 2, 2);
+                $cgst = round($staxamt - $sgst, 2);
+            }
             $astamt = (float) ($row->astamt ?? 0);
             return [
                 'tdate' => (string) $row->tdate,
@@ -258,6 +280,8 @@ class AllTransReportController extends Controller
                 'totwgt' => (float) ($row->totwgt ?? 0),
                 'va' => (float) ($row->va ?? 0),
                 'billamt' => $billamt,
+                'sgst' => $sgst,
+                'cgst' => $cgst,
                 'staxamt' => $staxamt,
                 'astamt' => $astamt,
                 'discount' => $discount,
@@ -276,6 +300,8 @@ class AllTransReportController extends Controller
             ->selectRaw('m.tdate, TRIM(m.billno) as billno, TRIM(COALESCE(m.custname, "")) as custname')
             ->selectRaw('COALESCE(m.billamt, 0) as billamt')
             ->selectRaw($this->hasCol('salesrm', 'discount') ? 'COALESCE(m.discount, 0) as discount' : '0 as discount')
+            ->selectRaw($this->hasCol('salesrm', 'sgst') ? 'COALESCE(m.sgst, 0) as sgst' : '0 as sgst')
+            ->selectRaw($this->hasCol('salesrm', 'cgst') ? 'COALESCE(m.cgst, 0) as cgst' : '0 as cgst')
             ->selectRaw($this->hasCol('salesrm', 'staxamt') ? 'COALESCE(m.staxamt, 0) as staxamt' : '0 as staxamt')
             ->selectRaw($this->hasCol('salesrm', 'netamt') ? 'COALESCE(m.netamt, 0) as netamt' : '(COALESCE(m.billamt, 0) - COALESCE(m.discount, 0) + COALESCE(m.staxamt, 0)) as netamt')
             ->whereBetween('m.tdate', [$date1, $date2]);
@@ -283,23 +309,37 @@ class AllTransReportController extends Controller
         if ($this->hasCol('salesrm', 'control')) {
             $q->where('m.control', '<=', $gilevel);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.billno');
 
         if ($this->hasTable('salesrd')) {
             $q->selectRaw('(select coalesce(sum(sd.weight - sd.stonewgt),0) from salesrd sd where sd.slno = m.slno) as totwgt');
+            $q->selectRaw('(select coalesce(sum(sd.weight),0) from salesrd sd where sd.slno = m.slno) as grosswgt');
         } else {
-            $q->selectRaw('0 as totwgt');
+            $q->selectRaw('0 as totwgt, 0 as grosswgt');
         }
 
-        return $q->orderBy('m.tdate')->orderBy('m.billno')->get()->map(fn ($row) => [
-            'tdate' => (string) $row->tdate,
-            'billno' => (string) $row->billno,
-            'custname' => (string) $row->custname,
-            'totwgt' => (float) ($row->totwgt ?? 0),
-            'billamt' => (float) ($row->billamt ?? 0),
-            'discount' => (float) ($row->discount ?? 0),
-            'staxamt' => (float) ($row->staxamt ?? 0),
-            'netamt' => (float) ($row->netamt ?? 0),
-        ])->all();
+        return $q->orderBy('m.tdate')->orderBy('m.billno')->get()->map(function ($row) {
+            $staxamt = (float) ($row->staxamt ?? 0);
+            $sgst = (float) ($row->sgst ?? 0);
+            $cgst = (float) ($row->cgst ?? 0);
+            if (abs($sgst) < 0.0001 && abs($cgst) < 0.0001 && abs($staxamt) > 0.0001) {
+                $sgst = round($staxamt / 2, 2);
+                $cgst = round($staxamt - $sgst, 2);
+            }
+            return [
+                'tdate' => (string) $row->tdate,
+                'billno' => (string) $row->billno,
+                'custname' => (string) $row->custname,
+                'grosswgt' => (float) ($row->grosswgt ?? 0),
+                'totwgt' => (float) ($row->totwgt ?? 0),
+                'billamt' => (float) ($row->billamt ?? 0),
+                'discount' => (float) ($row->discount ?? 0),
+                'sgst' => $sgst,
+                'cgst' => $cgst,
+                'staxamt' => $staxamt,
+                'netamt' => (float) ($row->netamt ?? 0),
+            ];
+        })->all();
     }
 
     private function purchaseRows(string $date1, string $date2, int $gilevel, string $billtype): array
@@ -310,7 +350,10 @@ class AllTransReportController extends Controller
 
         $q = DB::table('purchasem as m')
             ->selectRaw('m.tdate, TRIM(COALESCE(m.docno, "")) as docno, TRIM(COALESCE(m.name, "")) as name')
+            ->selectRaw($this->hasCol('purchasem', 'billno') ? 'TRIM(COALESCE(m.billno, "")) as billno' : '"" as billno')
             ->selectRaw('COALESCE(m.billamt, 0) as billamt')
+            ->selectRaw($this->hasCol('purchasem', 'sgst') ? 'COALESCE(m.sgst, 0) as sgst' : '0 as sgst')
+            ->selectRaw($this->hasCol('purchasem', 'cgst') ? 'COALESCE(m.cgst, 0) as cgst' : '0 as cgst')
             ->selectRaw($this->hasCol('purchasem', 'taxamt') ? 'COALESCE(m.taxamt, 0) as taxamt' : '0 as taxamt')
             ->selectRaw($this->hasCol('purchasem', 'netamt') ? 'COALESCE(m.netamt, 0) as netamt' : 'COALESCE(m.billamt, 0) as netamt')
             ->whereBetween('m.tdate', [$date1, $date2]);
@@ -321,6 +364,7 @@ class AllTransReportController extends Controller
         if ($billtype !== '' && $this->hasCol('purchasem', 'billtype')) {
             $q->where('m.billtype', $billtype);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.docno');
 
         if ($this->hasTable('purchased')) {
             $q->selectRaw('(select coalesce(sum(d.weight - d.stwgt),0) from purchased d where d.slno = m.slno) as totwgt');
@@ -330,17 +374,7 @@ class AllTransReportController extends Controller
             $q->selectRaw('0 as totwgt, 0 as grwgt, 0 as maxrate');
         }
 
-        return $q->orderBy('m.tdate')->orderBy('m.docno')->get()->map(fn ($row) => [
-            'tdate' => (string) $row->tdate,
-            'docno' => (string) $row->docno,
-            'name' => (string) $row->name,
-            'maxrate' => (float) ($row->maxrate ?? 0),
-            'grwgt' => (float) ($row->grwgt ?? 0),
-            'totwgt' => (float) ($row->totwgt ?? 0),
-            'billamt' => (float) ($row->billamt ?? 0),
-            'taxamt' => (float) ($row->taxamt ?? 0),
-            'netamt' => (float) ($row->netamt ?? 0),
-        ])->all();
+        return $q->orderBy('m.tdate')->orderBy('m.docno')->get()->map(fn ($row) => $this->purchaseTaxRow($row))->all();
     }
 
     private function purchaseReturnRows(string $date1, string $date2, int $gilevel): array
@@ -351,7 +385,10 @@ class AllTransReportController extends Controller
 
         $q = DB::table('purchaserm as m')
             ->selectRaw('m.tdate, TRIM(COALESCE(m.docno, "")) as docno, TRIM(COALESCE(m.name, "")) as name')
+            ->selectRaw($this->hasCol('purchaserm', 'billno') ? 'TRIM(COALESCE(m.billno, "")) as billno' : '"" as billno')
             ->selectRaw('COALESCE(m.billamt, 0) as billamt')
+            ->selectRaw($this->hasCol('purchaserm', 'sgst') ? 'COALESCE(m.sgst, 0) as sgst' : '0 as sgst')
+            ->selectRaw($this->hasCol('purchaserm', 'cgst') ? 'COALESCE(m.cgst, 0) as cgst' : '0 as cgst')
             ->selectRaw($this->hasCol('purchaserm', 'taxamt') ? 'COALESCE(m.taxamt, 0) as taxamt' : '0 as taxamt')
             ->selectRaw($this->hasCol('purchaserm', 'netamt') ? 'COALESCE(m.netamt, 0) as netamt' : 'COALESCE(m.billamt, 0) as netamt')
             ->whereBetween('m.tdate', [$date1, $date2]);
@@ -359,6 +396,7 @@ class AllTransReportController extends Controller
         if ($this->hasCol('purchaserm', 'control')) {
             $q->where('m.control', '<=', $gilevel);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.docno');
 
         if ($this->hasTable('purchaserd')) {
             $q->selectRaw('(select coalesce(sum(d.weight - d.stwgt),0) from purchaserd d where d.slno = m.slno) as totwgt');
@@ -368,17 +406,7 @@ class AllTransReportController extends Controller
             $q->selectRaw('0 as totwgt, 0 as grwgt, 0 as maxrate');
         }
 
-        return $q->orderBy('m.tdate')->orderBy('m.docno')->get()->map(fn ($row) => [
-            'tdate' => (string) $row->tdate,
-            'docno' => (string) $row->docno,
-            'name' => (string) $row->name,
-            'maxrate' => (float) ($row->maxrate ?? 0),
-            'grwgt' => (float) ($row->grwgt ?? 0),
-            'totwgt' => (float) ($row->totwgt ?? 0),
-            'billamt' => (float) ($row->billamt ?? 0),
-            'taxamt' => (float) ($row->taxamt ?? 0),
-            'netamt' => (float) ($row->netamt ?? 0),
-        ])->all();
+        return $q->orderBy('m.tdate')->orderBy('m.docno')->get()->map(fn ($row) => $this->purchaseTaxRow($row))->all();
     }
 
     private function orderRows(string $date1, string $date2, int $gilevel): array
@@ -395,6 +423,7 @@ class AllTransReportController extends Controller
         if ($this->hasCol('orderm', 'control')) {
             $q->where('m.control', '<=', $gilevel);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.ordno');
 
         if ($this->hasTable('orderd')) {
             $q->selectRaw('(select coalesce(sum(d.weight - d.stonewgt),0) from orderd d where d.slno = m.slno) as totwgt');
@@ -430,19 +459,22 @@ class AllTransReportController extends Controller
         if ($this->hasCol('smithm', 'control')) {
             $q->where('m.control', '<=', $gilevel);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.docno');
 
         if ($this->hasTable('smithd')) {
             $q->selectRaw('(select coalesce(sum(d.weight - d.stonewgt),0) from smithd d where d.slno = m.slno) as totwgt');
+            $q->selectRaw('(select coalesce(sum(d.weight),0) from smithd d where d.slno = m.slno) as grosswgt');
             $q->selectRaw("(select coalesce(sum(d.netwgt),0) from smithd d where d.slno = m.slno and d.givrec = 'G') as issuedwgt");
             $q->selectRaw("(select coalesce(sum(d.netwgt),0) from smithd d where d.slno = m.slno and d.givrec = 'R') as rcvdwgt");
         } else {
-            $q->selectRaw('0 as totwgt, 0 as issuedwgt, 0 as rcvdwgt');
+            $q->selectRaw('0 as totwgt, 0 as grosswgt, 0 as issuedwgt, 0 as rcvdwgt');
         }
 
         return $q->orderBy('m.tdate')->orderBy('m.docno')->get()->map(fn ($row) => [
             'tdate' => (string) $row->tdate,
             'docno' => (string) $row->docno,
             'cname' => (string) $row->cname,
+            'grosswgt' => (float) ($row->grosswgt ?? 0),
             'totwgt' => (float) ($row->totwgt ?? 0),
             'issuedwgt' => (float) ($row->issuedwgt ?? 0),
             'rcvdwgt' => (float) ($row->rcvdwgt ?? 0),
@@ -500,6 +532,7 @@ class AllTransReportController extends Controller
         } else {
             $q->whereRaw("TRIM(COALESCE(daybookpart.vchno, '')) LIKE 'JL%'");
         }
+        $this->applyTransferShadowDocFilter($q, 'daybookpart.vchno');
 
         return $q->orderBy('daybook.tdate')->orderBy('daybook.slno')->get()->map(fn ($row) => [
             'tdate' => (string) $row->tdate,
@@ -521,6 +554,32 @@ class AllTransReportController extends Controller
         }
 
         return $totals;
+    }
+
+    private function purchaseTaxRow(object $row): array
+    {
+        $taxamt = (float) ($row->taxamt ?? 0);
+        $sgst = (float) ($row->sgst ?? 0);
+        $cgst = (float) ($row->cgst ?? 0);
+        if (abs($sgst) < 0.0001 && abs($cgst) < 0.0001 && abs($taxamt) > 0.0001) {
+            $sgst = round($taxamt / 2, 2);
+            $cgst = round($taxamt - $sgst, 2);
+        }
+
+        return [
+            'tdate' => (string) $row->tdate,
+            'docno' => (string) $row->docno,
+            'billno' => trim((string) ($row->billno ?? '')) !== '' ? (string) $row->billno : (string) $row->docno,
+            'name' => (string) $row->name,
+            'maxrate' => (float) ($row->maxrate ?? 0),
+            'grwgt' => (float) ($row->grwgt ?? 0),
+            'totwgt' => (float) ($row->totwgt ?? 0),
+            'billamt' => (float) ($row->billamt ?? 0),
+            'sgst' => $sgst,
+            'cgst' => $cgst,
+            'taxamt' => $taxamt,
+            'netamt' => (float) ($row->netamt ?? 0),
+        ];
     }
 
     private function exportCsv(string $rtype, array $columns, array $rows): StreamedResponse

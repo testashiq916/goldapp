@@ -10,7 +10,7 @@ class StockPeriodLedgerController extends Controller
 {
     private int $gilevel = 1;
 
-    // ─── Period Stock Ledger ─────────────────────────────────────────────────
+    // ─── Period Stock Ledger ───────────────────────────────────────────────
 
     public function index(Request $request)
     {
@@ -23,11 +23,12 @@ class StockPeriodLedgerController extends Controller
         $dateFrom   = $request->input('date_from', date('Y-m-d'));
         $dateTo     = $request->input('date_to',   date('Y-m-d'));
         $rptType    = (string)$request->input('rpt_type',  '');   // '' | 'G' | 'SG'
-        $metalType  = (string)$request->input('metal_type','All');
-        $ornType    = (string)$request->input('orn_type',  'All');
+        $type1      = (string)$request->input('type1', $request->input('metal_type', 'All'));
+        $type2      = (string)$request->input('type2', 'All');
+        $type3      = (string)$request->input('type3', $request->input('orn_type',  'All'));
         $stkType    = (string)$request->input('stk_type',  'All');
-        $grpCode    = (string)$request->input('grp_code',  '');
-        $subGrpCode = (string)$request->input('subgrp_code','');
+        $grpCode    = strtoupper(trim((string)$request->input('grp_code',  '')));
+        $subGrpCode = strtoupper(trim((string)$request->input('subgrp_code','')));
         $showData    = $request->has('show');
         $sortOnCode  = $request->boolean('sort_on_code');
         $clstkOnly   = $showData ? $request->boolean('clstk_only') : true;
@@ -39,36 +40,39 @@ class StockPeriodLedgerController extends Controller
         $totals = array_fill_keys(['G','S','O','P'], $this->blankTotals());
 
         if ($showData && $this->hasTable('items')) {
-            $items = $this->loadItems($metalType, $ornType, $grpCode, $subGrpCode, $sortOnCode);
+            $items = $this->loadItems($type1, $type2, $type3, $grpCode, $subGrpCode, $sortOnCode);
             $grouped = [];   // for G and SG modes: keyed by grpcode or subgrpcode
 
             foreach ($items as $item) {
                 $stk = $this->calcItemStock($item['code'], $dateFrom, $dateTo, $netWgtModel, $withStone || $withDmd);
                 $row = array_merge($item, $stk);
-
                 $t = in_array($item['itype'] ?? '', ['G','S','P'], true) ? $item['itype'] : 'O';
-                foreach (['opqty','opwgt','opswgt','issuedqty','issuedwgt','issuedswgt','rcvdqty','rcvdwgt','rcvdswgt','clqty','clwgt','clswgt'] as $k) {
-                    $totals[$t][$k] += $stk[$k];
-                }
 
                 if ($rptType === 'G') {
                     $gk = $item['grpcode'] ?: '(none)';
                     if (!isset($grouped[$gk])) {
-                        $grouped[$gk] = ['groupkey'=>$gk,'itype'=>$t] + $this->blankTotals();
+                        $grouped[$gk] = ['groupkey'=>$gk,'itype'=>$t,'item_count'=>0,'metal_types'=>[]] + $this->blankTotals();
                     }
+                    $grouped[$gk]['item_count']++;
+                    $grouped[$gk]['metal_types'][$t] = true;
                     foreach (['opqty','opwgt','opswgt','issuedqty','issuedwgt','issuedswgt','rcvdqty','rcvdwgt','rcvdswgt','clqty','clwgt','clswgt'] as $k) {
                         $grouped[$gk][$k] += $stk[$k];
                     }
                 } elseif ($rptType === 'SG') {
                     $gk = $item['subgrpcode'] ?: '(none)';
                     if (!isset($grouped[$gk])) {
-                        $grouped[$gk] = ['groupkey'=>$gk,'itype'=>$t] + $this->blankTotals();
+                        $grouped[$gk] = ['groupkey'=>$gk,'itype'=>$t,'item_count'=>0,'metal_types'=>[]] + $this->blankTotals();
                     }
+                    $grouped[$gk]['item_count']++;
+                    $grouped[$gk]['metal_types'][$t] = true;
                     foreach (['opqty','opwgt','opswgt','issuedqty','issuedwgt','issuedswgt','rcvdqty','rcvdwgt','rcvdswgt','clqty','clwgt','clswgt'] as $k) {
                         $grouped[$gk][$k] += $stk[$k];
                     }
                 } else {
                     if (!$this->passesStockFilter($row, $stkType)) continue;
+                    foreach (['opqty','opwgt','opswgt','issuedqty','issuedwgt','issuedswgt','rcvdqty','rcvdwgt','rcvdswgt','clqty','clwgt','clswgt'] as $k) {
+                        $totals[$t][$k] += $stk[$k];
+                    }
                     $rows[] = $row;
                 }
             }
@@ -76,6 +80,10 @@ class StockPeriodLedgerController extends Controller
             if ($rptType === 'G' || $rptType === 'SG') {
                 ksort($grouped);
                 foreach ($grouped as $row) {
+                    if (count($row['metal_types'] ?? []) > 1) {
+                        $row['itype'] = 'M';
+                    }
+                    unset($row['metal_types']);
                     if (!$this->passesStockFilter($row, $stkType)) continue;
                     $rows[] = $row;
                 }
@@ -88,8 +96,11 @@ class StockPeriodLedgerController extends Controller
             'dateFrom'     => $dateFrom,
             'dateTo'       => $dateTo,
             'rptType'      => $rptType,
-            'metalType'    => $metalType,
-            'ornType'      => $ornType,
+            'type1'        => $type1,
+            'type2'        => $type2,
+            'type3'        => $type3,
+            'metalType'    => $type1, // backward compatibility for view
+            'ornType'      => $type3, // backward compatibility for view
             'stkType'      => $stkType,
             'grpCode'      => $grpCode,
             'subGrpCode'   => $subGrpCode,
@@ -104,7 +115,7 @@ class StockPeriodLedgerController extends Controller
         ]);
     }
 
-    // ─── Item History ────────────────────────────────────────────────────────
+    // ─── Item History ──────────────────────────────────────────────────────
 
     public function itemHistory(Request $request)
     {
@@ -166,7 +177,51 @@ class StockPeriodLedgerController extends Controller
         ));
     }
 
-    // ─── Ledger helpers ──────────────────────────────────────────────────────
+    // ─── Ledger helpers ────────────────────────────────────────────────────
+
+    public function itemSearch(Request $request)
+    {
+        if (!$request->session()->has('user_code')) {
+            return response()->json(['ok' => false, 'items' => []], 401);
+        }
+        if (!$this->hasTable('items')) {
+            return response()->json(['ok' => true, 'items' => []]);
+        }
+
+        $q = strtoupper(trim((string) $request->input('q', '')));
+        $cols = array_map('strtolower', $this->columnList('items'));
+        $select = array_values(array_intersect(['code', 'name', 'itype', 'grpcode'], $cols));
+
+        if (!in_array('code', $select, true)) {
+            return response()->json(['ok' => true, 'items' => []]);
+        }
+
+        $items = DB::table('items')->select($select);
+
+        if (in_array('disabled', $cols, true)) {
+            $items->where(fn($qq) => $qq->where('disabled', '!=', 1)->orWhereNull('disabled'));
+        }
+        if (in_array('showinstkrep', $cols, true)) {
+            $items->where(fn($qq) => $qq->where('showinstkrep', '!=', 'N')->orWhereNull('showinstkrep'));
+        }
+        if ($q !== '') {
+            $items->where(function ($qq) use ($q, $cols) {
+                $qq->where('code', 'like', $q . '%');
+                if (in_array('name', $cols, true)) {
+                    $qq->orWhere('name', 'like', '%' . $q . '%');
+                }
+            });
+        }
+
+        $rows = $items->orderBy('code')->limit(30)->get()->map(fn($row) => [
+            'code' => strtoupper(trim((string) ($row->code ?? ''))),
+            'name' => trim((string) ($row->name ?? '')),
+            'type' => trim((string) ($row->itype ?? '')),
+            'group' => trim((string) ($row->grpcode ?? '')),
+        ])->filter(fn($row) => $row['code'] !== '')->values();
+
+        return response()->json(['ok' => true, 'items' => $rows]);
+    }
 
     private function blankTotals(): array
     {
@@ -176,14 +231,14 @@ class StockPeriodLedgerController extends Controller
                 'clqty'=>0,'clwgt'=>0.0,'clswgt'=>0.0];
     }
 
-    private function loadItems(string $metalType, string $ornType,
+    private function loadItems(string $type1, string $type2, string $type3,
                                string $grpCode, string $subGrpCode, bool $sortOnCode): array
     {
         $cols = array_map('strtolower', $this->columnList('items'));
 
         $q = DB::table('items')->select(
             array_values(array_intersect(
-                ['code','name','itype','grpcode','subgrpcode','ornament'],
+                ['code','name','itype','grpcode','subgrpcode','ornament','orn'],
                 $cols
             ))
         );
@@ -194,18 +249,28 @@ class StockPeriodLedgerController extends Controller
         if (in_array('showinstkrep', $cols)) {
             $q->where(fn($qq) => $qq->where('showinstkrep','!=','N')->orWhereNull('showinstkrep'));
         }
-        if ($metalType !== 'All' && in_array('itype', $cols)) {
-            $q->where('itype', substr($metalType, 0, 1));
+        $type1Code = $this->itemTypeCode($type1);
+        if ($type1Code !== null && in_array('itype', $cols, true)) {
+            $q->where('itype', $type1Code);
         }
-        if ($ornType === 'Ornaments Only' && in_array('ornament', $cols)) {
-            $q->where('ornament','Y');
-        } elseif ($ornType === 'Not Ornaments' && in_array('ornament', $cols)) {
-            $q->where('ornament','N');
+        $type2Code = $this->itemTypeCode($type2);
+        if ($type2Code !== null && in_array('dmdplt', $cols, true)) {
+            $q->where('dmdplt', $type2Code);
         }
-        if ($grpCode !== '' && in_array('grpcode', $cols)) {
+
+        $ornamentColumn = in_array('ornament', $cols, true) ? 'ornament' : (in_array('orn', $cols, true) ? 'orn' : null);
+        if ($type3 === 'Ornaments Only' && $ornamentColumn !== null) {
+            $q->whereRaw("UPPER(TRIM(COALESCE({$ornamentColumn},''))) IN ('Y','YES','1','TRUE')");
+        } elseif ($type3 === 'Not Ornaments' && $ornamentColumn !== null) {
+            $q->where(function ($qq) use ($ornamentColumn): void {
+                $qq->whereRaw("UPPER(TRIM(COALESCE({$ornamentColumn},''))) NOT IN ('Y','YES','1','TRUE')")
+                    ->orWhereNull($ornamentColumn);
+            });
+        }
+        if ($grpCode !== '' && in_array('grpcode', $cols, true)) {
             $q->where('grpcode', $grpCode);
         }
-        if ($subGrpCode !== '' && in_array('subgrpcode', $cols)) {
+        if ($subGrpCode !== '' && in_array('subgrpcode', $cols, true)) {
             $q->where('subgrpcode', $subGrpCode);
         }
 
@@ -220,23 +285,50 @@ class StockPeriodLedgerController extends Controller
             'code'       => (string)($r->code ?? ''),
             'name'       => (string)($r->name ?? ''),
             'itype'      => (string)($r->itype ?? ''),
-            'grpcode'    => (string)($r->grpcode ?? ''),
-            'subgrpcode' => (string)($r->subgrpcode ?? ''),
-            'ornament'   => (string)($r->ornament ?? ''),
+            'grpcode'    => strtoupper(trim((string)($r->grpcode ?? ''))),
+            'subgrpcode' => strtoupper(trim((string)($r->subgrpcode ?? ''))),
+            'ornament'   => (string)($r->{$ornamentColumn ?? 'ornament'} ?? ''),
         ])->all();
+    }
+
+    private function itemTypeCode(string $label): ?string
+    {
+        return match ($label) {
+            'Gold' => 'G',
+            'Silver' => 'S',
+            'Others' => 'O',
+            'Platinum' => 'P',
+            'Diamond' => 'D',
+            'Color Stone' => 'C',
+            'Watch' => 'W',
+            default => null,
+        };
     }
 
     private function passesStockFilter(array $row, string $stkType): bool
     {
+        $stkType = trim($stkType);
+        if ($stkType === '' || $stkType === 'All') {
+            return true;
+        }
+
+        $clq = (float)($row['clqty'] ?? 0);
         $clw = (float)$row['clwgt'];
+        $iq  = (float)($row['issuedqty'] ?? 0);
         $iw  = (float)$row['issuedwgt'];
+        $rq  = (float)($row['rcvdqty'] ?? 0);
         $rw  = (float)$row['rcvdwgt'];
-        if (str_contains($stkType,'With Stock Only') && $clw <= 0) return false;
-        if (str_contains($stkType,'With -ve')        && $clw >= 0) return false;
-        if (str_contains($stkType,'With Zero')       && $clw != 0) return false;
-        if (str_contains($stkType,'With Not Zero')   && $clw == 0) return false;
-        if (str_contains($stkType,'Non Zero Stock or Transaction') && $iw <= 0 && $rw <= 0 && $clw == 0) return false;
-        if (str_contains($stkType,'With Transaction')  && $iw <= 0 && $rw <= 0) return false;
+        $hasClosing = abs($clq) > 0.0001 || abs($clw) > 0.0001;
+        $hasPositiveClosing = $clq > 0 || $clw > 0;
+        $hasNegativeClosing = $clq < 0 || $clw < 0;
+        $hasTransaction = abs($iq) > 0.0001 || abs($iw) > 0.0001 || abs($rq) > 0.0001 || abs($rw) > 0.0001;
+
+        if (str_contains($stkType,'With Stock Only') && !$hasPositiveClosing) return false;
+        if (str_contains($stkType,'With -ve')        && !$hasNegativeClosing) return false;
+        if (str_contains($stkType,'With Zero')       && $hasClosing) return false;
+        if (str_contains($stkType,'With Not Zero')   && !$hasClosing) return false;
+        if (str_contains($stkType,'Non Zero Stock or Transaction') && !$hasClosing && !$hasTransaction) return false;
+        if (str_contains($stkType,'With Transaction') && !$hasTransaction) return false;
         return true;
     }
 
@@ -260,7 +352,7 @@ class StockPeriodLedgerController extends Controller
             ->map(fn($v) => strtoupper(trim((string)$v)))->filter()->unique()->values()->all();
     }
 
-    // ─── calcItemStock (converted from PDO calcItemStock.php) ────────────────
+    // ─── calcItemStock (converted from PDO calcItemStock.php) ──────────────
 
     private function resolveControl(Request $request): int
     {
@@ -286,7 +378,7 @@ class StockPeriodLedgerController extends Controller
         $g = $this->gilevel;
 
         // Net-weight SQL fragments (trusted server-side strings, safe to interpolate)
-        $wS  = $netWgt ? '(d.weight - COALESCE(d.stonewgt,0))' : 'd.weight';   // salesd/salesrd/smithd/repaird
+        $wS  = $netWgt ? '(d.weight - COALESCE(d.stonewgt,0))' : 'd.weight';   // salesd/salesrd/smithd
         $wP  = $netWgt ? '(d.weight - COALESCE(d.stwgt,0))'    : 'd.weight';   // purchased/purchaserd
         $wRI = $netWgt ? '(d.issuedwgt - COALESCE(d.issuedstwgt,0))' : 'd.issuedwgt'; // refineryd issued
         $wAF = $netWgt ? '(fromwgt - COALESCE(fromstwgt,0))'   : 'fromwgt';    // itemadj from-side
@@ -294,7 +386,7 @@ class StockPeriodLedgerController extends Controller
         $wO  = $netWgt ? '(weight - COALESCE(stonewgt,0))'     : 'weight';     // orderdga
 
         // Stone-weight SQL fragments ('0' when stone off — keeps query valid, result = 0)
-        $sS  = $withStone ? 'COALESCE(SUM(d.stonewgt),0)' : '0'; // salesd/salesrd/smithd/repaird
+        $sS  = $withStone ? 'COALESCE(SUM(d.stonewgt),0)' : '0'; // salesd/salesrd/smithd
         $sP  = $withStone ? 'COALESCE(SUM(d.stwgt),0)'    : '0'; // purchased/purchaserd
         $sAF = $withStone ? 'fromstwgt' : '0'; // inside CASE WHEN for itemadj
         $sAT = $withStone ? 'tostwgt'   : '0'; // inside CASE WHEN for itemadj
@@ -316,59 +408,50 @@ class StockPeriodLedgerController extends Controller
             }
         }
 
-        // ── Pre-period adjustments ──
+        // ─ Pre-period adjustments ─
         if ($this->hasTable('salesd') && $this->hasTable('salesm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM salesd d JOIN salesm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND (TRIM(d.jcode)='' OR d.jcode IS NULL)",
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<? AND (TRIM(d.jcode)='' OR d.jcode IS NULL)",
                 [$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w; $opSw -= $r->s;
         }
         if ($this->hasTable('salesrd') && $this->hasTable('salesrm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM salesrd d JOIN salesrm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w; $opSw += $r->s;
         }
         if ($this->hasTable('purchased') && $this->hasTable('purchasem')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wP),0) AS w, $sP AS s
                 FROM purchased d JOIN purchasem m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w; $opSw += $r->s;
         }
         if ($this->hasTable('purchaserd') && $this->hasTable('purchaserm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wP),0) AS w, $sP AS s
                 FROM purchaserd d JOIN purchaserm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w; $opSw -= $r->s;
         }
         if ($this->hasTable('smithd') && $this->hasTable('smithm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w; $opSw -= $r->s;
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w; $opSw += $r->s;
         }
-        if ($this->hasTable('repaird') && $this->hasTable('repairm')) {
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
-            $opq += $r->q; $opw += $r->w; $opSw += $r->s;
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
-            $opq -= $r->q; $opw -= $r->w; $opSw -= $r->s;
-        }
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
         if ($this->hasTable('refineryd') && $this->hasTable('refinerym')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.issuedqty),0) AS iq,
                 COALESCE(SUM($wRI),0) AS iw,
                 COALESCE(SUM(d.rcvdqty),0) AS rq,
                 COALESCE(SUM(COALESCE(d.ao, d.rcvdwgt-d.bottlestk-d.testpcs, d.rcvdwgt)),0) AS rw
                 FROM refineryd d JOIN refinerym m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->iq; $opw -= $r->iw;
             $opq += $r->rq; $opw += $r->rw;
         }
@@ -389,66 +472,57 @@ class StockPeriodLedgerController extends Controller
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wO),0) AS w, $sO AS s
                 FROM orderdga d
                 JOIN orderm m ON m.slno = d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w; $opSw += $r->s;
         }
 
-        // ── Period (issued / received) ──
+        // ─ Period (issued / received) ─
         $iqty = 0; $iwgt = 0.0; $iSwgt = 0.0;
         $rqty = 0; $rwgt = 0.0; $rSwgt = 0.0;
 
         if ($this->hasTable('salesd') && $this->hasTable('salesm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM salesd d JOIN salesm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?
                 AND (TRIM(d.jcode)='' OR d.jcode IS NULL)",[$scode,$g,$d1,$d2]);
             $iqty += $r->q; $iwgt += $r->w; $iSwgt += $r->s;
         }
         if ($this->hasTable('salesrd') && $this->hasTable('salesrm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM salesrd d JOIN salesrm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $rqty += $r->q; $rwgt += $r->w; $rSwgt += $r->s;
         }
         if ($this->hasTable('purchased') && $this->hasTable('purchasem')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wP),0) AS w, $sP AS s
                 FROM purchased d JOIN purchasem m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $rqty += $r->q; $rwgt += $r->w; $rSwgt += $r->s;
         }
         if ($this->hasTable('purchaserd') && $this->hasTable('purchaserm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wP),0) AS w, $sP AS s
                 FROM purchaserd d JOIN purchaserm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $iqty += $r->q; $iwgt += $r->w; $iSwgt += $r->s;
         }
         if ($this->hasTable('smithd') && $this->hasTable('smithm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='G' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $iqty += $r->q; $iwgt += $r->w; $iSwgt += $r->s;
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='R' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $rqty += $r->q; $rwgt += $r->w; $rSwgt += $r->s;
         }
-        if ($this->hasTable('repaird') && $this->hasTable('repairm')) {
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
-            $iqty += $r->q; $iwgt += $r->w; $iSwgt += $r->s;
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wS),0) AS w, $sS AS s FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
-            $rqty += $r->q; $rwgt += $r->w; $rSwgt += $r->s;
-        }
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
         if ($this->hasTable('refineryd') && $this->hasTable('refinerym')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.issuedqty),0) AS iq,
                 COALESCE(SUM($wRI),0) AS iw,
                 COALESCE(SUM(d.rcvdqty),0) AS rq,
                 COALESCE(SUM(COALESCE(d.ao, d.rcvdwgt-d.bottlestk-d.testpcs, d.rcvdwgt)),0) AS rw
                 FROM refineryd d JOIN refinerym m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $iqty += $r->iq; $iwgt += $r->iw;
             $rqty += $r->rq; $rwgt += $r->rw;
         }
@@ -469,7 +543,7 @@ class StockPeriodLedgerController extends Controller
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM($wO),0) AS w, $sO AS s
                 FROM orderdga d
                 JOIN orderm m ON m.slno = d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1,$d2]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?",[$scode,$g,$d1,$d2]);
             $rqty += $r->q; $rwgt += $r->w; $rSwgt += $r->s;
         }
 
@@ -493,7 +567,7 @@ class StockPeriodLedgerController extends Controller
         ];
     }
 
-    // ─── Item History helpers ────────────────────────────────────────────────
+    // ─── Item History helpers ──────────────────────────────────────────────
 
     private function openingStock(string $scode, string $d1): array
     {
@@ -513,35 +587,35 @@ class StockPeriodLedgerController extends Controller
         if ($this->hasTable('salesd') && $this->hasTable('salesm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM salesd d JOIN salesm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND (TRIM(d.jcode)='' OR d.jcode IS NULL)",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<? AND (TRIM(d.jcode)='' OR d.jcode IS NULL)",[$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w;
         }
         if ($this->hasTable('salesrd') && $this->hasTable('salesrm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM salesrd d JOIN salesrm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w;
         }
         if ($this->hasTable('purchased') && $this->hasTable('purchasem')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM purchased d JOIN purchasem m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w;
         }
         if ($this->hasTable('purchaserd') && $this->hasTable('purchaserm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM purchaserd d JOIN purchaserm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w;
         }
         if ($this->hasTable('smithd') && $this->hasTable('smithm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w;
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM smithd d JOIN smithm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->q; $opw -= $r->w;
         }
         if ($this->hasTable('refineryd') && $this->hasTable('refinerym')) {
@@ -549,7 +623,7 @@ class StockPeriodLedgerController extends Controller
                 COALESCE(SUM(d.rcvdqty),0) AS rq,
                 COALESCE(SUM(COALESCE(d.ao, d.rcvdwgt-d.bottlestk-d.testpcs, d.rcvdwgt)),0) AS rw
                 FROM refineryd d JOIN refinerym m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq -= $r->iq; $opw -= $r->iw;
             $opq += $r->rq; $opw += $r->rw;
         }
@@ -564,28 +638,19 @@ class StockPeriodLedgerController extends Controller
             $opq -= $r->fq; $opw -= $r->fw;
             $opq += $r->tq; $opw += $r->tw;
         }
-        if ($this->hasTable('repaird') && $this->hasTable('repairm')) {
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.weight),0) AS w FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='G' AND m.tdate<?",[$scode,$g,$d1]);
-            $opw -= $r->w;
-            $r = $this->rawOne("SELECT COALESCE(SUM(d.weight),0) AS w FROM repaird d
-                JOIN repairm m ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND d.givrec='R' AND m.tdate<?",[$scode,$g,$d1]);
-            $opw += $r->w;
-        }
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
         if ($this->hasTable('orderdga') && $this->hasTable('orderm')) {
             $r = $this->rawOne("SELECT COALESCE(SUM(d.qty),0) AS q, COALESCE(SUM(d.weight),0) AS w
                 FROM orderdga d
                 JOIN orderm m ON m.slno = d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate<? AND COALESCE(m.status,1)<>0",[$scode,$g,$d1]);
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate<?",[$scode,$g,$d1]);
             $opq += $r->q; $opw += $r->w;
         }
 
         return ['qty' => (int)$opq, 'wgt' => round((float)$opw, 3)];
     }
 
-    // ─── Stock Ledger (d_stockledger_simple_history) ─────────────────────────
+    // ─── Stock Ledger (d_stockledger_simple_history) ───────────────────────
     // Day-by-day summary: Date | Op.Qty | Op.Wgt | Rcvd.Qty | Rcvd.Wgt | Issued.Qty | Issued.Wgt | Cl.Qty | Cl.Wgt
     private function buildStockLedger(string $scode, string $d1, string $d2,
                                       int $opQty, float $opWgt,
@@ -602,38 +667,38 @@ class StockPeriodLedgerController extends Controller
             $byDate[$date][2] += $iq; $byDate[$date][3] += $iw;
         };
 
-        // Purchases → received
+        // Purchases — received
         if ($this->hasTable('purchased') && $this->hasTable('purchasem')) {
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM purchasem m JOIN purchased d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM purchasem m JOIN purchased d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, (int)$r->q, (float)$r->w, 0, 0.0);
         }
-        // Purchase Returns → issued
+        // Purchase Returns — issued
         if ($this->hasTable('purchaserd') && $this->hasTable('purchaserm')) {
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM purchaserm m JOIN purchaserd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM purchaserm m JOIN purchaserd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, 0, 0.0, (int)$r->q, (float)$r->w);
         }
-        // Smith Received → received; Smith Issued → issued (with optional stk touch)
+        // Smith Received — received; Smith Issued — issued (with optional stk touch)
         if ($this->hasTable('smithd') && $this->hasTable('smithm')) {
             $hasST = in_array('stktouch', array_map('strtolower', $this->columnList('smithd')));
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM smithm m JOIN smithd d ON m.slno=d.slno WHERE m.control<=? AND d.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec='R'{$stF} GROUP BY m.tdate", array_merge([$g,$scode,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM smithm m JOIN smithd d ON m.slno=d.slno WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND d.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec='R'{$stF} GROUP BY m.tdate", array_merge([$g,$scode,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, (int)$r->q, (float)$r->w, 0, 0.0);
             $wCol = ($withStkTouch && $hasST) ? "SUM(d.weight*COALESCE(d.stktouch,d.touch,0)/100)" : "SUM(d.weight)";
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, {$wCol} w FROM smithm m JOIN smithd d ON m.slno=d.slno WHERE m.control<=? AND d.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec='G'{$stF} GROUP BY m.tdate", array_merge([$g,$scode,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, {$wCol} w FROM smithm m JOIN smithd d ON m.slno=d.slno WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND d.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec='G'{$stF} GROUP BY m.tdate", array_merge([$g,$scode,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, 0, 0.0, (int)$r->q, (float)$r->w);
         }
-        // Sales → issued (exclude job items)
+        // Sales — issued (exclude job items)
         if ($this->hasTable('salesd') && $this->hasTable('salesm')) {
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM salesm m JOIN salesd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF} AND (d.jcode IS NULL OR d.jcode='') GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM salesm m JOIN salesd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF} AND (d.jcode IS NULL OR d.jcode='') GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, 0, 0.0, (int)$r->q, (float)$r->w);
         }
-        // Sales Returns → received
+        // Sales Returns — received
         if ($this->hasTable('salesrd') && $this->hasTable('salesrm')) {
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM salesrm m JOIN salesrd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM salesrm m JOIN salesrd d ON m.slno=d.slno WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$scode,$g,$d1,$d2],$stB)) as $r)
                 $add($r->tdate, (int)$r->q, (float)$r->w, 0, 0.0);
         }
         // Refinery (only open transactions where issued ≠ received)
         if ($this->hasTable('refineryd') && $this->hasTable('refinerym')) {
-            foreach (DB::select("SELECT m.tdate, d.issuedqty, d.issuedwgt, d.rcvdqty, d.rcvdwgt, COALESCE(d.bottlestk,0) bottlestk, COALESCE(d.testpcs,0) testpcs, d.ao FROM refinerym m JOIN refineryd d ON m.slno=d.slno WHERE m.control<=? AND d.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0", [$g,$scode,$d1,$d2]) as $r) {
+            foreach (DB::select("SELECT m.tdate, d.issuedqty, d.issuedwgt, d.rcvdqty, d.rcvdwgt, COALESCE(d.bottlestk,0) bottlestk, COALESCE(d.testpcs,0) testpcs, d.ao FROM refinerym m JOIN refineryd d ON m.slno=d.slno WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND d.code=? AND m.tdate>=? AND m.tdate<=?", [$g,$scode,$d1,$d2]) as $r) {
                 $issued = (float)$r->issuedwgt;
                 $net    = is_null($r->ao) ? round((float)$r->rcvdwgt-(float)$r->bottlestk-(float)$r->testpcs,3) : round((float)$r->rcvdwgt,3);
                 if (abs(round($issued,3)-$net) > 0.0005) {
@@ -642,19 +707,15 @@ class StockPeriodLedgerController extends Controller
                 }
             }
         }
-        // Adjustments Out → issued, In → received
+        // Adjustments Out — issued, In — received
         if ($this->hasTable('itemadj')) {
             foreach (DB::select("SELECT tdate, SUM(CASE WHEN fromcode=? THEN fromqty ELSE 0 END) iq, SUM(CASE WHEN fromcode=? THEN fromwgt ELSE 0 END) iw, SUM(CASE WHEN tocode=? THEN toqty ELSE 0 END) rq, SUM(CASE WHEN tocode=? THEN towgt ELSE 0 END) rw FROM itemadj WHERE control<=? AND tdate>=? AND tdate<=? GROUP BY tdate", [$scode,$scode,$scode,$scode,$g,$d1,$d2]) as $r)
                 $add($r->tdate, (int)$r->rq, (float)$r->rw, (int)$r->iq, (float)$r->iw);
         }
-        // Repair Received → received; Repair Issued → issued
-        if ($this->hasTable('repaird') && $this->hasTable('repairm')) {
-            foreach (DB::select("SELECT m.tdate, SUM(CASE WHEN d.givrec='R' THEN d.qty ELSE 0 END) rq, SUM(CASE WHEN d.givrec='R' THEN d.weight ELSE 0 END) rw, SUM(CASE WHEN d.givrec='G' THEN d.qty ELSE 0 END) iq, SUM(CASE WHEN d.givrec='G' THEN d.weight ELSE 0 END) iw FROM repairm m JOIN repaird d ON m.slno=d.slno WHERE m.control<=? AND d.code=? AND m.tdate>=? AND m.tdate<=?{$stF} GROUP BY m.tdate", array_merge([$g,$scode,$d1,$d2],$stB)) as $r)
-                $add($r->tdate, (int)$r->rq, (float)$r->rw, (int)$r->iq, (float)$r->iw);
-        }
-        // Order Advance → received
+        // Repair receipt memo is memo-only; do not include repairm/repaird in stock.
+        // Order Advance — received
         if ($this->hasTable('orderdga') && $this->hasTable('orderm')) {
-            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM orderm m JOIN orderdga d ON m.slno=d.slno WHERE m.control<=? AND d.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0 GROUP BY m.tdate", [$g,$scode,$d1,$d2]) as $r)
+            foreach (DB::select("SELECT m.tdate, SUM(d.qty) q, SUM(d.weight) w FROM orderm m JOIN orderdga d ON m.slno=d.slno WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND d.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0 GROUP BY m.tdate", [$g,$scode,$d1,$d2]) as $r)
                 $add($r->tdate, (int)$r->q, (float)$r->w, 0, 0.0);
         }
 
@@ -702,12 +763,12 @@ class StockPeriodLedgerController extends Controller
             return $clientCache[$code];
         };
 
-        // ── 1. PURCHASE DETAILS ──────────────────────────────────────────────
+        // ─ 1. PURCHASE DETAILS ───────────────────────────────────────────
         if ($this->hasTable('purchased') && $this->hasTable('purchasem')) {
             $rows = DB::select("SELECT m.tdate, m.docno AS billno, m.name AS custname, d.code, d.name,
                 d.qty, d.weight, d.stwgt AS stonewgt, d.rate, d.amount, m.smcode
                 FROM purchasem m JOIN purchased d ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF}
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF}
                 ORDER BY m.tdate, m.docno", array_merge([$scode,$g,$d1,$d2],$stB));
             if ($rows) {
                 $tq=0; $tw=0.0;
@@ -717,19 +778,19 @@ class StockPeriodLedgerController extends Controller
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)), mb_substr(trim($r->name),0,14),
                         $r->qty, number_format($wgt,3), number_format((float)$r->stonewgt,3),
                         number_format((float)$r->rate,2), number_format((float)$r->amount,2),
-                        $r->billno, $r->smcode, mb_substr(trim($r->custname??''),0,20)];
+                        $r->billno, $r->smcode, trim($r->custname ?? '')];
                     $tq+=(int)$r->qty; $tw+=$wgt; $rQty+=(int)$r->qty; $rWgt+=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
             }
         }
 
-        // ── 2. PURCHASE RETURN DETAILS ───────────────────────────────────────
+        // ─ 2. PURCHASE RETURN DETAILS ─────────────────────────────────────
         if ($this->hasTable('purchaserd') && $this->hasTable('purchaserm')) {
             $rows = DB::select("SELECT m.tdate, m.docno AS billno, m.name AS custname, d.code, d.name,
                 d.qty, d.weight, d.stwgt AS stonewgt, d.rate, d.amount, m.smcode
                 FROM purchaserm m JOIN purchaserd d ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF}
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF}
                 ORDER BY m.tdate, m.docno", array_merge([$scode,$g,$d1,$d2],$stB));
             if ($rows) {
                 $tq=0; $tw=0.0;
@@ -739,14 +800,14 @@ class StockPeriodLedgerController extends Controller
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)), mb_substr(trim($r->name),0,14),
                         $r->qty, number_format($wgt,3), number_format((float)$r->stonewgt,3),
                         number_format((float)$r->rate,2), number_format((float)$r->amount,2),
-                        $r->billno, $r->smcode, mb_substr(trim($r->custname??''),0,20)];
+                        $r->billno, $r->smcode, trim($r->custname ?? '')];
                     $tq+=(int)$r->qty; $tw+=$wgt; $rQty-=(int)$r->qty; $rWgt-=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
             }
         }
 
-        // ── 3 & 4. SMITH RECEIVED / ISSUED ──────────────────────────────────
+        // ─ 3 & 4. SMITH RECEIVED / ISSUED ────────────────────────────────
         if ($this->hasTable('smithd') && $this->hasTable('smithm')) {
             $smithCols = array_map('strtolower', $this->columnList('smithd'));
             $hasStkTouch = in_array('stktouch', $smithCols);
@@ -755,7 +816,7 @@ class StockPeriodLedgerController extends Controller
                     d.qty, d.weight, d.stonewgt, d.givrec, d.touch"
                     .($hasStkTouch ? ', d.stktouch' : '')."
                     FROM smithm m JOIN smithd d ON m.slno=d.slno JOIN items i ON d.code=i.code
-                    WHERE m.control<=? AND i.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec=?{$stF}
+                    WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND i.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec=?{$stF}
                     ORDER BY m.tdate, m.docno", array_merge([$g,$scode,$d1,$d2,$gr],$stB));
                 if ($rows) {
                     $tq=0; $tw=0.0;
@@ -768,7 +829,7 @@ class StockPeriodLedgerController extends Controller
                                   : $rawWgt;
                         $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)), mb_substr(trim($r->name),0,14),
                             $r->qty, number_format($wgt,3), number_format((float)$r->stonewgt,3),
-                            number_format($touch,2), $r->docno, mb_substr($clientName($r->smithcode),0,20)];
+                            number_format($touch,2), $r->docno, trim($clientName($r->smithcode))];
                         $tq+=(int)$r->qty; $tw+=$wgt;
                         if ($gr==='G') { $rQty-=(int)$r->qty; $rWgt-=$wgt; }
                         else           { $rQty+=(int)$r->qty; $rWgt+=$wgt; }
@@ -778,12 +839,12 @@ class StockPeriodLedgerController extends Controller
             }
         }
 
-        // ── 5. SALES DETAILS ─────────────────────────────────────────────────
+        // ─ 5. SALES DETAILS ──────────────────────────────────────────────
         if ($this->hasTable('salesd') && $this->hasTable('salesm')) {
             $rows = DB::select("SELECT m.tdate, m.billno, m.custname, d.code, d.name,
                 d.qty, d.weight, d.stonewgt, d.rate, d.amount, m.smcode, d.jcode
                 FROM salesm m JOIN salesd d ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF}
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF}
                 ORDER BY m.tdate, m.billno", array_merge([$scode,$g,$d1,$d2],$stB));
             if ($rows) {
                 $tq=0; $tw=0.0;
@@ -794,19 +855,19 @@ class StockPeriodLedgerController extends Controller
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)), mb_substr(trim($r->name),0,14),
                         $r->qty, ($jcode!==''?'*':'').number_format($wgt,3), number_format((float)$r->stonewgt,3),
                         number_format((float)$r->rate,2), number_format((float)$r->amount,2),
-                        $r->billno, $r->smcode, mb_substr(trim($r->custname??''),0,20)];
+                        $r->billno, $r->smcode, trim($r->custname ?? '')];
                     if ($jcode === '') { $tq+=(int)$r->qty; $tw+=$wgt; $rQty-=(int)$r->qty; $rWgt-=$wgt; }
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
             }
         }
 
-        // ── 6. SALES RETURN DETAILS ──────────────────────────────────────────
+        // ─ 6. SALES RETURN DETAILS ────────────────────────────────────────
         if ($this->hasTable('salesrd') && $this->hasTable('salesrm')) {
             $rows = DB::select("SELECT m.tdate, m.billno, m.custname, d.code, d.name,
                 d.qty, d.weight, d.stonewgt, d.rate, d.amount, m.smcode
                 FROM salesrm m JOIN salesrd d ON m.slno=d.slno
-                WHERE d.code=? AND m.control<=? AND m.tdate>=? AND m.tdate<=?{$stF}
+                WHERE d.code=? AND m.control<=? AND COALESCE(m.status,1)<>0 AND m.tdate>=? AND m.tdate<=?{$stF}
                 ORDER BY m.tdate, m.billno", array_merge([$scode,$g,$d1,$d2],$stB));
             if ($rows) {
                 $tq=0; $tw=0.0;
@@ -816,21 +877,21 @@ class StockPeriodLedgerController extends Controller
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)), mb_substr(trim($r->name),0,14),
                         $r->qty, number_format($wgt,3), number_format((float)$r->stonewgt,3),
                         number_format((float)$r->rate,2), number_format((float)$r->amount,2),
-                        $r->billno, $r->smcode, mb_substr(trim($r->custname??''),0,20)];
+                        $r->billno, $r->smcode, trim($r->custname ?? '')];
                     $tq+=(int)$r->qty; $tw+=$wgt; $rQty+=(int)$r->qty; $rWgt+=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
             }
         }
 
-        // ── 7 & 8. REFINERY ISSUED / RECEIVED ───────────────────────────────
+        // ─ 7 & 8. REFINERY ISSUED / RECEIVED ─────────────────────────────
         if ($this->hasTable('refineryd') && $this->hasTable('refinerym')) {
             $refRows = DB::select("SELECT m.tdate, m.docno, m.refcode, d.code, i.name,
                 d.issuedqty, d.issuedwgt, d.rcvdqty, d.rcvdwgt,
                 COALESCE(d.bottlestk,0) AS bottlestk,
                 COALESCE(d.testpcs,0) AS testpcs, d.ao
                 FROM refinerym m JOIN refineryd d ON m.slno=d.slno JOIN items i ON d.code=i.code
-                WHERE m.control<=? AND i.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0
+                WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND i.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0
                 ORDER BY m.tdate, m.docno, m.slno",[$g,$scode,$d1,$d2]);
             $issuedRows=[]; $rcvdRows=[];
             foreach ($refRows as $r) {
@@ -847,7 +908,7 @@ class StockPeriodLedgerController extends Controller
                 $sect = ['title'=>'REFINERY ISSUED DETAILS','cols'=>['Date','Item','Qty','Weight','Doc.No','Refiner'],'rows'=>[],'tq'=>0,'tw'=>0.0];
                 foreach ($issuedRows as [$r,$wgt]) {
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)),mb_substr(trim($r->name),0,14),
-                        $r->issuedqty,number_format($wgt,3),$r->docno,mb_substr($clientCache[$r->refcode]??'',0,20)];
+                        $r->issuedqty,number_format($wgt,3),$r->docno,trim($clientCache[$r->refcode]??'')];
                     $tq+=(int)$r->issuedqty; $tw+=$wgt; $rQty-=(int)$r->issuedqty; $rWgt-=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
@@ -857,14 +918,14 @@ class StockPeriodLedgerController extends Controller
                 $sect = ['title'=>'REFINERY RECEIVED DETAILS','cols'=>['Date','Item','Qty','Weight','Doc.No','Refiner'],'rows'=>[],'tq'=>0,'tw'=>0.0];
                 foreach ($rcvdRows as [$r,$wgt]) {
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)),mb_substr(trim($r->name),0,14),
-                        $r->rcvdqty,number_format($wgt,3),$r->docno,mb_substr($clientCache[$r->refcode]??'',0,20)];
+                        $r->rcvdqty,number_format($wgt,3),$r->docno,trim($clientCache[$r->refcode]??'')];
                     $tq+=(int)$r->rcvdqty; $tw+=$wgt; $rQty+=(int)$r->rcvdqty; $rWgt+=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
             }
         }
 
-        // ── 9 & 10. ADJUSTMENT OUT / IN ─────────────────────────────────────
+        // ─ 9 & 10. ADJUSTMENT OUT / IN ───────────────────────────────────
         if ($this->hasTable('itemadj')) {
             foreach (['out','in'] as $dir) {
                 $title      = $dir==='out' ? 'ITEM ADJUSTMENT (STOCK OUT)' : 'ITEM ADJUSTMENT (STOCK IN)';
@@ -896,36 +957,13 @@ class StockPeriodLedgerController extends Controller
             }
         }
 
-        // ── 11 & 12. REPAIR RECEIVED / ISSUED ───────────────────────────────
-        if ($this->hasTable('repaird') && $this->hasTable('repairm')) {
-            foreach (['R'=>'REPAIR RECEIVED DETAILS','G'=>'REPAIR ISSUED DETAILS'] as $gr=>$title) {
-                $rows = DB::select("SELECT m.tdate, m.billno, m.custname, d.code, i.name,
-                    d.qty, d.weight, d.stonewgt, d.givrec
-                    FROM repairm m JOIN repaird d ON m.slno=d.slno JOIN items i ON d.code=i.code
-                    WHERE m.control<=? AND i.code=? AND m.tdate>=? AND m.tdate<=? AND d.givrec=?{$stF}
-                    ORDER BY m.tdate, m.billno", array_merge([$g,$scode,$d1,$d2,$gr],$stB));
-                if ($rows) {
-                    $tq=0; $tw=0.0;
-                    $sect = ['title'=>$title,'cols'=>['Date','Item','Qty','Weight','St.Wgt','Doc.No','Customer'],'rows'=>[],'tq'=>0,'tw'=>0.0];
-                    foreach ($rows as $r) {
-                        $wgt=(float)$r->weight;
-                        $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)),mb_substr(trim($r->name),0,14),
-                            $r->qty,number_format($wgt,3),number_format((float)$r->stonewgt,3),
-                            $r->billno,mb_substr(trim($r->custname??''),0,20)];
-                        $tq+=(int)$r->qty; $tw+=$wgt;
-                        if ($gr==='R') { $rQty+=(int)$r->qty; $rWgt+=$wgt; }
-                        else           { $rQty-=(int)$r->qty; $rWgt-=$wgt; }
-                    }
-                    $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
-                }
-            }
-        }
+        // Repair receipt memo is memo-only; do not include repairm/repaird in item history.
 
-        // ── 13. ORDER ADVANCE DETAILS ────────────────────────────────────────
+        // ─ 13. ORDER ADVANCE DETAILS ──────────────────────────────────────
         if ($this->hasTable('orderdga') && $this->hasTable('orderm')) {
             $rows = DB::select("SELECT m.tdate, m.ordno, m.custname, d.code, i.name, d.qty, d.weight
                 FROM orderm m JOIN orderdga d ON m.slno=d.slno JOIN items i ON d.code=i.code
-                WHERE m.control<=? AND i.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0
+                WHERE m.control<=? AND COALESCE(m.status,1)<>0 AND i.code=? AND m.tdate>=? AND m.tdate<=? AND COALESCE(m.status,1)<>0
                 ORDER BY m.tdate, m.ordno",[$g,$scode,$d1,$d2]);
             if ($rows) {
                 $tq=0; $tw=0.0;
@@ -933,7 +971,7 @@ class StockPeriodLedgerController extends Controller
                 foreach ($rows as $r) {
                     $wgt=(float)$r->weight;
                     $sect['rows'][] = [date('d/m/Y',strtotime($r->tdate)),mb_substr(trim($r->name),0,14),
-                        $r->qty,number_format($wgt,3),$r->ordno,mb_substr(trim($r->custname??''),0,20)];
+                        $r->qty,number_format($wgt,3),$r->ordno,trim($r->custname ?? '')];
                     $tq+=(int)$r->qty; $tw+=$wgt; $rQty+=(int)$r->qty; $rWgt+=$wgt;
                 }
                 $sect['tq']=$tq; $sect['tw']=round($tw,3); $sections[]=$sect;
@@ -943,7 +981,7 @@ class StockPeriodLedgerController extends Controller
         return $sections;
     }
 
-    // ─── DB helper ───────────────────────────────────────────────────────────
+    // ─── DB helper ─────────────────────────────────────────────────────────
 
     private function rawOne(string $sql, array $bindings): object
     {

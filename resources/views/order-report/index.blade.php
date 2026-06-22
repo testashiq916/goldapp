@@ -87,8 +87,22 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
     .summary-bar{background:#f0f0f0;color:#000;border-radius:0}
     .summary-bar .lbl{color:#555}
 }
+body{font-size:15px}
+.titlebar h1{font-size:18px}
+.field label{font-size:13px}
+.field input,.field select{font-size:14px;height:34px}
+.btn{font-size:14px;height:34px}
+.order-hdr{font-size:14px}
+.order-hdr .lbl{font-size:13px}
+.dtbl{font-size:14px}
+.dtbl th{font-size:13px;padding:6px 8px}
+.dtbl td{padding:5px 8px}
+.order-ftr{font-size:14px}
+.order-ftr .lbl{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -328,7 +342,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
     </div>
 </div>
 
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', '.order-card',
   'order_entries_{{ $dateFrom }}_{{ $dateTo }}');

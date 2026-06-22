@@ -5,12 +5,15 @@ namespace App\Support;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
+use Throwable;
 
 class SecondaryDatabaseSync
 {
     public const PERMISSION = 'ALLOWSECONDARYDBSYNC';
+    private const EINVOICE_PERMISSION = 'ALLOWSECONDARYDBSYNC_EINVOICE';
     private const SOFTWARE_SECTION = 'Software';
     private const SECONDARY_PARTY_SERIES_SETTING = 'SecondaryPartySeriesSeperate';
     private const SECONDARY_TRANSACTION_SERIES_SETTING = 'SecondaryTransactionSeriesSeperate';
@@ -65,8 +68,33 @@ class SecondaryDatabaseSync
             return true;
         }
 
+        if (self::isEInvoiceRequest()) {
+            $eInvoiceValue = $parsed[self::SOFTWARE_SECTION][self::EINVOICE_PERMISSION] ?? 'N';
+            if (strtoupper(trim((string) $eInvoiceValue)) === 'N') {
+                return false;
+            }
+        }
+
         $value = $parsed[self::SOFTWARE_SECTION][self::PERMISSION] ?? 'Y';
         return strtoupper(trim((string) $value)) !== 'N';
+    }
+
+    private static function isEInvoiceRequest(): bool
+    {
+        try {
+            if (!app()->bound('request')) {
+                return false;
+            }
+
+            $path = strtolower(trim((string) request()->path(), '/'));
+            return in_array($path, [
+                'api/sales-bill/einvoice',
+                'api/sales-bill/ewaybill',
+                'api/e-invoice-register/cancel',
+            ], true);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private static function softwareFlagEnabled(string $key, string $default = 'N'): bool
@@ -115,6 +143,8 @@ class SecondaryDatabaseSync
             'purchase' => $this->syncPurchaseBundle([$slno]),
             'order' => $this->syncOrderBundle([$slno]),
             'order_sale' => $this->syncOrderSaleBundle([$slno], trim((string) ($context['order_no'] ?? ''))),
+            'sales_return' => $this->syncSalesReturnBundle([$slno]),
+            'purchase_return' => $this->syncPurchaseReturnBundle([$slno]),
             'journal' => $this->syncVoucherBundle([$slno], 'JL'),
             'receipt' => $this->syncVoucherBundle([$slno], 'VR'),
             'payment' => $this->syncVoucherBundle([$slno], 'VP'),
@@ -477,6 +507,10 @@ class SecondaryDatabaseSync
                 $collision = true;
             }
             $targetNumber = trim((string) ($mapped['target_number'] ?? ''));
+            $targetSlno = (int) ($mapped['target_slno'] ?? 0);
+            if ($targetNumber !== '' && $targetSlno > 0 && $this->targetDocumentNumberOwnedByDifferentSlno($targetNumber, $targetTable, $targetColumn, $targetSlno)) {
+                $collision = true;
+            }
             if ($useSeparateSeries && $preferredPrefix !== '' && $targetNumber !== '' && !str_starts_with($targetNumber, $preferredPrefix)) {
                 $collision = true;
             }
@@ -486,8 +520,11 @@ class SecondaryDatabaseSync
                     $collision = true;
                 }
             }
+            if (!$useSeparateSeries && !$collision && $targetNumber !== '' && strcasecmp($targetNumber, $sourceNumber) !== 0) {
+                return $mapped;
+            }
             if (!$useSeparateSeries && !$collision) {
-                $mapped['target_number'] = $sourceNumber;
+                $mapped['target_number'] = $this->resolveTransferShadowNumber($module, $sourceKey, $sourceNumber, $targetTable, $targetColumn);
                 $this->putSyncMapValue('transactions', $module, $sourceKey, $mapped);
                 return $mapped;
             }
@@ -531,7 +568,7 @@ class SecondaryDatabaseSync
                 }
             }
         } else {
-            $targetNumber = $sourceNumber;
+            $targetNumber = $this->resolveTransferShadowNumber($module, $sourceKey, $sourceNumber, $targetTable, $targetColumn);
         }
 
         $mapped = [
@@ -541,6 +578,55 @@ class SecondaryDatabaseSync
         $this->putSyncMapValue('transactions', $module, $sourceKey, $mapped);
 
         return $mapped;
+    }
+
+    private function resolveTransferShadowNumber(string $module, string $sourceKey, string $sourceNumber, string $targetTable, string $targetColumn): string
+    {
+        $sourceNumber = trim($sourceNumber);
+        if ($sourceNumber === '' || !$this->targetTableHasColumn($targetTable, $targetColumn)) {
+            return $sourceNumber;
+        }
+
+        $candidate = $sourceNumber;
+        $suffix = 0;
+        while ($this->targetDocumentNumberTaken($module, $sourceKey, $candidate, $targetTable, $targetColumn)) {
+            $suffix++;
+            $candidate = $sourceNumber . 'd' . ($suffix > 1 ? (string) $suffix : '');
+        }
+
+        return $candidate;
+    }
+
+    private function targetDocumentNumberTaken(string $module, string $sourceKey, string $number, string $targetTable, string $targetColumn): bool
+    {
+        $number = trim($number);
+        if ($number === '') {
+            return false;
+        }
+
+        $mappedByNumber = $this->findSourceKeyByMappedValue('transactions', $module, 'target_number', $number);
+        if ($mappedByNumber !== null && $mappedByNumber !== $sourceKey) {
+            return true;
+        }
+
+        return DB::connection($this->connectionName)
+            ->table($targetTable)
+            ->whereRaw('TRIM(`' . str_replace('`', '``', $targetColumn) . '`) = ?', [$number])
+            ->exists();
+    }
+
+    private function targetDocumentNumberOwnedByDifferentSlno(string $number, string $targetTable, string $targetColumn, int $targetSlno): bool
+    {
+        $number = trim($number);
+        if ($number === '' || $targetSlno <= 0 || !$this->targetTableHasColumn($targetTable, $targetColumn) || !$this->targetTableHasColumn($targetTable, 'slno')) {
+            return false;
+        }
+
+        return DB::connection($this->connectionName)
+            ->table($targetTable)
+            ->whereRaw('TRIM(`' . str_replace('`', '``', $targetColumn) . '`) = ?', [$number])
+            ->where('slno', '<>', $targetSlno)
+            ->exists();
     }
 
     private function isMappedPartyCodeTaken(string $type, string $targetCode, string $sourceCode): bool
@@ -867,12 +953,7 @@ class SecondaryDatabaseSync
             $this->cleanupTargetRowsByCodes('clientsgs', ['code'], [$previousTargetCode]);
         }
 
-        foreach (['clients', 'clients_advanced', 'clientspict', 'clients_kuridet'] as $table) {
-            $this->cleanupTargetRowsByCodes($table, ['code'], [$targetCode]);
-        }
-        $this->cleanupTargetRowsByCodes('accountm', ['accode'], [$targetCode]);
-        $this->cleanupTargetRowsByCodes('clientsgs', ['code'], [$targetCode]);
-
+        // Keep existing target master rows so upsertRowsToTarget can preserve opening balances.
         $clientRows = $this->remapPartyRows($clientRows, $sourceCode, $targetCode, $type, 'clients');
         $accountRows = $this->remapPartyRows($this->fetchLocalRowsByColumn('accountm', 'accode', [$sourceCode]), $sourceCode, $targetCode, $type, 'accountm');
         $advancedRows = $this->remapPartyRows($this->fetchLocalRowsByColumn('clients_advanced', 'code', [$sourceCode]), $sourceCode, $targetCode, $type, 'clients_advanced');
@@ -1201,7 +1282,7 @@ class SecondaryDatabaseSync
         $copied += $this->upsertRowsToTarget('stkandprofit', $this->remapTransactionRows($this->fetchLocalRowsBySlno('stkandprofit', $slnos), $replace), [['slno', 'docno'], ['slno', 'bcode'], ['slno']]);
 
         if ($barcodeCodes !== []) {
-            $copied += $this->upsertRowsToTarget('barcode', $this->fetchLocalRowsByCodes('barcode', ['bcode', 'barcode', 'barcodeno'], $barcodeCodes), [['bcode'], ['barcode'], ['barcodeno'], ['slno'], ['docno']]);
+            $copied += $this->upsertRowsToTarget('barcode', $this->remapTransactionRows($this->fetchLocalRowsByCodes('barcode', ['bcode', 'barcode', 'barcodeno'], $barcodeCodes), $replace), [['bcode'], ['barcode'], ['barcodeno'], ['slno'], ['docno']]);
         }
 
         return $copied;
@@ -1233,6 +1314,73 @@ class SecondaryDatabaseSync
         $copied += $this->upsertRowsToTarget('purchaserd', $this->remapTransactionRows($this->fetchLocalRowsBySlno('purchaserd', $slnos), $replace), [['slno', 'itemslno'], ['slno', 'sl'], ['slno', 'code'], ['slno']]);
         $copied += $this->upsertRowsToTarget('daybook', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybook', $slnos), $replace), [['slno', 'sno'], ['slno', 'accode', 'amount'], ['slno']]);
         $copied += $this->upsertRowsToTarget('daybookpart', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybookpart', $slnos), $replace), [['slno', 'accode', 'vchno'], ['slno', 'accode'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('pdclist', $this->remapTransactionRows($this->fetchLocalRowsBySlno('pdclist', $slnos), $replace), [['slno', 'docno'], ['slno']]);
+
+        return $copied;
+    }
+
+    private function syncSalesReturnBundle(array $slnos): int
+    {
+        $sourceSlno = (int) ($slnos[0] ?? 0);
+        $headerRows = $this->fetchLocalRowsBySlno('salesrm', $slnos);
+        $sourceBillNo = trim((string) ($headerRows[0]['billno'] ?? $headerRows[0]['docno'] ?? ''));
+        $mapped = $this->resolveTransactionMap('sales_return', $sourceSlno, $sourceBillNo, 'salesrm', 'billno', $this->resolveVoucherSeriesFormat($sourceBillNo));
+        $targetSlno = (int) ($mapped['target_slno'] ?? 0);
+        $targetBillNo = trim((string) ($mapped['target_number'] ?? $sourceBillNo));
+        $replace = [
+            'slno' => $targetSlno,
+            'billno' => $targetBillNo,
+            'docno' => $targetBillNo,
+            'vchno' => $targetBillNo,
+            'source_billno' => $sourceBillNo,
+            'source_docno' => $sourceBillNo,
+            'source_vchno' => $sourceBillNo,
+        ];
+
+        foreach (['salesrd', 'salesrm', 'daybook', 'daybookpart', 'daybookratewgt', 'stkandprofit', 'pdclist'] as $table) {
+            $this->cleanupTargetRowsBySlno($table, [$targetSlno]);
+        }
+
+        $copied = 0;
+        $copied += $this->upsertRowsToTarget('salesrm', $this->remapTransactionRows($headerRows, $replace), ['slno']);
+        $copied += $this->upsertRowsToTarget('salesrd', $this->remapTransactionRows($this->fetchLocalRowsBySlno('salesrd', $slnos), $replace), [['slno', 'itemslno'], ['slno', 'sl'], ['slno', 'code'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybook', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybook', $slnos), $replace), [['slno', 'sno'], ['slno', 'accode', 'amount'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybookpart', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybookpart', $slnos), $replace), [['slno', 'accode', 'vchno'], ['slno', 'accode'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybookratewgt', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybookratewgt', $slnos), $replace), [['slno', 'accode'], ['slno', 'docno'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('stkandprofit', $this->remapTransactionRows($this->fetchLocalRowsBySlno('stkandprofit', $slnos), $replace), [['slno', 'docno'], ['slno', 'bcode'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('pdclist', $this->remapTransactionRows($this->fetchLocalRowsBySlno('pdclist', $slnos), $replace), [['slno', 'docno'], ['slno']]);
+
+        return $copied;
+    }
+
+    private function syncPurchaseReturnBundle(array $slnos): int
+    {
+        $sourceSlno = (int) ($slnos[0] ?? 0);
+        $headerRows = $this->fetchLocalRowsBySlno('purchaserm', $slnos);
+        $sourceDocNo = trim((string) ($headerRows[0]['docno'] ?? $headerRows[0]['billno'] ?? ''));
+        $mapped = $this->resolveTransactionMap('purchase_return', $sourceSlno, $sourceDocNo, 'purchaserm', 'docno', $this->resolveVoucherSeriesFormat($sourceDocNo));
+        $targetSlno = (int) ($mapped['target_slno'] ?? 0);
+        $targetDocNo = trim((string) ($mapped['target_number'] ?? $sourceDocNo));
+        $replace = [
+            'slno' => $targetSlno,
+            'docno' => $targetDocNo,
+            'billno' => $targetDocNo,
+            'vchno' => $targetDocNo,
+            'source_docno' => $sourceDocNo,
+            'source_billno' => $sourceDocNo,
+            'source_vchno' => $sourceDocNo,
+        ];
+
+        foreach (['purchaserd', 'purchaserm', 'daybook', 'daybookpart', 'daybookratewgt', 'pdclist'] as $table) {
+            $this->cleanupTargetRowsBySlno($table, [$targetSlno]);
+        }
+
+        $copied = 0;
+        $copied += $this->upsertRowsToTarget('purchaserm', $this->remapTransactionRows($headerRows, $replace), ['slno']);
+        $copied += $this->upsertRowsToTarget('purchaserd', $this->remapTransactionRows($this->fetchLocalRowsBySlno('purchaserd', $slnos), $replace), [['slno', 'itemslno'], ['slno', 'sl'], ['slno', 'code'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybook', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybook', $slnos), $replace), [['slno', 'sno'], ['slno', 'accode', 'amount'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybookpart', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybookpart', $slnos), $replace), [['slno', 'accode', 'vchno'], ['slno', 'accode'], ['slno']]);
+        $copied += $this->upsertRowsToTarget('daybookratewgt', $this->remapTransactionRows($this->fetchLocalRowsBySlno('daybookratewgt', $slnos), $replace), [['slno', 'accode'], ['slno', 'docno'], ['slno']]);
         $copied += $this->upsertRowsToTarget('pdclist', $this->remapTransactionRows($this->fetchLocalRowsBySlno('pdclist', $slnos), $replace), [['slno', 'docno'], ['slno']]);
 
         return $copied;
@@ -1347,7 +1495,11 @@ class SecondaryDatabaseSync
 
         $sourceSlno = (int) ($slnos[0] ?? 0);
         $sourceVchNo = trim((string) ($headerRows[0]['vchno'] ?? ''));
-        $module = strtoupper($prefix) === 'VR' ? 'receipt' : 'payment';
+        $module = match (strtoupper($prefix)) {
+            'VR' => 'receipt',
+            'VP' => 'payment',
+            default => 'journal',
+        };
         $seriesFormat = $this->resolveVoucherSeriesFormat($sourceVchNo);
         $mapped = $this->resolveTransactionMap($module, $sourceSlno, $sourceVchNo, 'daybookpart', 'vchno', $seriesFormat);
         $targetSlno = (int) ($mapped['target_slno'] ?? 0);
@@ -1625,8 +1777,22 @@ class SecondaryDatabaseSync
     {
         $key = ($connection ?? 'default') . '|' . strtolower($table);
         if (!array_key_exists($key, $this->schemaTableExistsCache)) {
-            $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
-            $this->schemaTableExistsCache[$key] = $schema->hasTable($table);
+            try {
+                $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
+                $this->schemaTableExistsCache[$key] = $schema->hasTable($table);
+            } catch (Throwable $e) {
+                if ($connection !== $this->connectionName) {
+                    throw $e;
+                }
+
+                Log::warning('Secondary database table check failed; skipping secondary sync table.', [
+                    'connection' => $connection,
+                    'database' => $this->targetDatabase,
+                    'table' => $table,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->schemaTableExistsCache[$key] = false;
+            }
         }
 
         return $this->schemaTableExistsCache[$key];
@@ -1637,8 +1803,23 @@ class SecondaryDatabaseSync
         $tableKey = ($connection ?? 'default') . '|' . strtolower($table);
         $columnKey = $tableKey . '|' . strtolower($column);
         if (!array_key_exists($columnKey, $this->schemaColumnExistsCache)) {
-            $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
-            $this->schemaColumnExistsCache[$columnKey] = $this->tableExists($connection, $table) && $schema->hasColumn($table, $column);
+            try {
+                $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
+                $this->schemaColumnExistsCache[$columnKey] = $this->tableExists($connection, $table) && $schema->hasColumn($table, $column);
+            } catch (Throwable $e) {
+                if ($connection !== $this->connectionName) {
+                    throw $e;
+                }
+
+                Log::warning('Secondary database column check failed; skipping secondary sync column.', [
+                    'connection' => $connection,
+                    'database' => $this->targetDatabase,
+                    'table' => $table,
+                    'column' => $column,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->schemaColumnExistsCache[$columnKey] = false;
+            }
         }
 
         return $this->schemaColumnExistsCache[$columnKey];
@@ -1651,8 +1832,22 @@ class SecondaryDatabaseSync
             if (!$this->tableExists($connection, $table)) {
                 $this->schemaColumnListingCache[$key] = [];
             } else {
-                $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
-                $this->schemaColumnListingCache[$key] = $schema->getColumnListing($table);
+                try {
+                    $schema = Schema::connection($connection ?? Config::get('database.default', 'mysql'));
+                    $this->schemaColumnListingCache[$key] = $schema->getColumnListing($table);
+                } catch (Throwable $e) {
+                    if ($connection !== $this->connectionName) {
+                        throw $e;
+                    }
+
+                    Log::warning('Secondary database column listing failed; skipping secondary sync table.', [
+                        'connection' => $connection,
+                        'database' => $this->targetDatabase,
+                        'table' => $table,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $this->schemaColumnListingCache[$key] = [];
+                }
             }
         }
 

@@ -31,6 +31,8 @@
         .muted { color: #627389; font-size: 11px; }
         @media (max-width: 1200px) { .filters { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -75,6 +77,14 @@
                     <option value="Gold Only" {{ $filters['itype'] === 'Gold Only' ? 'selected' : '' }}>Gold Only</option>
                     <option value="Silver Only" {{ $filters['itype'] === 'Silver Only' ? 'selected' : '' }}>Silver Only</option>
                     <option value="Other Only" {{ $filters['itype'] === 'Other Only' ? 'selected' : '' }}>Other Only</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="ornament_filter">Ornament</label>
+                <select id="ornament_filter" name="ornament_filter">
+                    @foreach(['All','Ornaments Only','Not Ornaments'] as $opt)
+                        <option value="{{ $opt }}" {{ ($filters['ornament_filter'] ?? 'All') === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="field">

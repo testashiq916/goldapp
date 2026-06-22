@@ -39,6 +39,10 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
 .num{text-align:right}
 .empty{padding:14px;border:1px dashed #d5dfeb;border-radius:10px;color:#667085;background:#fbfdff}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.mode-switch{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.mode-btn{background:#eef4fb;color:#173a63;border:1px solid #cbd9e7}
+.mode-btn.active{background:#173a63;color:#fff;border-color:#173a63}
+.mode-panel{margin-top:16px}
 @media (max-width:980px){
   .grid,.split,.row{grid-template-columns:1fr}
 }
@@ -47,11 +51,58 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
 <body>
 <div class="page">
   <section class="hero">
-    <h1>Bill To One Code</h1>
+    <h1>Multi Bill To One Account</h1>
     <p>Move multiple bill/account codes into one target code in a single action. This updates bill tables and ledger-linked account references together.</p>
     <div class="warn">Use this only when the source codes should no longer stay separate. Example: merge <strong>C001, C003, C004</strong> into <strong>C001</strong> or another existing target code.</div>
   </section>
 
+  <div class="mode-switch">
+    <button class="mode-btn active" type="button" id="btnSaleMode">Sale Bills Only</button>
+    <button class="mode-btn" type="button" id="btnMergeMode">Full Code Merge</button>
+  </div>
+
+  <datalist id="customerCodeHints">
+    @foreach($codeHints as $hint)
+      <option value="{{ $hint['code'] }}">{{ $hint['code'] }} - {{ $hint['name'] }}</option>
+    @endforeach
+  </datalist>
+
+  <div id="saleBillPanel" class="mode-panel">
+    <div class="grid">
+      <section class="card">
+        <h2>Sale Bill Customer Link</h2>
+        <label for="saleBillNos">Sale Bill Numbers</label>
+        <textarea id="saleBillNos" placeholder="Enter sale bill numbers. Example:&#10;GO/26-27/00101&#10;GO/26-27/00102"></textarea>
+        <div class="hint">This option updates only selected rows in <code>salesm</code>. It does not change purchase, return, ledger, or master codes.</div>
+
+        <div class="row" style="margin-top:14px">
+          <div>
+            <label for="saleTargetCode">Customer Code</label>
+            <input id="saleTargetCode" list="customerCodeHints" placeholder="Example: C001">
+          </div>
+          <div>
+            <label>Existing Codes</label>
+            <input value="{{ count($codeHints) }} loaded for quick help" readonly>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-main" type="button" id="btnSalePreview">Preview Bills</button>
+          <button class="btn-danger" type="button" id="btnSaleLink">Link To Customer</button>
+          <button class="btn-alt" type="button" id="btnSaleClear">Clear</button>
+        </div>
+
+        <div id="saleStatus" class="status"></div>
+      </section>
+
+      <section class="card">
+        <h2>Selected Sale Bills</h2>
+        <div id="salePreviewWrap" class="empty">No preview yet.</div>
+      </section>
+    </div>
+  </div>
+
+  <div id="codeMergePanel" class="mode-panel" style="display:none">
   <div class="grid">
     <section class="card">
       <h2>Merge Setup</h2>
@@ -113,6 +164,7 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
       <div id="referenceWrap" class="empty">No preview yet.</div>
     </section>
   </div>
+  </div>
 </div>
 
 <script>
@@ -120,19 +172,34 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
   const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
   const previewUrl = @json(url('/api/accounts/party-code-merge/preview'));
   const mergeUrl = @json(url('/api/accounts/party-code-merge/merge'));
+  const salePreviewUrl = @json(url('/api/accounts/party-code-merge/sale-bills-preview'));
+  const saleLinkUrl = @json(url('/api/accounts/party-code-merge/sale-bills-link'));
   const statusEl = document.getElementById('status');
+  const saleStatusEl = document.getElementById('saleStatus');
   const sourceWrap = document.getElementById('sourceWrap');
   const referenceWrap = document.getElementById('referenceWrap');
+  const salePreviewWrap = document.getElementById('salePreviewWrap');
   let latestPreview = null;
+  let latestSalePreview = null;
 
   function showStatus(message, ok) {
     statusEl.textContent = message;
     statusEl.className = 'status show ' + (ok ? 'ok' : 'err');
   }
 
+  function showSaleStatus(message, ok) {
+    saleStatusEl.textContent = message;
+    saleStatusEl.className = 'status show ' + (ok ? 'ok' : 'err');
+  }
+
   function clearStatus() {
     statusEl.className = 'status';
     statusEl.textContent = '';
+  }
+
+  function clearSaleStatus() {
+    saleStatusEl.className = 'status';
+    saleStatusEl.textContent = '';
   }
 
   function esc(value) {
@@ -171,6 +238,13 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
       source_codes: document.getElementById('sourceCodes').value,
       target_code: document.getElementById('targetCode').value,
       delete_sources: document.getElementById('deleteSources').checked ? 'Y' : 'N'
+    };
+  }
+
+  function salePayload() {
+    return {
+      billnos: document.getElementById('saleBillNos').value,
+      target_code: document.getElementById('saleTargetCode').value
     };
   }
 
@@ -249,6 +323,66 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
     showStatus('Preview loaded for target ' + (latestPreview?.target?.code || ''), true);
   }
 
+  function renderSalePreview(preview) {
+    const rows = preview.bill_rows || [];
+    const missing = preview.missing_billnos || [];
+    if (!rows.length && !missing.length) {
+      salePreviewWrap.innerHTML = '<div class="empty">No sale bills found.</div>';
+      return;
+    }
+
+    salePreviewWrap.innerHTML = `
+      ${rows.length ? `
+      <table>
+        <thead>
+          <tr>
+            <th>Bill No</th>
+            <th>Date</th>
+            <th>Old Code</th>
+            <th>Customer</th>
+            <th class="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              <td>${esc(row.billno)}</td>
+              <td>${esc(row.tdate)}</td>
+              <td>${esc(row.custcode)}</td>
+              <td>${esc(row.custname)}</td>
+              <td class="num">${num(row.billamt)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>` : ''}
+      ${missing.length ? `<div class="warn">Missing sale bill no(s): <strong>${missing.map(esc).join(', ')}</strong></div>` : ''}
+    `;
+  }
+
+  async function runSalePreview() {
+    clearSaleStatus();
+    const data = await post(salePreviewUrl, salePayload());
+    latestSalePreview = data.preview || null;
+    renderSalePreview(latestSalePreview || {});
+    showSaleStatus('Preview loaded for customer ' + (latestSalePreview?.target?.code || ''), true);
+  }
+
+  async function runSaleLink() {
+    if (!latestSalePreview) {
+      await runSalePreview();
+    }
+    const total = Number((latestSalePreview && latestSalePreview.total_bills) || 0);
+    const target = document.getElementById('saleTargetCode').value.trim().toUpperCase();
+    const proceed = window.confirm('Link ' + total.toLocaleString('en-IN') + ' sale bill(s) to customer ' + target + '?');
+    if (!proceed) return;
+
+    clearSaleStatus();
+    const data = await post(saleLinkUrl, salePayload());
+    latestSalePreview = data.preview || latestSalePreview;
+    renderSalePreview(latestSalePreview || {});
+    showSaleStatus(data.message || 'Sale bills linked.', true);
+  }
+
   async function runMerge() {
     if (!latestPreview) {
       await runPreview();
@@ -283,6 +417,36 @@ th{background:#f6f9fc;color:#375b84;font-weight:700}
     sourceWrap.innerHTML = 'No preview yet.';
     referenceWrap.innerHTML = 'No preview yet.';
     clearStatus();
+  });
+
+  document.getElementById('btnSalePreview').addEventListener('click', () => {
+    runSalePreview().catch(err => showSaleStatus(err.message, false));
+  });
+
+  document.getElementById('btnSaleLink').addEventListener('click', () => {
+    runSaleLink().catch(err => showSaleStatus(err.message, false));
+  });
+
+  document.getElementById('btnSaleClear').addEventListener('click', () => {
+    document.getElementById('saleBillNos').value = '';
+    document.getElementById('saleTargetCode').value = '';
+    latestSalePreview = null;
+    salePreviewWrap.innerHTML = 'No preview yet.';
+    clearSaleStatus();
+  });
+
+  document.getElementById('btnSaleMode').addEventListener('click', () => {
+    document.getElementById('saleBillPanel').style.display = '';
+    document.getElementById('codeMergePanel').style.display = 'none';
+    document.getElementById('btnSaleMode').classList.add('active');
+    document.getElementById('btnMergeMode').classList.remove('active');
+  });
+
+  document.getElementById('btnMergeMode').addEventListener('click', () => {
+    document.getElementById('saleBillPanel').style.display = 'none';
+    document.getElementById('codeMergePanel').style.display = '';
+    document.getElementById('btnSaleMode').classList.remove('active');
+    document.getElementById('btnMergeMode').classList.add('active');
   });
 })();
 </script>

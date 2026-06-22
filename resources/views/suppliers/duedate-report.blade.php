@@ -9,7 +9,9 @@
 .tg{color:#2457a6;font-weight:700;}
 .tr{color:#a72c2c;font-weight:700;}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head><body><div class="wrap">
 <h1>{{ $title }}</h1>
 <div class="toolbar">

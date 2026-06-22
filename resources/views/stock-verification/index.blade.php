@@ -62,7 +62,9 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#1f2937}
 .modal-hdr .close{cursor:pointer;font-size:18px;color:#7ec8e3}
 .modal-body{padding:12px;max-height:60vh;overflow:auto}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -288,7 +290,7 @@ function renderItems() {
       <td>${r.netwgt.toFixed(3)}</td>
       <td>${r.dmdwgt.toFixed(2)}</td>
       <td>${r.rate.toFixed(2)}</td>
-      <td>${r.cost.toFixed(2)}</td>
+      <td>${(r.dmdcost ?? 0).toFixed(2)}</td>
       <td class="l">${r.stk}</td>
       <td><button class="btn btn-danger" style="height:20px;padding:0 6px;font-size:10px" onclick="delItem(${i})">&times;</button></td>`;
     tr.style.cursor = 'pointer';
@@ -514,10 +516,12 @@ $('btnPrint').onclick = () => {
     th{background:#333;color:#fff}
     td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:left}
   </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer><\/script>
 </head><body><h3>Barcode Stock Verification</h3><table>
   <thead><tr><th>#</th><th>Barcode</th><th>Code</th><th>Item Name</th><th>Qty</th><th>Weight</th><th>St.Wgt</th><th>Net.Wgt</th><th>DmdWgt</th><th>Rate</th><th>Cost</th><th>Stk</th></tr></thead><tbody>`);
   items.forEach((r, i) => {
-    w.document.write(`<tr><td>${i+1}</td><td>${r.bcode}</td><td>${r.icode}</td><td>${r.itemname}</td><td>${r.qty}</td><td>${r.weight.toFixed(3)}</td><td>${r.stweight.toFixed(3)}</td><td>${r.netwgt.toFixed(3)}</td><td>${r.dmdwgt.toFixed(2)}</td><td>${r.rate.toFixed(2)}</td><td>${r.cost.toFixed(2)}</td><td>${r.stk}</td></tr>`);
+    w.document.write(`<tr><td>${i+1}</td><td>${r.bcode}</td><td>${r.icode}</td><td>${r.itemname}</td><td>${r.qty}</td><td>${r.weight.toFixed(3)}</td><td>${r.stweight.toFixed(3)}</td><td>${r.netwgt.toFixed(3)}</td><td>${r.dmdwgt.toFixed(2)}</td><td>${r.rate.toFixed(2)}</td><td>${(r.dmdcost ?? 0).toFixed(2)}</td><td>${r.stk}</td></tr>`);
   });
   w.document.write('</tbody></table></body></html>');
   w.document.close();

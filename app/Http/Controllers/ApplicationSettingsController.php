@@ -35,8 +35,34 @@ class ApplicationSettingsController extends Controller
             'EMAILFROMNAME'=> '',
             'EMAILFROMADDR'=> '',
             'EINVOICEAPIURL' => '',
+            'EINVOICETOKENURL' => '',
+            'EINVOICEPROVIDER' => '',
+            'EINVOICEAUTHMODE' => 'basic',
             'EINVOICEUSERNAME' => '',
             'EINVOICEPASSWORD' => '',
+            'EINVOICEUSERGSTIN' => '',
+            'EINVOICESELLERGSTIN' => '',
+            'EINVOICEGSPUSERNAME' => '',
+            'EINVOICEGSPPASSWORD' => '',
+            'EINVOICEBUYERGSTIN' => '',
+            'EINVOICEAPIKEY' => '',
+            'EINVOICEAPIKEYHEADER' => 'x-api-key',
+            'EINVOICEEXTRAHEADERS' => '',
+            'EINVOICEPAYLOADROOT' => '',
+            'EINVOICEIRNKEY' => '',
+            'EINVOICEACKNOKEY' => '',
+            'EINVOICEACKDATEKEY' => '',
+            'EINVOICEQRKEY' => '',
+            'EWAYAPIURL' => '',
+            'EWAYTOKENURL' => '',
+            'EWAYUSERNAME' => '',
+            'EWAYPASSWORD' => '',
+            'EWAYUSERGSTIN' => '',
+            'EWAYSELLERGSTIN' => '',
+            'EWAYGSPUSERNAME' => '',
+            'EWAYGSPPASSWORD' => '',
+            'EWAYTRANSPORTERID' => '',
+            'EWAYTRANSPORTERNAME' => '',
         ],
         'Company' => [
             'Name'         => '',
@@ -117,8 +143,18 @@ class ApplicationSettingsController extends Controller
             'BottomMargin' => '10',
             'PrintLetterheadMode' => 'PREPRINTED',
             'PrintPageAlign' => 'LEFT',
+            'PrinterTopMargin' => '230',
+            'PrinterLeftMargin' => '100',
+            'PrinterPageAlign' => 'LEFT',
+            'ReportTopMargin' => '0',
+            'ReportLeftMargin' => '0',
+            'ReportPageAlign' => 'LEFT',
+            'AppHeaderTopMargin' => '10',
+            'AppHeaderLeftMargin' => '4',
+            'AppHeaderPageAlign' => 'CENTER',
             'AskEInvoiceAboveAmount' => 'Y',
             'EInvoiceThresholdAmount' => '1000000',
+            'EWayBillThresholdAmount' => '1000000',
             // Rates / Bullion
             'SRateBeforeTax'          => 'N',
             'SRateBasedOnBullionRate' => 'N',
@@ -305,31 +341,51 @@ class ApplicationSettingsController extends Controller
         }
 
         try {
+            $existing = [];
+            $iniPath = $this->iniPath();
+            if (File::exists($iniPath)) {
+                $existing = $this->normalizeSettings($this->parseIni((string) File::get($iniPath)));
+            }
             $normalized = $this->normalizeSettings($payload);
+            foreach ($existing as $section => $pairs) {
+                if (!is_array($pairs)) continue;
+                if (!isset($normalized[$section]) || !is_array($normalized[$section])) {
+                    $normalized[$section] = [];
+                }
+                foreach ($pairs as $k => $v) {
+                    if (!isset($payload[$section][$k])) {
+                        $normalized[$section][$k] = $v;
+                    }
+                }
+            }
+            $hasShopInfo = $request->has('shop_info');
             $shopInfoPayload = $request->input('shop_info', []);
             if (!is_array($shopInfoPayload)) {
                 $decodedShopInfo = json_decode((string) $shopInfoPayload, true);
                 $shopInfoPayload = is_array($decodedShopInfo) ? $decodedShopInfo : [];
+                $hasShopInfo = $hasShopInfo && is_array($decodedShopInfo);
             }
             $shopInfo = $this->normalizeShopInfo($shopInfoPayload);
-            if ($shopInfo['gstin'] !== '') {
+            if ($hasShopInfo && $shopInfo['gstin'] !== '') {
                 if (!isset($normalized['Company']) || !is_array($normalized['Company'])) {
                     $normalized['Company'] = [];
                 }
                 $normalized['Company']['KGST'] = $shopInfo['gstin'];
             }
             $this->persistIniSettings($normalized);
-            $this->persistShopInfo($shopInfo);
-            $this->persistGeneraliCounter('CLASTNO', (string) $request->input('clastno', ''));
-            $this->persistGeneraliCounter('SLASTNO', (string) $request->input('slastno', ''));
-            $this->persistGeneralsValue('SBPREF', (string) $request->input('sbpref', ''));
-            $this->persistGeneralsValue('SBLEN', (string) $request->input('sblen', ''));
+            if ($hasShopInfo) {
+                $this->persistShopInfo($shopInfo);
+            }
+            if ($request->has('clastno')) $this->persistGeneraliCounter('CLASTNO', (string) $request->input('clastno', ''));
+            if ($request->has('slastno')) $this->persistGeneraliCounter('SLASTNO', (string) $request->input('slastno', ''));
+            if ($request->has('sbpref'))  $this->persistGeneralsValue('SBPREF', (string) $request->input('sbpref', ''));
+            if ($request->has('sblen'))   $this->persistGeneralsValue('SBLEN', (string) $request->input('sblen', ''));
         } catch (\Throwable $e) {
             return response()->json(['ok' => false, 'msg' => $e->getMessage()]);
         }
 
         $this->logDelpart($request, 'Application Settings Saved', ['utype' => 'E', 'ttype' => 'R']);
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'msg' => 'Application settings saved.']);
     }
 
     /** POST /api/application-settings/upload-logo */
@@ -406,6 +462,8 @@ class ApplicationSettingsController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+
 
     // ── helpers ──────────────────────────────────────
     private function logoUrl(string $filename): string

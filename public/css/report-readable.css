@@ -1,0 +1,198 @@
+/* Shared readability and selection styles for report/list pages. */
+
+:root {
+    --report-text: #0f172a;
+    --report-muted: #334155;
+    --report-header: #1e293b;
+    --report-row-hover: #eaf3ff;
+    --report-row-selected: #ffe8a3;
+    --report-row-selected-border: #d97706;
+    --report-font-base: 18px;
+    --report-font-cell: 18px;
+    --report-font-head: 16px;
+    --report-font-control: 17px;
+}
+
+html,
+body {
+    width: 100% !important;
+    min-height: 100% !important;
+}
+
+body {
+    color: var(--report-text) !important;
+    font-size: var(--report-font-base) !important;
+    line-height: 1.38 !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+.wrap,
+.page-wrap,
+.main-wrap,
+.content-wrap,
+.container,
+.app-container {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+h1,
+h2,
+h3,
+.toolbar h1,
+.page-title,
+.panel-header {
+    color: var(--report-header) !important;
+    font-weight: 800 !important;
+}
+
+label,
+.tb-lbl,
+.field label,
+.muted,
+.summary span,
+.sub-header,
+.pill,
+.status-box,
+.empty {
+    color: var(--report-muted) !important;
+    font-size: var(--report-font-control) !important;
+}
+
+input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+select,
+textarea,
+button,
+.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    color: var(--report-text) !important;
+    font-size: var(--report-font-control) !important;
+    line-height: 1.25 !important;
+}
+
+button,
+.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    font-weight: 800 !important;
+}
+
+.toolbar,
+form.toolbar,
+.tb-row,
+.summary,
+.sub-header {
+    color: var(--report-text) !important;
+}
+
+.toolbar h1,
+.toolbar label,
+.toolbar span,
+.toolbar .tb-lbl,
+.toolbar .tb-check,
+.toolbar .muted {
+    color: #ffffff !important;
+}
+
+.toolbar input,
+.toolbar select {
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+}
+
+.table-wrap,
+.grid-wrap,
+.tbl-wrap,
+.list-wrap,
+.table-container,
+.tbl-container,
+.table-scroll,
+#gridwrap {
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+table {
+    color: var(--report-text) !important;
+    font-size: var(--report-font-cell) !important;
+    line-height: 1.35 !important;
+}
+
+th,
+thead th,
+thead td {
+    color: var(--report-header) !important;
+    font-size: var(--report-font-head) !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+}
+
+td,
+tbody td,
+tfoot td {
+    color: var(--report-text) !important;
+    font-size: var(--report-font-cell) !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+}
+
+tbody tr {
+    cursor: default;
+}
+
+tbody tr:hover td {
+    background: var(--report-row-hover) !important;
+    color: var(--report-text) !important;
+}
+
+tbody tr.report-row-selected td,
+tbody tr.sel td,
+tbody tr.selected td,
+tbody tr.is-selected td,
+tbody tr[aria-selected="true"] td {
+    background: var(--report-row-selected) !important;
+    color: #111827 !important;
+    font-weight: 800 !important;
+    box-shadow: inset 4px 0 0 var(--report-row-selected-border);
+}
+
+tbody tr.report-row-selected:focus,
+tbody tr.sel:focus,
+tbody tr.selected:focus,
+tbody tr.is-selected:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+}
+
+td.num,
+th.num,
+.num {
+    font-variant-numeric: tabular-nums;
+}
+
+.summary {
+    font-size: 18px !important;
+    color: var(--report-text) !important;
+}
+
+.summary b,
+.strong {
+    color: #0f3e67 !important;
+    font-weight: 900 !important;
+}
+
+@media print {
+    tbody tr.report-row-selected td,
+    tbody tr.sel td,
+    tbody tr.selected td,
+    tbody tr.is-selected td,
+    tbody tr[aria-selected="true"] td {
+        background: transparent !important;
+        color: #000 !important;
+        box-shadow: none !important;
+    }
+}

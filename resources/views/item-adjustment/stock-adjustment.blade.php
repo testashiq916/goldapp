@@ -33,7 +33,9 @@
   .suggest-list div{padding:6px 8px;cursor:pointer}
   .suggest-list div:hover{background:#e8f1ff}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="window">
@@ -264,7 +266,7 @@ document.addEventListener('keydown', (e) => {
 
 loadRows();
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', 'table', 'stock-adjustment');
 </script>

@@ -18,6 +18,8 @@
         .btn{height:42px;padding:0 22px;border-radius:12px;border:1px solid #cbd7e4;background:#fff;color:var(--text);font-size:14px;font-weight:700;cursor:pointer}
         .btn:hover{background:#f8fbff}
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="page">

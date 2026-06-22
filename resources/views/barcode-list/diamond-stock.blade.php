@@ -47,7 +47,9 @@ tfoot td{position:sticky;bottom:0;background:#f4e8f4;font-weight:700;color:#4a19
 .count-bar{text-align:right;font-size:11px;color:var(--muted);margin-top:4px}
 @media print{.toolbar{display:none}body{background:#fff}.window{margin:0;box-shadow:none;border-radius:0}.tbl-wrap{max-height:none;overflow:visible;border:0}th,tfoot td{position:static}.summary-bar{background:#f0f0f0;color:#000;border-radius:0}.summary-bar .lbl{color:#555}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 @php
@@ -146,7 +148,7 @@ tfoot td{position:sticky;bottom:0;background:#f4e8f4;font-weight:700;color:#4a19
     @endif
     </div>
 </div>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>ReportExport.initFromTable('btnSaveAs','#dsTable','diamond_stock_{{ date("Y-m-d") }}');</script>
 </body>
 </html>

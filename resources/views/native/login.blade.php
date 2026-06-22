@@ -5,214 +5,666 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sign In — {{ $shopName }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
     @php($useCompanySwitchTheme = !empty($companySwitchTheme))
     <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{
-            --violet:{{ $useCompanySwitchTheme ? '#6956F6' : '#B8860B' }};
-            --violet-bright:{{ $useCompanySwitchTheme ? '#8777ff' : '#D4A017' }};
-            --violet-pale:{{ $useCompanySwitchTheme ? '#d9d2ff' : '#F0D080' }};
-            --violet-deep:{{ $useCompanySwitchTheme ? '#4f3fca' : '#7A5C00' }};
-            --cream:{{ $useCompanySwitchTheme ? '#f8f7ff' : '#FAF6EE' }};
-            --parchment:{{ $useCompanySwitchTheme ? '#efeefe' : '#F2EAD8' }};
-            --parchment2:{{ $useCompanySwitchTheme ? '#dddaf8' : '#E8DFC8' }};
-            --brown:{{ $useCompanySwitchTheme ? '#2a2458' : '#3D2B0E' }};
-            --brown-mid:{{ $useCompanySwitchTheme ? '#3b3377' : '#5C3D1A' }};
-            --brown-light:{{ $useCompanySwitchTheme ? '#5e55a5' : '#8B6430' }};
-            --text:{{ $useCompanySwitchTheme ? '#221b4a' : '#2A1A08' }};
-            --text-mid:{{ $useCompanySwitchTheme ? '#564d8d' : '#5A3E20' }};
-            --border:{{ $useCompanySwitchTheme ? '#a99eff' : '#C8A84A' }};
-            --shadow:{{ $useCompanySwitchTheme ? 'rgba(62,51,119,.18)' : 'rgba(61,43,14,.18)' }};
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; }
+
+        :root {
+            --gold:        {{ $useCompanySwitchTheme ? '#6956F6' : '#B8860B' }};
+            --gold-mid:    {{ $useCompanySwitchTheme ? '#8777ff' : '#C9962A' }};
+            --gold-bright: {{ $useCompanySwitchTheme ? '#a99eff' : '#D4A017' }};
+            --gold-pale:   {{ $useCompanySwitchTheme ? '#d9d2ff' : '#E8C96A' }};
+            --panel-bg:    {{ $useCompanySwitchTheme ? '#eae6ff' : '#F2E8D0' }};
+            --cream:       {{ $useCompanySwitchTheme ? '#f8f7ff' : '#FDFAF6' }};
+            --card-bg:     #ffffff;
+            --brown:       {{ $useCompanySwitchTheme ? '#2a2458' : '#3D2B0E' }};
+            --brown-mid:   {{ $useCompanySwitchTheme ? '#3b3377' : '#5C3D1A' }};
+            --text-mid:    {{ $useCompanySwitchTheme ? '#564d8d' : '#6B4E2A' }};
+            --text:        {{ $useCompanySwitchTheme ? '#221b4a' : '#2A1A08' }};
+            --border:      {{ $useCompanySwitchTheme ? '#a99eff' : '#D4A017' }};
+            --shadow:      {{ $useCompanySwitchTheme ? 'rgba(62,51,119,.14)' : 'rgba(61,43,14,.10)' }};
+            --gp-bg:       {{ $useCompanySwitchTheme ? '#1a1640' : '#0D0A04' }};
+            --gp-name:     {{ $useCompanySwitchTheme ? '#a99eff' : '#E8B84B' }};
+            --gp-sub:      {{ $useCompanySwitchTheme ? 'rgba(169,158,255,.65)' : 'rgba(201,150,42,.65)' }};
+            --btn-grad:    {{ $useCompanySwitchTheme ? 'linear-gradient(135deg,#4f3fca,#6956F6 40%,#8777ff 70%,#4f3fca)' : 'linear-gradient(135deg,#9A6F00 0%,#C9962A 40%,#D4A017 70%,#9A6F00 100%)' }};
+            --btn-shadow:  {{ $useCompanySwitchTheme ? 'rgba(105,86,246,.35)' : 'rgba(180,130,10,.32)' }};
+            --feat-border: {{ $useCompanySwitchTheme ? 'rgba(105,86,246,.18)' : 'rgba(201,150,42,.18)' }};
+            /* Marble blob colours */
+            --blob1: {{ $useCompanySwitchTheme ? 'rgba(105,86,246,.28)' : 'rgba(212,160,23,.32)' }};
+            --blob2: {{ $useCompanySwitchTheme ? 'rgba(135,119,255,.22)' : 'rgba(184,134,11,.22)' }};
+            --blob3: {{ $useCompanySwitchTheme ? 'rgba(169,158,255,.18)' : 'rgba(232,200,100,.20)' }};
+            --blob4: {{ $useCompanySwitchTheme ? 'rgba(79,63,202,.20)' : 'rgba(154,111,0,.18)' }};
         }
-        html,body{height:100%}
-        body{font-family:'EB Garamond',Georgia,serif;min-height:100vh;background:var(--parchment);display:flex;background-image:radial-gradient(ellipse at 20% 50%,rgba(105,86,246,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(135,119,255,.08) 0%,transparent 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M0 0h60v60H0z' fill='none'/%3E%3Cpath d='M30 0v60M0 30h60' stroke='%236956F6' stroke-width='.15' opacity='.20'/%3E%3C/svg%3E")}
-        .wrap{display:flex;min-height:100vh;width:100%}
 
-        /* LEFT PANEL */
-        .panel{width:440px;flex-shrink:0;background:var(--violet);background-image:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.10) 0%,transparent 55%),radial-gradient(ellipse at 70% 80%,rgba(216,210,255,.18) 0%,transparent 55%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='35' fill='none' stroke='%23d9d2ff' stroke-width='.2' opacity='.24'/%3E%3C/svg%3E");display:flex;flex-direction:column;overflow:hidden}
-        .panel-topbar{height:6px;background:linear-gradient(90deg,var(--violet-deep) 0%,var(--violet) 30%,var(--violet-bright) 55%,var(--violet) 80%,var(--violet-deep) 100%);flex-shrink:0}
-        .panel-inner{flex:1;display:flex;flex-direction:column;padding:40px 44px 36px;overflow:hidden}
-        .brand{text-align:center;margin-bottom:28px}
-        .brand-emblem{width:72px;height:72px;margin:0 auto 14px}
-        .brand-emblem svg{width:100%;height:100%}
-        .brand-name{font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:3px;text-transform:uppercase;line-height:1.2;text-shadow:0 1px 10px rgba(255,255,255,.18)}
-        .brand-sub{font-family:'EB Garamond',serif;font-size:12px;color:var(--violet-pale);letter-spacing:2.5px;text-transform:uppercase;margin-top:5px;opacity:.9}
-        .ornament{display:flex;align-items:center;gap:10px;margin:0 0 24px;color:var(--violet-pale);opacity:.75}
-        .ornament::before,.ornament::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--violet-pale),transparent)}
-        .ornament span{font-size:14px;flex-shrink:0}
-        .panel-tagline{font-family:'Playfair Display',serif;font-size:24px;font-weight:400;font-style:italic;color:#fff;line-height:1.45;margin-bottom:10px;text-align:center}
-        .panel-tagline em{font-style:normal;color:#fff;font-weight:600}
-        .panel-desc{font-family:'EB Garamond',serif;font-size:14px;color:rgba(255,255,255,.50);line-height:1.75;text-align:center;margin-bottom:24px}
-        .features{list-style:none;border:1px solid rgba(217,210,255,.24);overflow:hidden;margin-bottom:28px}
-        .features li{display:flex;align-items:center;gap:12px;padding:11px 16px;font-family:'EB Garamond',serif;font-size:14.5px;color:rgba(255,255,255,.78);border-bottom:1px solid rgba(217,210,255,.12)}
-        .features li:last-child{border-bottom:none}
-        .feat-bullet{color:#fff;font-size:12px;flex-shrink:0}
-        .panel-footer{text-align:center;font-family:'EB Garamond',serif;font-size:12px;color:rgba(255,255,255,.22);line-height:1.7;margin-top:auto}
-        .panel-footer a{color:rgba(217,210,255,.72);text-decoration:none}
-        .panel-footer a:hover{color:#fff}
-        .panel-bottombar{height:4px;background:linear-gradient(90deg,var(--violet-deep),var(--violet),var(--violet-bright),var(--violet),var(--violet-deep));opacity:.85;flex-shrink:0}
+        body { font-family: 'EB Garamond', Georgia, serif; min-height: 100vh; display: flex; }
 
-        /* RIGHT - LOGIN */
-        .main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 32px;background:var(--cream);background-image:radial-gradient(ellipse at 50% 50%,rgba(105,86,246,.05) 0%,transparent 70%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='.8' fill='%236956F6' opacity='.18'/%3E%3C/svg%3E")}
-        .card{width:100%;max-width:400px;background:#fff;border:1px solid rgba(105,86,246,.22);box-shadow:0 2px 6px rgba(62,51,119,.06),0 12px 40px rgba(62,51,119,.10);position:relative;animation:fadeUp .5s ease both}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        .card::before,.card::after,.card-corner-bl,.card-corner-br{content:'';position:absolute;width:22px;height:22px;border-color:var(--violet);border-style:solid}
-        .card::before{top:-1px;left:-1px;border-width:2px 0 0 2px}
-        .card::after{top:-1px;right:-1px;border-width:2px 2px 0 0}
-        .card-corner-bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px}
-        .card-corner-br{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
-        .card-rule{height:3px;background:linear-gradient(90deg,var(--violet-deep),var(--violet),var(--violet-pale),var(--violet),var(--violet-deep))}
-        .card-body{padding:36px 40px 40px}
-        .card-heading{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--parchment2);position:relative}
-        .card-heading::after{content:'◆';position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:#fff;padding:0 8px;color:var(--violet);font-size:11px}
-        .card-eyebrow{font-family:'Cinzel',serif;font-size:10px;font-weight:600;letter-spacing:3px;color:var(--violet);text-transform:uppercase;margin-bottom:8px}
-        .card-title{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--brown);letter-spacing:-.3px;line-height:1.15}
-        .card-subtitle{font-family:'EB Garamond',serif;font-size:14.5px;color:var(--text-mid);margin-top:6px;font-style:italic}
-        .field{margin-bottom:22px}
-        .field label{display:block;font-family:'Cinzel',serif;font-size:10.5px;font-weight:600;letter-spacing:1.8px;color:var(--brown-mid);text-transform:uppercase;margin-bottom:8px}
-        .input-wrap{position:relative}
-        .input-wrap input{width:100%;background:var(--cream);border:1px solid var(--parchment2);border-bottom:2px solid var(--parchment2);padding:11px 42px 11px 14px;font-family:'EB Garamond',serif;font-size:16px;color:var(--text);outline:none;transition:border-color .2s,background .2s,box-shadow .2s}
-        .input-wrap input:focus{background:#fff;border-color:var(--violet);border-bottom-color:var(--violet);box-shadow:0 2px 0 var(--violet),0 4px 12px rgba(105,86,246,.12)}
-        .input-wrap input::placeholder{color:#9a94c5;font-style:italic}
-        .toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#9a94c5;display:flex;align-items:center}
-        .toggle-pw:hover{color:var(--violet)}
-        .row-check{display:flex;align-items:center;gap:9px;margin-bottom:26px}
-        .row-check input[type=checkbox]{width:15px;height:15px;accent-color:var(--violet);cursor:pointer}
-        .row-check label{font-family:'EB Garamond',serif;font-size:14.5px;color:var(--text-mid);cursor:pointer}
-        .btn-login{width:100%;padding:13px 20px;border:none;background:var(--violet);color:#fff;font-family:'Cinzel',serif;font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:background .25s,box-shadow .25s,transform .15s;box-shadow:0 3px 12px rgba(105,86,246,.26),inset 0 1px 0 rgba(255,255,255,.10)}
-        .btn-login::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transition:left .5s ease}
-        .btn-login:hover{background:var(--violet-deep);box-shadow:0 5px 18px rgba(105,86,246,.34);transform:translateY(-1px)}
-        .btn-login:hover::before{left:100%}
-        .btn-login:active{transform:translateY(0)}
-        .card-note{text-align:center;margin-top:20px;font-family:'EB Garamond',serif;font-size:12.5px;color:#9189c4;font-style:italic}
-        /* Software brand animated */
-        .software-brand{text-align:center;margin-top:auto;margin-bottom:20px;position:relative;z-index:1}
-        .sw-diamond{width:52px;height:52px;margin:0 auto 12px;animation:sw-float 3s ease-in-out infinite;filter:drop-shadow(0 4px 12px rgba(135,119,255,.45))}
-        .sw-diamond svg{width:100%;height:100%}
-        @keyframes sw-float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-8px) rotate(2deg)}}
-        .sw-gem-outline{animation:sw-glow 2.5s ease-in-out infinite}
-        @keyframes sw-glow{0%,100%{stroke:var(--violet-bright);stroke-width:1.2}50%{stroke:#fff;stroke-width:1.8}}
-        .sw-gem-top{animation:sw-facet 3s ease-in-out infinite}
-        @keyframes sw-facet{0%,100%{fill:rgba(135,119,255,.32)}50%{fill:rgba(255,255,255,.38)}}
-        .sw-name{font-family:'Cinzel',serif;font-size:28px;font-weight:700;letter-spacing:6px;text-transform:uppercase;line-height:1;margin-bottom:6px;background:linear-gradient(90deg,var(--violet-pale) 0%,#fff 35%,var(--violet-pale) 70%,var(--violet-bright) 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:sw-shimmer 3s linear infinite;text-shadow:none}
-        @keyframes sw-shimmer{to{background-position:200% center}}
-        .sw-tagline{font-family:'EB Garamond',serif;font-size:13px;color:var(--violet-pale);letter-spacing:3px;text-transform:uppercase;opacity:.9;margin-bottom:10px}
-        .sw-shimmer-bar{width:120px;height:2px;margin:0 auto;background:linear-gradient(90deg,transparent,#fff,transparent);background-size:200% 100%;animation:sw-bar-move 2s linear infinite;border-radius:2px}
-        @keyframes sw-bar-move{from{background-position:-200% 0}to{background-position:200% 0}}
+        /* ══════════════════════════════════
+           LEFT PANEL — Animated Marble
+        ══════════════════════════════════ */
+        .left-panel {
+            width: 42%;
+            flex-shrink: 0;
+            background: var(--panel-bg);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 44px 36px;
+            overflow: hidden;
+        }
 
-        /* Shop details */
-        .shop-details{text-align:center;margin-bottom:8px}
-        .shop-detail-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 16px;font-family:'EB Garamond',serif;font-size:15px;color:rgba(255,255,255,.75);line-height:1.5}
-        .shop-icon{color:#fff;font-size:14px;flex-shrink:0}
+        /* ── Animated liquid marble blobs ── */
+        .marble-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(52px);
+            pointer-events: none;
+            will-change: transform, opacity;
+        }
+        .blob-1 {
+            width: 340px; height: 340px;
+            top: -80px; left: -100px;
+            background: radial-gradient(circle, var(--blob1) 0%, transparent 70%);
+            animation: blobDrift1 18s ease-in-out infinite;
+        }
+        .blob-2 {
+            width: 280px; height: 280px;
+            top: 30%; right: -80px;
+            background: radial-gradient(circle, var(--blob2) 0%, transparent 70%);
+            animation: blobDrift2 22s ease-in-out infinite;
+        }
+        .blob-3 {
+            width: 320px; height: 320px;
+            bottom: 10%; left: -60px;
+            background: radial-gradient(circle, var(--blob3) 0%, transparent 70%);
+            animation: blobDrift3 26s ease-in-out infinite;
+        }
+        .blob-4 {
+            width: 220px; height: 220px;
+            top: 55%; right: 20%;
+            background: radial-gradient(circle, var(--blob4) 0%, transparent 70%);
+            animation: blobDrift4 20s ease-in-out infinite;
+        }
+        .blob-5 {
+            width: 180px; height: 180px;
+            top: 20%; left: 30%;
+            background: radial-gradient(circle, var(--blob3) 0%, transparent 70%);
+            animation: blobDrift5 15s ease-in-out infinite;
+        }
 
-        /* Sparkle particles */
-        .sparkle{position:absolute;color:#fff;pointer-events:none;font-size:11px;line-height:1;opacity:0;animation:sparkle-rise var(--dur,2.5s) ease-in-out infinite;animation-delay:var(--del,0s);z-index:6;text-shadow:0 0 8px rgba(255,255,255,.9)}
-        @keyframes sparkle-rise{0%{opacity:0;transform:translateY(8px) scale(.4) rotate(0deg)}20%{opacity:1}80%{opacity:.7}100%{opacity:0;transform:translateY(-55px) scale(1.1) rotate(180deg)}}
+        @keyframes blobDrift1 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33%      { transform: translate(60px,80px) scale(1.12); }
+            66%      { transform: translate(-30px,120px) scale(.92); }
+        }
+        @keyframes blobDrift2 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            40%      { transform: translate(-80px,60px) scale(1.18); }
+            70%      { transform: translate(40px,-40px) scale(.88); }
+        }
+        @keyframes blobDrift3 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            30%      { transform: translate(70px,-60px) scale(1.1); }
+            65%      { transform: translate(-50px,40px) scale(1.06); }
+        }
+        @keyframes blobDrift4 {
+            0%,100% { transform: translate(0,0) scale(1) rotate(0deg); }
+            50%      { transform: translate(-60px,-80px) scale(1.2) rotate(15deg); }
+        }
+        @keyframes blobDrift5 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            50%      { transform: translate(40px,50px) scale(1.15); }
+        }
 
-        /* Floating gold dust */
-        .panel-inner{position:relative;overflow:hidden}
-        .panel-inner::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='1' fill='%23ffffff' opacity='.16'/%3E%3Ccircle cx='20' cy='30' r='.5' fill='%23d9d2ff' opacity='.22'/%3E%3Ccircle cx='80' cy='70' r='.7' fill='%238777ff' opacity='.18'/%3E%3C/svg%3E");animation:dust-drift 20s linear infinite;pointer-events:none;z-index:0}
-        @keyframes dust-drift{from{background-position:0 0}to{background-position:100px 200px}}
-        .brand,.ornament,.shop-details,.panel-tagline,.panel-desc,.features,.panel-footer{position:relative;z-index:1}
+        /* ── Animated SVG wave lines ── */
+        .wave-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: visible;
+        }
+        .wave-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: waveDrift 12s ease-in-out infinite;
+        }
+        .w1 { stroke: var(--gold-mid); stroke-width: 1.2; opacity: .30; animation-duration: 14s; }
+        .w2 { stroke: var(--gold-bright); stroke-width: .8; opacity: .22; animation-duration: 18s; animation-delay: -4s; }
+        .w3 { stroke: var(--gold-mid); stroke-width: 1.5; opacity: .18; animation-duration: 22s; animation-delay: -8s; }
+        .w4 { stroke: var(--gold-pale); stroke-width: .6; opacity: .26; animation-duration: 16s; animation-delay: -2s; }
+        .w5 { stroke: var(--gold-bright); stroke-width: 1; opacity: .20; animation-duration: 20s; animation-delay: -6s; }
 
-        .error-msg{background:#fde8e8;border:1px solid #e8a0a0;color:#7a2020;padding:10px 14px;margin-bottom:18px;font-size:14px;text-align:center}
-        @media(max-width:860px){.panel{display:none}.main{background:var(--parchment)}}
-        @media(max-width:480px){.card-body{padding:28px 22px 32px}}
+        @keyframes waveDrift {
+            0%,100% { d: path("M-60,160 Q120,60 280,220 Q440,380 660,160"); }
+            50%      { d: path("M-60,200 Q140,80 300,180 Q460,280 660,200"); }
+        }
+
+        /* ── Floating sparkle particles ── */
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 10px;
+            color: var(--gold-bright);
+            opacity: 0;
+            animation: sparklePop var(--dur,3s) ease-in-out infinite var(--del,0s);
+            text-shadow: 0 0 8px var(--gold-mid);
+            z-index: 3;
+        }
+        @keyframes sparklePop {
+            0%   { opacity:0; transform: translateY(6px) scale(.3) rotate(0deg); }
+            20%  { opacity:.9; }
+            80%  { opacity:.6; }
+            100% { opacity:0; transform: translateY(-60px) scale(1.1) rotate(200deg); }
+        }
+
+        /* ── Content layer ── */
+        .left-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        /* Brand diamond — float animation */
+        .brand-icon {
+            width: 80px; height: 80px;
+            margin: 0 auto 16px;
+            animation: diamondFloat 4s ease-in-out infinite;
+            filter: drop-shadow(0 6px 18px var(--gold-mid));
+        }
+        @keyframes diamondFloat {
+            0%,100% { transform: translateY(0) rotate(0deg); }
+            50%      { transform: translateY(-10px) rotate(1.5deg); }
+        }
+
+        .brand-name {
+            font-family: 'Cinzel', serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--brown);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 1.25;
+        }
+        .brand-sub {
+            font-family: 'EB Garamond', serif;
+            font-size: 11px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--gold-mid);
+            text-align: center;
+            margin-top: 6px;
+            margin-bottom: 24px;
+        }
+
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; margin-bottom: 28px;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px;
+            background: var(--gold-mid); opacity: .38;
+        }
+        .divider-gem { color: var(--gold-mid); font-size: 12px; }
+
+        .shop-info { width: 100%; margin-bottom: auto; }
+        .shop-info-row {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 8px 0;
+            font-family: 'EB Garamond', serif; font-size: 15.5px;
+            color: var(--text-mid); line-height: 1.55;
+        }
+        .shop-icon { color: var(--gold-mid); flex-shrink: 0; margin-top: 2px; }
+
+        /* Gold Plus card — shimmer + glow */
+        .goldplus-card {
+            width: 100%;
+            background: linear-gradient(135deg, var(--gp-bg) 0%, #0A0804 60%, var(--gp-bg) 100%);
+            border-radius: 14px;
+            padding: 22px 28px;
+            text-align: center;
+            margin-top: 28px; margin-bottom: 28px;
+            box-shadow: 0 10px 36px rgba(0,0,0,.4), inset 0 1px 0 rgba(201,150,42,.18);
+            position: relative; overflow: hidden;
+            animation: cardPulseGlow 4s ease-in-out infinite;
+        }
+        @keyframes cardPulseGlow {
+            0%,100% { box-shadow: 0 10px 36px rgba(0,0,0,.4), 0 0 0 0 rgba(201,150,42,0); }
+            50%      { box-shadow: 0 14px 48px rgba(0,0,0,.45), 0 0 24px 4px rgba(201,150,42,.12); }
+        }
+        .goldplus-card::after {
+            content: ''; position: absolute; inset: 0; border-radius: 14px;
+            border: 1px solid rgba(201,150,42,.25); pointer-events: none;
+        }
+        /* Shimmer sweep across card */
+        .goldplus-card::before {
+            content: ''; position: absolute;
+            top: 0; left: -120%;
+            width: 60%; height: 100%;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.08) 50%, transparent 60%);
+            animation: shimmerSweep 4s ease-in-out infinite 1s;
+            pointer-events: none; z-index: 1;
+        }
+        @keyframes shimmerSweep {
+            0%   { left: -120%; }
+            60%,100% { left: 160%; }
+        }
+
+        .goldplus-icon { width: 38px; height: 38px; margin: 0 auto 10px; position: relative; z-index: 2; }
+        .goldplus-name {
+            font-family: 'Cinzel', serif;
+            font-size: 22px; font-weight: 700;
+            letter-spacing: 5px; text-transform: uppercase;
+            line-height: 1; margin-bottom: 6px;
+            position: relative; z-index: 2;
+            background: linear-gradient(90deg, var(--gp-name) 0%, #fff 40%, var(--gp-name) 65%, #E8C060 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: goldShimmer 3s linear infinite;
+        }
+        @keyframes goldShimmer { to { background-position: 200% center; } }
+        .goldplus-sub {
+            font-family: 'EB Garamond', serif;
+            font-size: 11px; letter-spacing: 3.5px; text-transform: uppercase;
+            color: var(--gp-sub); position: relative; z-index: 2;
+        }
+
+        .left-footer {
+            text-align: center; font-family: 'EB Garamond', serif;
+            font-size: 12.5px; color: var(--text-mid); opacity: .55; line-height: 1.65;
+        }
+        .left-footer a { color: var(--gold-mid); text-decoration: none; }
+        .left-footer a:hover { color: var(--gold-bright); }
+
+        /* ══════════════════════════════════
+           RIGHT PANEL
+        ══════════════════════════════════ */
+        .right-panel {
+            flex: 1;
+            background: var(--cream);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px 32px 0;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Subtle animated gradient wash on right */
+        .right-panel::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(ellipse 60% 60% at 50% 40%, var(--blob3) 0%, transparent 70%);
+            animation: rightGlow 10s ease-in-out infinite;
+        }
+        @keyframes rightGlow {
+            0%,100% { opacity:.5; transform: scale(1) translateY(0); }
+            50%      { opacity:.8; transform: scale(1.06) translateY(-20px); }
+        }
+
+        .right-inner {
+            position: relative; z-index: 1;
+            flex: 1; display: flex;
+            align-items: center; justify-content: center;
+            width: 100%; padding-bottom: 32px;
+        }
+
+        /* Login card */
+        .login-card {
+            width: 100%; max-width: 460px;
+            background: var(--card-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 5px;
+            padding: 44px 48px;
+            box-shadow: 0 4px 28px var(--shadow), 0 1px 4px rgba(0,0,0,.04);
+            animation: fadeUp .5s cubic-bezier(.22,1,.36,1) both;
+            position: relative;
+        }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+        /* Animated gold border glow on card */
+        .login-card::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 6px;
+            background: linear-gradient(135deg, var(--border), transparent 40%, transparent 60%, var(--border));
+            background-size: 200% 200%;
+            animation: borderShimmer 5s linear infinite;
+            z-index: -1; opacity: .55;
+        }
+        @keyframes borderShimmer {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Eyebrow pill */
+        .eyebrow-badge {
+            display: table; margin: 0 auto 20px;
+            border: 1px solid var(--border); border-radius: 100px;
+            padding: 5px 22px;
+            font-family: 'Cinzel', serif; font-size: 9px; font-weight: 600;
+            letter-spacing: 2.5px; text-transform: uppercase;
+            color: var(--gold-mid);
+            animation: badgePop .6s cubic-bezier(.34,1.56,.64,1) .3s both;
+        }
+        @keyframes badgePop { from { opacity:0; transform:scale(.7); } to { opacity:1; transform:scale(1); } }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 38px; font-weight: 700;
+            color: var(--brown); text-align: center;
+            line-height: 1.1; margin-bottom: 8px;
+            animation: fadeUp .5s ease .2s both;
+        }
+        .card-subtitle {
+            font-family: 'EB Garamond', serif; font-size: 16px;
+            color: var(--text-mid); text-align: center;
+            font-style: italic; margin-bottom: 22px;
+            animation: fadeUp .5s ease .3s both;
+        }
+
+        .card-ornament {
+            display: flex; align-items: center; gap: 14px; margin-bottom: 28px;
+        }
+        .card-ornament::before, .card-ornament::after {
+            content: ''; flex: 1; height: 1px;
+            background: var(--border); opacity: .32;
+        }
+        .card-ornament-gem {
+            color: var(--gold-mid); font-size: 14px;
+            animation: gemSpin 8s linear infinite;
+        }
+        @keyframes gemSpin {
+            0%,100% { transform: rotate(0deg) scale(1); }
+            25%      { transform: rotate(90deg) scale(1.2); }
+            50%      { transform: rotate(180deg) scale(1); }
+            75%      { transform: rotate(270deg) scale(1.2); }
+        }
+
+        /* Form */
+        .field { margin-bottom: 20px; animation: fadeUp .4s ease .4s both; }
+        .field-label {
+            display: block;
+            font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: var(--brown-mid); margin-bottom: 9px;
+        }
+        .input-wrap { position: relative; }
+        .input-wrap input {
+            width: 100%; background: #FDFAF5;
+            border: 1.5px solid #DDD0B0; border-radius: 3px;
+            padding: 13px 46px 13px 16px;
+            font-family: 'EB Garamond', serif; font-size: 16px; color: var(--text);
+            outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+        }
+        .input-wrap input:focus {
+            background: #fff; border-color: var(--gold-mid);
+            box-shadow: 0 0 0 3px rgba(201,150,42,.13), 0 2px 12px rgba(201,150,42,.10);
+        }
+        .input-wrap input::placeholder { color: #B8A882; font-style: italic; }
+
+        .toggle-pw {
+            position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; padding: 8px;
+            color: #B8A882; display: flex; align-items: center; transition: color .18s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .toggle-pw:hover { color: var(--gold-mid); }
+
+        .row-check {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+            animation: fadeUp .4s ease .5s both;
+        }
+        .row-check input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--gold-mid); cursor: pointer; }
+        .row-check label { font-family: 'EB Garamond', serif; font-size: 15px; color: var(--text-mid); cursor: pointer; }
+
+        /* Sign-in button */
+        .btn-login {
+            width: 100%; padding: 14px 20px; border: none; border-radius: 3px;
+            background: var(--btn-grad); color: #fff;
+            font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700;
+            letter-spacing: 4px; text-transform: uppercase;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 14px;
+            transition: opacity .2s, box-shadow .2s, transform .15s;
+            box-shadow: 0 4px 18px var(--btn-shadow);
+            position: relative; overflow: hidden;
+            animation: fadeUp .4s ease .6s both;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-login::after {
+            content: ''; position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+            transition: left .55s ease;
+        }
+        .btn-login:hover::after { left: 100%; }
+        .btn-login:hover {
+            opacity: .91;
+            box-shadow: 0 8px 28px var(--btn-shadow);
+            transform: translateY(-2px);
+        }
+        .btn-login:active { transform: translateY(0); }
+
+        .btn-arrow {
+            width: 28px; height: 28px;
+            border: 1.5px solid rgba(255,255,255,.55); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: transform .3s ease;
+        }
+        .btn-login:hover .btn-arrow { transform: translateX(4px); }
+
+        .card-note {
+            text-align: center; margin-top: 20px;
+            font-family: 'EB Garamond', serif; font-size: 13px;
+            color: var(--text-mid); font-style: italic; opacity: .65;
+            animation: fadeUp .4s ease .7s both;
+        }
+
+        .error-msg {
+            background: #fde8e8; border: 1px solid #e8a0a0; color: #7a2020;
+            padding: 10px 14px; margin-bottom: 18px;
+            font-size: 14px; text-align: center; border-radius: 3px;
+        }
+
+        /* Features strip */
+        .features-strip {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 560px;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            padding: 24px 0 36px;
+            border-top: 1px solid var(--feat-border);
+        }
+        .feature-item {
+            display: flex; flex-direction: column; align-items: flex-start;
+            padding: 0 22px;
+            border-right: 1px solid var(--feat-border);
+            animation: fadeUp .5s ease calc(.8s + var(--fi-delay,.0s)) both;
+        }
+        .feature-item:first-child { padding-left: 0; }
+        .feature-item:last-child { border-right: none; }
+        .feature-icon {
+            width: 40px; height: 40px;
+            border: 1.5px solid var(--feat-border); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 10px; color: var(--gold-mid);
+            transition: border-color .3s, box-shadow .3s;
+        }
+        .feature-item:hover .feature-icon {
+            border-color: var(--gold-mid);
+            box-shadow: 0 0 14px rgba(201,150,42,.22);
+        }
+        .feature-title {
+            font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600;
+            color: var(--brown); margin-bottom: 4px; letter-spacing: .4px;
+        }
+        .feature-desc { font-family: 'EB Garamond', serif; font-size: 13.5px; color: var(--text-mid); line-height: 1.5; }
+
+        /* ── Tablet (600–900 px): left panel hidden, full-width login, scrollable ── */
+        @media (max-width: 900px) {
+            .left-panel { display: none; }
+            .right-panel {
+                padding: 40px 28px 0;
+                justify-content: flex-start;
+            }
+            .right-inner {
+                flex: none;
+                width: 100%;
+                padding-bottom: 24px;
+                padding-top: 20px;
+            }
+            .login-card {
+                max-width: 520px;
+                padding: 40px 44px;
+            }
+            .features-strip {
+                max-width: 100%;
+                padding: 20px 0 32px;
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        /* ── Small phone (< 560 px) ── */
+        @media (max-width: 560px) {
+            .right-panel { padding: 24px 16px 0; }
+            .login-card { padding: 32px 22px; }
+            .card-title { font-size: 30px; }
+            .features-strip { grid-template-columns: 1fr; gap: 16px; }
+            .feature-item { border-right: none; border-bottom: 1px solid var(--feat-border); padding: 0 0 16px; }
+            .feature-item:last-child { border-bottom: none; }
+        }
     </style>
 </head>
 <body>
-<div class="wrap">
 
-<aside class="panel">
-    <div class="panel-topbar"></div>
-    <div class="panel-inner">
-        <div class="brand">
-            <div class="brand-emblem">
-                <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="36" cy="36" r="34" stroke="#C8A84A" stroke-width=".8" stroke-dasharray="4 3" opacity=".4"/>
-                    <circle cx="36" cy="36" r="28" stroke="#C8A84A" stroke-width=".5" opacity=".3"/>
-                    <polygon points="36,8 60,30 36,64 12,30" fill="none" stroke="#D4A017" stroke-width="1.2"/>
-                    <polygon points="36,8 60,30 36,34 12,30" fill="rgba(212,160,23,.25)" stroke="#D4A017" stroke-width=".6"/>
-                    <polygon points="36,34 60,30 36,64" fill="rgba(122,92,0,.35)" stroke="#C8A84A" stroke-width=".5"/>
-                    <polygon points="36,34 12,30 36,64" fill="rgba(184,134,11,.20)" stroke="#C8A84A" stroke-width=".5"/>
-                    <line x1="12" y1="30" x2="60" y2="30" stroke="#F0D080" stroke-width=".9"/>
-                </svg>
-            </div>
-            <div class="brand-name">{{ $shopName }}</div>
-            <div class="brand-sub">Jewellery ERP</div>
+<!-- ═══════════════════════ LEFT PANEL ═══════════════════════ -->
+<aside class="left-panel">
+
+    <!-- Animated marble blobs -->
+    <div class="marble-blob blob-1"></div>
+    <div class="marble-blob blob-2"></div>
+    <div class="marble-blob blob-3"></div>
+    <div class="marble-blob blob-4"></div>
+    <div class="marble-blob blob-5"></div>
+
+    <!-- Animated SVG wave lines -->
+    <svg class="wave-canvas" viewBox="0 0 600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <path class="wave-path w1" d="M-60,160 Q120,60 280,220 Q440,380 660,160"/>
+        <path class="wave-path w2" d="M-60,300 Q80,160 260,340 Q440,520 660,300"/>
+        <path class="wave-path w3" d="M-60,460 Q160,310 320,460 Q480,610 660,440"/>
+        <path class="wave-path w4" d="M-60,620 Q140,470 320,590 Q500,710 660,600"/>
+        <path class="wave-path w5" d="M-60,780 Q180,640 360,740 Q540,840 660,760"/>
+        <path class="wave-path w1" d="M80,-40 Q180,160 140,360 Q100,560 260,720" style="animation-duration:19s"/>
+        <path class="wave-path w2" d="M380,-40 Q480,180 440,400 Q400,620 560,800" style="animation-duration:25s;animation-delay:-5s"/>
+    </svg>
+
+    <!-- Floating sparkle particles -->
+    <span class="sparkle" style="left:12%;top:18%;--dur:3.2s;--del:0s">&#10022;</span>
+    <span class="sparkle" style="left:72%;top:28%;--dur:3.8s;--del:.8s">&#10022;</span>
+    <span class="sparkle" style="left:38%;top:50%;--dur:2.9s;--del:1.5s">&#10022;</span>
+    <span class="sparkle" style="left:82%;top:62%;--dur:3.4s;--del:.3s">&#10022;</span>
+    <span class="sparkle" style="left:22%;top:74%;--dur:4.1s;--del:2.1s">&#10022;</span>
+    <span class="sparkle" style="left:58%;top:12%;--dur:3.6s;--del:1.1s">&#10022;</span>
+    <span class="sparkle" style="left:8%; top:58%;--dur:2.6s;--del:2.5s">&#10022;</span>
+    <span class="sparkle" style="left:48%;top:88%;--dur:3.9s;--del:.6s">&#10022;</span>
+    <span class="sparkle" style="left:90%;top:40%;--dur:2.8s;--del:1.8s">&#10022;</span>
+    <span class="sparkle" style="left:30%;top:95%;--dur:4.3s;--del:3s">&#10022;</span>
+
+    <div class="left-content">
+
+        <!-- Brand diamond icon -->
+        <div class="brand-icon">
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="40" cy="40" r="37" stroke="#C9962A" stroke-width=".7" stroke-dasharray="3 3" opacity=".28"/>
+                <circle cx="40" cy="40" r="30" stroke="#C9962A" stroke-width=".45" opacity=".22"/>
+                <polygon points="40,9 67,34 40,71 13,34" fill="none" stroke="#C9962A" stroke-width="1.4"/>
+                <polygon points="40,9 67,34 40,39 13,34" fill="rgba(201,150,42,.16)" stroke="#D4A017" stroke-width=".7"/>
+                <polygon points="40,39 67,34 40,71" fill="rgba(100,60,0,.20)" stroke="#C9962A" stroke-width=".55"/>
+                <polygon points="40,39 13,34 40,71" fill="rgba(184,134,11,.13)" stroke="#C9962A" stroke-width=".55"/>
+                <line x1="13" y1="34" x2="67" y2="34" stroke="#E8C060" stroke-width="1"/>
+                <path d="M40 3 L41 6.5 L44 4.5 L42 7 L45.5 8 L42 9 L44 11.5 L41 9.5 L40 13 L39 9.5 L36 11.5 L38 9 L34.5 8 L38 7 L36 4.5 L39 6.5 Z" fill="#E8C060" opacity=".75"/>
+            </svg>
         </div>
 
-        <div class="ornament"><span>&#9671;</span></div>
+        <div class="brand-name">{{ $shopName }}</div>
+        <div class="brand-sub">Jewellery ERP</div>
 
-        {{-- Shop Details --}}
-        <div class="shop-details">
+        <div class="divider"><span class="divider-gem">&#9670;</span></div>
+
+        <!-- Shop details -->
+        <div class="shop-info">
             @if (!empty($shopAddr))
-            <div class="shop-detail-row">
-                <span class="shop-icon">&#9878;</span>
+            <div class="shop-info-row">
+                <span class="shop-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                </span>
                 <span>{{ $shopAddr }}</span>
             </div>
             @endif
             @if (!empty($shopPhone))
-            <div class="shop-detail-row">
-                <span class="shop-icon">&#9742;</span>
+            <div class="shop-info-row">
+                <span class="shop-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                </span>
                 <span>{{ $shopPhone }}</span>
             </div>
             @endif
             @if (!empty($shopGst))
-            <div class="shop-detail-row">
-                <span class="shop-icon">&#9830;</span>
+            <div class="shop-info-row">
+                <span class="shop-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                </span>
                 <span>GSTIN: {{ $shopGst }}</span>
             </div>
             @endif
         </div>
 
-        {{-- Animated Software Brand --}}
-        <div class="software-brand">
-            <div class="sw-diamond">
-                <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="30,4 54,22 30,56 6,22" fill="none" stroke="#D4A017" stroke-width="1.2" class="sw-gem-outline"/>
-                    <polygon points="30,4 54,22 30,28 6,22" fill="rgba(212,160,23,.3)" class="sw-gem-top"/>
-                    <polygon points="30,28 54,22 30,56" fill="rgba(122,92,0,.4)" class="sw-gem-right"/>
-                    <polygon points="30,28 6,22 30,56" fill="rgba(184,134,11,.25)" class="sw-gem-left"/>
-                    <line x1="6" y1="22" x2="54" y2="22" stroke="#F0D080" stroke-width=".8"/>
+        <!-- Gold Plus brand card -->
+        <div class="goldplus-card">
+            <div class="goldplus-icon">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="20,4 36,16 20,36 4,16" fill="none" stroke="#E8B84B" stroke-width="1.3"/>
+                    <polygon points="20,4 36,16 20,20 4,16" fill="rgba(232,184,75,.22)"/>
+                    <polygon points="20,20 36,16 20,36" fill="rgba(100,60,0,.32)"/>
+                    <polygon points="20,20 4,16 20,36" fill="rgba(201,150,42,.18)"/>
+                    <line x1="4" y1="16" x2="36" y2="16" stroke="#E8B84B" stroke-width=".9"/>
                 </svg>
             </div>
-            <div class="sw-name">GOLD PLUS</div>
-            <div class="sw-tagline">Jewellery ERP</div>
-            <div class="sw-shimmer-bar"></div>
+            <div class="goldplus-name">Gold Plus</div>
+            <div class="goldplus-sub">Jewellery ERP</div>
         </div>
 
-        <div class="panel-footer">
+        <div class="left-footer">
             &copy; {{ date('Y') }} {{ $shopName }}. All rights reserved.<br>
-            Powered by <a href="https://proaims.com/" target="_blank" rel="noopener">Proaims</a> &mdash; Gold Plus ERP
+            Powered by <a href="https://proaims.com/" target="_blank" rel="noopener">Proaims</a> &bull; Gold Plus Jewellery ERP
         </div>
 
-        {{-- Floating sparkle particles --}}
-        <div class="sparkle" style="left:15%;top:20%;--dur:3s;--del:0s">&#10022;</div>
-        <div class="sparkle" style="left:75%;top:35%;--dur:3.5s;--del:.8s">&#10022;</div>
-        <div class="sparkle" style="left:40%;top:55%;--dur:2.8s;--del:1.5s">&#10022;</div>
-        <div class="sparkle" style="left:85%;top:70%;--dur:3.2s;--del:.4s">&#10022;</div>
-        <div class="sparkle" style="left:25%;top:80%;--dur:4s;--del:2s">&#10022;</div>
-        <div class="sparkle" style="left:60%;top:15%;--dur:3.6s;--del:1.2s">&#10022;</div>
-        <div class="sparkle" style="left:10%;top:60%;--dur:2.5s;--del:2.5s">&#10022;</div>
-        <div class="sparkle" style="left:50%;top:90%;--dur:3.8s;--del:.6s">&#10022;</div>
     </div>
-    <div class="panel-bottombar"></div>
 </aside>
 
-<main class="main">
-    <div class="card">
-        <div class="card-corner-bl"></div>
-        <div class="card-corner-br"></div>
-        <div class="card-rule"></div>
+<!-- ═══════════════════════ RIGHT PANEL ═══════════════════════ -->
+<main class="right-panel">
 
-        <div class="card-body">
-            <div class="card-heading">
-                <div class="card-eyebrow">Jewellery ERP System</div>
-                <div class="card-title">Welcome Back</div>
-                <div class="card-subtitle">Sign in to {{ $shopName }} to continue</div>
-            </div>
+    <div class="right-inner">
+        <div class="login-card">
+
+            <div class="eyebrow-badge">Jewellery ERP System</div>
+
+            <div class="card-title">Welcome Back</div>
+            <div class="card-subtitle">Sign in to {{ $shopName }}<br>to continue</div>
+
+            <div class="card-ornament"><span class="card-ornament-gem">&#9670;</span></div>
 
             @if ($errors->any())
                 <div class="error-msg">
@@ -226,12 +678,12 @@
                 @csrf
 
                 <div class="field">
-                    <label>Password</label>
+                    <label class="field-label" for="password">Password</label>
                     <div class="input-wrap">
                         <input type="password" id="password" name="password"
                                placeholder="Enter your password" autofocus required>
                         <button type="button" class="toggle-pw" onclick="togglePw()" title="Show / hide password">
-                            <svg id="eye-icon" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                            <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
                                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
@@ -245,21 +697,64 @@
                     <label for="remember">Keep me signed in</label>
                 </div>
 
-                <button class="btn-login" type="submit">Sign In</button>
+                <button class="btn-login" type="submit">
+                    <span>Sign In</span>
+                    <span class="btn-arrow">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </span>
+                </button>
             </form>
 
             <div class="card-note">&#9670; &nbsp; {{ $shopName }} &mdash; Jewellery ERP &nbsp; &#9670;</div>
+
         </div>
     </div>
+
+    <!-- Features strip -->
+    <div class="features-strip">
+        <div class="feature-item" style="--fi-delay:.0s">
+            <div class="feature-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <div class="feature-title">Secure Login</div>
+            <div class="feature-desc">Your data is protected with enterprise security</div>
+        </div>
+        <div class="feature-item" style="--fi-delay:.1s">
+            <div class="feature-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <div class="feature-title">Trusted Access</div>
+            <div class="feature-desc">Authorized users only with role-based access</div>
+        </div>
+        <div class="feature-item" style="--fi-delay:.2s">
+            <div class="feature-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </div>
+            <div class="feature-title">Smart ERP</div>
+            <div class="feature-desc">Smarter operations. Better decisions</div>
+        </div>
+    </div>
+
 </main>
 
-</div>
-
 <script>
-try {
-    window.sessionStorage.removeItem('goldapp_browser_session');
-} catch (error) {
-}
+try { window.sessionStorage.removeItem('goldapp_browser_session'); } catch(e) {}
 
 function togglePw() {
     var inp = document.getElementById('password');
@@ -276,10 +771,7 @@ function togglePw() {
 var loginForm = document.getElementById('loginForm');
 if (loginForm) {
     loginForm.addEventListener('submit', function() {
-        try {
-            window.sessionStorage.setItem('goldapp_browser_session', 'active');
-        } catch (error) {
-        }
+        try { window.sessionStorage.setItem('goldapp_browser_session', 'active'); } catch(e) {}
     });
 }
 </script>

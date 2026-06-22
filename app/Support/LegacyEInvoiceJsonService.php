@@ -38,6 +38,7 @@ class LegacyEInvoiceJsonService
             'files' => array_map(fn ($path) => basename($path), $generated),
             'zip_path' => $zipPath,
             'zip_name' => basename($zipPath),
+            'download_name' => count($generated) === 1 ? basename($generated[0]) : basename($zipPath),
             'directory' => $dir,
         ];
     }
@@ -60,7 +61,7 @@ class LegacyEInvoiceJsonService
         }
 
         $payload = $this->buildPayload($sale);
-        $docNo = $this->safeDocNo((string) ($sale->billno ?? ('sale-' . $slno)));
+        $docNo = $this->safeFileDocNo((string) ($sale->billno ?? ('sale-' . $slno)));
         $filePath = $this->outputDir() . DIRECTORY_SEPARATOR . $docNo . '.json';
 
         File::put(
@@ -78,6 +79,13 @@ class LegacyEInvoiceJsonService
         $software = $settings['Software'] ?? [];
 
         $buyer = $this->resolveBuyer($sale, (string) ($software['DefState'] ?? 'Kerala'));
+        $sellerGstin = trim((string) ($company['KGST'] ?? $company['TIN'] ?? ''));
+        $sellerStateCode = $this->normalizeStateCode(
+            trim((string) ($company['StCode'] ?? $company['DefStateCode'] ?? '')),
+            $sellerGstin
+        );
+        $sellerPin = $this->nullableInt($company['PIN'] ?? $company['Pin'] ?? null)
+            ?? $this->defaultPinForState($sellerStateCode);
         $sellerAddr1 = $this->normalizeInvoiceAddressLine((string) ($company['Addr1'] ?? $company['Addr'] ?? ''), (string) ($company['Addr2'] ?? ''), (string) ($company['Loc'] ?? $company['Branch'] ?? ''));
         $sellerAddr2 = $this->normalizeInvoiceAddressLine((string) ($company['Addr2'] ?? ''), $sellerAddr1, (string) ($company['Loc'] ?? $company['Branch'] ?? ''));
         $sellerLoc = $this->normalizeInvoiceLocation((string) ($company['Loc'] ?? $company['Branch'] ?? ''), $sellerAddr2, $sellerAddr1);
@@ -86,9 +94,9 @@ class LegacyEInvoiceJsonService
 
         $docDate = $this->formatLegacyDate((string) ($sale->tdate ?? ''));
         $round = $this->num($sale->round ?? 0);
-        $igst = $this->num($sale->igst ?? 0);
-        $sgst = $this->num($sale->sgst ?? 0);
-        $cgst = $this->num($sale->cgst ?? 0);
+        $igst = $this->sumItemNumber($items, 'IgstAmt');
+        $sgst = $this->sumItemNumber($items, 'SgstAmt');
+        $cgst = $this->sumItemNumber($items, 'CgstAmt');
         $discount = $this->num($sale->discount ?? 0);
         $billAmt = $this->num($sale->billamt ?? 0);
         $netAmt = $this->num($sale->netamt ?? 0);
@@ -107,19 +115,19 @@ class LegacyEInvoiceJsonService
             ],
             'DocDtls' => [
                 'Typ' => 'INV',
-                'No' => $this->safeDocNo((string) ($sale->billno ?? '')),
+                'No' => $this->invoiceDocNo((string) ($sale->billno ?? '')),
                 'Dt' => $docDate,
             ],
             'SellerDtls' => [
-                'Gstin' => trim((string) ($company['KGST'] ?? $company['TIN'] ?? '')),
+                'Gstin' => $sellerGstin,
                 'LglNm' => trim((string) ($company['Name'] ?? '')),
                 'Addr1' => $sellerAddr1,
                 'Addr2' => $sellerAddr2,
                 'Loc' => $sellerLoc,
-                'Pin' => $this->nullableInt($company['PIN'] ?? $company['Pin'] ?? null),
-                'Stcd' => trim((string) ($company['StCode'] ?? $company['DefStateCode'] ?? '')),
-                'Ph' => trim((string) ($company['Phone'] ?? '')),
-                'Em' => trim((string) ($company['Email'] ?? $company['HOMailID'] ?? '')),
+                'Pin' => $sellerPin,
+                'Stcd' => $sellerStateCode,
+                'Ph' => $this->validPhoneOrNull((string) ($company['Phone'] ?? '')),
+                'Em' => $this->validEmailOrNull((string) ($company['Email'] ?? $company['HOMailID'] ?? '')),
             ],
             'BuyerDtls' => [
                 'Gstin' => $buyer['gstin'],
@@ -130,8 +138,8 @@ class LegacyEInvoiceJsonService
                 'Pin' => $buyer['pin'],
                 'Pos' => $buyer['state_code'],
                 'Stcd' => $buyer['state_code'],
-                'Ph' => $buyer['phone'] !== '' ? $buyer['phone'] : null,
-                'Em' => $buyer['email'] !== '' ? $buyer['email'] : null,
+                'Ph' => $buyer['phone'],
+                'Em' => $this->validEmailOrNull($buyer['email']),
             ],
             'ValDtls' => [
                 'AssVal' => $this->rawNumber($billAmt, 2),
@@ -193,6 +201,10 @@ class LegacyEInvoiceJsonService
         }
 
         $buyer['state_code'] = $this->normalizeStateCode($buyer['state_code'], $buyer['gstin']);
+        if ($buyer['pin'] === null) {
+            $buyer['pin'] = $this->defaultPinForState($buyer['state_code']);
+        }
+        $buyer['phone'] = $this->validPhoneOrNull($buyer['phone']);
 
         if ($buyer['state_code'] !== '' && Schema::hasTable('state')) {
             $buyer['state_name'] = trim((string) (DB::table('state')->where('code', $buyer['state_code'])->value('name') ?? ''));
@@ -377,7 +389,18 @@ class LegacyEInvoiceJsonService
         return is_array($parsed) ? $parsed : [];
     }
 
-    private function safeDocNo(string $value): string
+    private function invoiceDocNo(string $value): string
+    {
+        $value = trim(preg_replace('/\s+/', '', $value) ?? '');
+        if ($value === '') {
+            return 'invoice';
+        }
+
+        $value = preg_replace('/[^A-Za-z0-9\/-]+/', '', $value) ?? $value;
+        return preg_replace('/0+(\d+)$/', '$1', $value) ?? $value;
+    }
+
+    private function safeFileDocNo(string $value): string
     {
         $value = trim(str_replace(['\\', '/'], '', $value));
         return $value !== '' ? $value : 'invoice';
@@ -449,6 +472,13 @@ class LegacyEInvoiceJsonService
         return '__RAWNUM__' . number_format($this->num($value), $precision, '.', '');
     }
 
+    private function sumItemNumber(array $items, string $key): float
+    {
+        return array_reduce($items, function (float $sum, array $item) use ($key) {
+            return $sum + $this->num(str_replace('__RAWNUM__', '', (string) ($item[$key] ?? 0)));
+        }, 0.0);
+    }
+
     private function encodeInvoiceJson(array $payload): string
     {
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -464,5 +494,34 @@ class LegacyEInvoiceJsonService
     {
         $value = trim((string) $value);
         return ctype_digit($value) ? (int) $value : null;
+    }
+
+    private function digitsOnly(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    private function validPhoneOrNull(string $value): ?string
+    {
+        $digits = $this->digitsOnly($value);
+        $length = strlen($digits);
+
+        return $length >= 6 && $length <= 12 ? $digits : null;
+    }
+
+    private function validEmailOrNull(string $value): ?string
+    {
+        $email = trim($value);
+        $length = strlen($email);
+
+        return $length >= 6 && $length <= 100 ? $email : null;
+    }
+
+    private function defaultPinForState(string $stateCode): ?int
+    {
+        return match (str_pad(trim($stateCode), 2, '0', STR_PAD_LEFT)) {
+            '32' => 673001,
+            default => null,
+        };
     }
 }

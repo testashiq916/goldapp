@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>Sales Bill - {{ $billno }}</title>
+<title>{{ $printDocumentTitle ?? 'Sales Bill' }} - {{ $billno }}</title>
 <style>
 :root{
     --ink:#0f172a;
@@ -17,54 +17,58 @@
     --panel:#f8fbff;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:var(--ink);background:#eef2f7}
+body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:var(--ink);background:#ffffff}
 
 .toolbar{
-    background:#fff;
+    background:linear-gradient(135deg,#2f3d8f,#4457cb);
     padding:8px 12px;
     display:flex;
     align-items:center;
     gap:8px;
     flex-wrap:wrap;
-    border-bottom:1px solid #d1d5db;
+    border-bottom:1px solid rgba(255,255,255,.12);
     position:sticky;
     top:0;
     z-index:100;
-    box-shadow:0 1px 4px rgba(0,0,0,.08);
+    box-shadow:0 2px 8px rgba(15,23,42,.18);
+    color:#fff;
 }
-.tb-lbl{font-size:10px;font-weight:600;color:#6b7280;white-space:nowrap}
+.tb-lbl{font-size:10px;font-weight:600;color:#fff;white-space:nowrap;letter-spacing:.3px}
 .tb-inp{
     width:56px;
     text-align:center;
-    border:1px solid #d1d5db;
+    border:1px solid rgba(255,255,255,.35);
     border-radius:6px;
     padding:4px 5px;
     font-size:11px;
     height:28px;
+    background:rgba(255,255,255,.95);
+    color:#1f2937;
 }
 .tb-btn{
     padding:5px 14px;
     font-weight:600;
     font-size:11px;
-    border:1px solid #d1d5db;
+    border:1px solid rgba(255,255,255,.35);
     border-radius:6px;
-    background:#fff;
+    background:rgba(255,255,255,.10);
     cursor:pointer;
-    color:#374151;
+    color:#fff;
     height:30px;
 }
-.tb-btn:hover{background:#f3f4f6}
-.tb-btn.primary{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-.tb-btn.primary:hover{background:#1e40af}
-.tb-chk{display:flex;align-items:center;gap:4px;font-size:10px;color:#374151;white-space:nowrap}
-.tb-chk input{accent-color:#1d4ed8}
-.tb-sep{width:1px;height:20px;background:#e5e7eb;flex-shrink:0}
+.tb-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
+.tb-btn.primary{background:#ffb548;color:#2a1a00;border-color:#ffb548}
+.tb-btn.primary:hover{background:#f5a937;border-color:#f5a937}
+.tb-chk{display:flex;align-items:center;gap:4px;font-size:10.5px;color:#fff;white-space:nowrap;font-weight:600}
+.tb-chk input{accent-color:#ffb548}
+.tb-sep{width:1px;height:20px;background:rgba(255,255,255,.25);flex-shrink:0}
+.toolbar select{background:rgba(255,255,255,.95);color:#1f2937;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:4px 8px;font-size:11px;height:28px}
 
 .page-wrap{padding:20px}
 .page{
     width:980px;
     margin:0 auto;
-    background:var(--paper);
+    background:#ffffff;
     border:1px solid var(--soft);
     box-shadow:0 10px 30px rgba(15,23,42,.08);
     padding:24px 28px 28px;
@@ -80,7 +84,12 @@ body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:var(--ink);backg
     margin-bottom:18px;
 }
 .company h1{margin:0 0 6px;font-size:28px;letter-spacing:.4px}
-.company .meta,.bill-meta .meta{color:var(--muted);font-size:13px;line-height:1.5}
+.company-addr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.5;margin-bottom:6px;max-width:480px}
+.company-meta{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;display:flex;flex-wrap:wrap;gap:16px;margin-top:4px}
+.company-meta span{white-space:nowrap}
+.company .meta,.bill-meta .meta{color:var(--ink);font-size:15px;font-weight:700;line-height:1.65}
+.bill-meta .meta div{margin-bottom:2px}
+.bill-meta .meta strong{font-weight:800;color:var(--ink)}
 .bill-meta{text-align:right;min-width:280px}
 .bill-title{font-size:22px;font-weight:700;color:var(--accent);margin:0 0 8px}
 
@@ -98,6 +107,9 @@ body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:var(--ink);backg
 .card .body{padding:11px 12px;font-size:13px;line-height:1.65;background:var(--panel)}
 .kv{display:grid;grid-template-columns:130px 1fr;gap:4px 10px}
 .kv .k{color:var(--muted);font-weight:600}
+.kv .num-val{text-align:right;font-variant-numeric:tabular-nums}
+.order-kv{grid-template-columns:130px 140px}
+.order-kv .num-val{text-align:left}
 .muted{color:var(--muted)}
 
 .section-title{margin:18px 0 8px;font-size:15px;font-weight:700;color:#0f2d4b}
@@ -107,6 +119,9 @@ thead th{background:#e9f1f8;color:#0f2d4b;text-transform:uppercase;letter-spacin
 td.num,th.num{text-align:right}
 td.center,th.center{text-align:center}
 tfoot td{background:#f8fafc;font-weight:700}
+.sold-items{table-layout:fixed}
+.sold-items th,.sold-items td{padding:6px 5px;font-size:11px;word-break:break-word}
+.sold-items .item-name{width:126px}
 
 .totals{
     margin-top:18px;
@@ -148,19 +163,71 @@ tfoot td{background:#f8fafc;font-weight:700}
     border-top:1px solid var(--line);
 }
 
+.sales-slip{display:none}
+.sales-slip .slip-head{text-align:center;margin-bottom:9px}
+.sales-slip .slip-head h1{font-family:"Times New Roman",serif;font-size:17px;line-height:1.1;margin:0;text-transform:uppercase}
+.sales-slip .slip-shop-line{font-family:"Times New Roman",serif;font-size:11px;font-weight:700;line-height:1.25;text-transform:uppercase}
+.sales-slip .slip-title{font-family:"Times New Roman",serif;font-size:16px;font-weight:800;letter-spacing:.4px;margin-top:10px;text-transform:uppercase}
+.sales-slip .slip-meta{display:grid;grid-template-columns:1fr 1fr;gap:3px 22px;margin:10px 0 8px;font-family:"Times New Roman",serif;font-size:12px}
+.sales-slip .slip-line{display:grid;grid-template-columns:90px 8px 1fr;min-height:18px;word-break:break-word}
+.sales-slip .slip-line b{font-weight:800}
+.sales-slip table{font-family:"Times New Roman",serif;font-size:12px;border-collapse:collapse;width:100%}
+.sales-slip th,.sales-slip td{border:1px solid #333;padding:5px 4px;vertical-align:top}
+.sales-slip th{font-weight:800;text-align:left;background:#fff}
+.sales-slip .num{text-align:right}
+.sales-slip .center{text-align:center}
+.sales-slip .slip-total td{font-weight:800}
+.sales-slip .slip-remarks{display:grid;grid-template-columns:90px 1fr;margin-top:14px;font-family:"Times New Roman",serif;font-size:13px;font-weight:800}
+.sales-slip .slip-summary{width:245px;margin:16px 0 0 auto;font-family:"Times New Roman",serif;font-size:12px}
+.sales-slip .slip-summary .slip-line{grid-template-columns:125px 8px 1fr}
+.sales-slip .slip-sign{display:grid;grid-template-columns:repeat(4,1fr);align-items:end;margin-top:56px;font-family:"Times New Roman",serif;font-size:13px;font-weight:800;text-align:center}
+
 @media print{
     @page{size:A4 portrait;margin:10mm}
     .toolbar{display:none!important}
-    body{background:#fff}
+    body{background:#fff;font-size:11px}
     .page-wrap{padding:0}
     .page{
+        display:block!important;
         width:auto;
+        max-width:100%;
         margin:0;
         border:none;
         box-shadow:none;
         padding:0;
     }
     .page.landscape{width:auto}
+    .sales-slip{display:none!important}
+    .header{margin-bottom:10px;padding-bottom:10px;break-inside:avoid;page-break-inside:avoid}
+    .grid{gap:12px;margin-bottom:10px}
+    .card h3{padding:6px 10px}
+    .card .body{padding:8px 10px;line-height:1.45}
+    .section-title{margin:10px 0 6px}
+    table{break-inside:auto;page-break-inside:auto}
+    thead{display:table-header-group}
+    tfoot{display:table-row-group}
+    tr{break-inside:avoid;page-break-inside:avoid}
+    .card,.summary,.summary tr,.note-box,.foot-box,.bank-box,.footer,.sign{
+        break-inside:avoid;
+        page-break-inside:avoid;
+    }
+    th,td{padding:4px 5px;font-size:10.5px}
+    .sold-items th,.sold-items td{padding:3px 4px;font-size:10px}
+    .totals{
+        margin-top:8px;
+        gap:10px;
+        grid-template-columns:minmax(0,1fr) 300px;
+        break-inside:auto;
+        page-break-inside:auto;
+    }
+    .summary,.summary tr{
+        break-inside:avoid;
+        page-break-inside:avoid;
+    }
+    .summary table td{padding:4px 6px;font-size:11px}
+    .summary tr.total td{font-size:13px}
+    .note-box{min-height:74px}
+    .footer{margin-top:12px}
 }
 </style>
 @include('partials.print-layout-head')
@@ -217,12 +284,24 @@ tfoot td{background:#f8fafc;font-weight:700}
 
 <div class="page-wrap" data-print-root="sales-bill">
 <div class="page{{ $landscape ? ' landscape' : '' }}" id="billCard">
-    <div class="header" id="shopHdr" data-print-app-header="sales-shop" style="{{ $showShopInfo ? '' : 'display:none' }}">
+    <div class="header" id="shopHdr" data-print-app-header="sales-shop">
         <div class="company">
-            <h1>{{ $companyName ?: 'Company' }}</h1>
+            <h1 id="shopName" style="{{ $showShopInfo ? '' : 'display:none' }}">{{ $companyName ?: 'Company' }}</h1>
+            @if(trim($companyAddr) !== '' || trim($companyAddr2) !== '')
+            <div class="company-addr">
+                {!! nl2br(e(trim($companyAddr))) !!}@if(trim($companyAddr2) !== '')<br>{!! nl2br(e(trim($companyAddr2))) !!}@endif
+            </div>
+            @endif
+            @if(trim($companyPhone) !== '' || trim($companyGSTIN) !== '' || trim($companyState) !== '')
+            <div class="company-meta">
+                @if(trim($companyPhone) !== '')<span>Ph: {{ trim($companyPhone) }}</span>@endif
+                @if(trim($companyGSTIN) !== '')<span>GSTIN: {{ trim($companyGSTIN) }}</span>@endif
+                @if(trim($companyState) !== '')<span>State: {{ trim($companyState) }}</span>@endif
+            </div>
+            @endif
         </div>
         <div class="bill-meta">
-            <div class="bill-title">{{ $control == 1 ? 'Sales Invoice' : 'Estimate Invoice' }}</div>
+            <div class="bill-title">{{ $printDocumentTitle ?? ($control == 1 ? 'Sales Invoice' : 'Estimate Invoice') }}</div>
             <div class="meta">
                 <div><strong>Bill No:</strong> {{ $billno }}</div>
                 <div><strong>Date:</strong> {{ $tdate ? date('d/m/Y', strtotime($tdate)) : '-' }}</div>
@@ -233,7 +312,7 @@ tfoot td{background:#f8fafc;font-weight:700}
         </div>
     </div>
 
-    <div id="billFormRow" class="section-title" style="{{ $billFormEst ? '' : 'display:none' }}">GST Invoice</div>
+    <div id="billFormRow" class="section-title" style="{{ $billFormEst ? '' : 'display:none' }}">{{ $printFormTitle ?? 'GST Invoice' }}</div>
 
     <div class="grid">
         <div class="card">
@@ -266,33 +345,63 @@ tfoot td{background:#f8fafc;font-weight:700}
                     <div class="k">18K Rate</div><div>{{ number_format($g18rate, 2, '.', '') }}</div>
                     <div class="k">Silver Rate</div><div>{{ number_format($srate, 2, '.', '') }}</div>
                     @if($astamt > 0)<div class="k">Cess</div><div>{{ number_format($astamt, 2, '.', '') }}</div>@endif
-                    @if($advance > 0)<div class="k">Advance</div><div>{{ number_format($advance, 2, '.', '') }}</div>@endif
-                    @if($ob != 0)<div class="k">Opening Balance</div><div>{{ number_format($ob, 2, '.', '') }}</div>@endif
-                    @if($gadvAmt > 0)<div class="k">Gold Advance</div><div>{{ number_format($gadvAmt, 3, '.', '') }}</div>@endif
+                    @php
+                        $displayClosingBalance = $clBalance;
+                        $closingBalanceLabel = $displayClosingBalance < 0 ? 'Closing Balance (To Receive)' : 'Closing Balance (Advance)';
+                        $closingBalanceAmount = abs($displayClosingBalance);
+                    @endphp
+                    @if($closingBalanceAmount > 0.004 && $advance == 0 && empty($orderno))<div class="k">{{ $closingBalanceLabel }}</div><div>{{ number_format($closingBalanceAmount, 2, '.', '') }}</div>@endif
                 </div>
             </div>
         </div>
+
+        @if(!empty($orderPrintDetails))
+        <div class="card">
+            <h3>Order Details</h3>
+            <div class="body">
+                <div class="kv order-kv">
+                    <div class="k">Order No</div><div>{{ $orderPrintDetails['order_no'] ?: '-' }}</div>
+                    <div class="k">Order Date</div><div>{{ !empty($orderPrintDetails['date']) ? date('d/m/Y', strtotime($orderPrintDetails['date'])) : '-' }}</div>
+                    @if(($orderPrintDetails['cash_advance'] ?? 0) > 0)
+                    <div class="k">Cash Advance</div><div>{{ number_format($orderPrintDetails['cash_advance'], 2, '.', '') }}</div>
+                    @endif
+                    @if(($orderPrintDetails['advance_after'] ?? 0) > 0)
+                    <div class="k">Advance After</div><div>{{ number_format($orderPrintDetails['advance_after'], 2, '.', '') }}</div>
+                    @endif
+                    @if(($orderPrintDetails['total_advance'] ?? 0) > 0)
+                    <div class="k">Total Advance</div><div>{{ number_format($orderPrintDetails['total_advance'], 2, '.', '') }}</div>
+                    @endif
+                    @if(($orderPrintDetails['gold_advance'] ?? 0) > 0)
+                    <div class="k">Gold Advance</div><div>{{ number_format($orderPrintDetails['gold_advance'], 3, '.', '') }}</div>
+                    @endif
+                    @if(($orderPrintDetails['exchange_amount'] ?? 0) > 0)
+                    <div class="k">Exchange</div><div>{{ number_format($orderPrintDetails['exchange_amount'], 2, '.', '') }}</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
-    <div class="section-title">Sold Items</div>
-    <table>
+    <div class="section-title">{{ $printItemsTitle ?? 'Sold Items' }}</div>
+    <table class="sold-items">
         <thead>
             <tr>
-                <th class="center" style="width:42px">#</th>
-                <th class="center" style="width:78px">Purity</th>
-                <th>Item Name</th>
-                <th class="center" style="width:86px">HUID</th>
-                <th class="center" style="width:72px">HSN</th>
-                <th class="num" style="width:56px">Qty</th>
-                <th class="num" style="width:84px">Gross Wgt</th>
-                <th class="num" style="width:84px">Stone Wgt</th>
-                <th class="num" style="width:84px">Net Wgt</th>
-                <th class="num" style="width:86px">{{ $printRateStyle ? 'Rate' : 'Metal Amt' }}</th>
-                <th class="num" style="width:86px">Stone Amt</th>
+                <th class="center" style="width:36px">#</th>
+                <th class="center" style="width:58px">Purity</th>
+                <th class="item-name">Item Name</th>
+                <th class="center" style="width:58px">HUID</th>
+                <th class="center" style="width:60px">HSN</th>
+                <th class="num" style="width:44px">Qty</th>
+                <th class="num" style="width:72px">Gross Wgt</th>
+                <th class="num" style="width:72px">Stone Wgt</th>
+                <th class="num" style="width:72px">Net Wgt</th>
+                <th class="num" style="width:72px">{{ $printRateStyle ? 'Rate' : 'Metal Amt' }}</th>
+                <th class="num" style="width:72px">Stone Amt</th>
                 @if($printVA)
-                <th class="num" style="width:78px">{{ $printVAPerc ? 'VA %' : ($printVAPerGm ? 'VA/gm' : 'VA') }}</th>
+                <th class="num" style="width:58px">{{ $printVAPerc ? 'VA %' : ($printVAPerGm ? 'VA/gm' : 'VA') }}</th>
                 @endif
-                <th class="num" style="width:96px">Amount</th>
+                <th class="num" style="width:78px">Amount</th>
             </tr>
         </thead>
         <tbody>
@@ -383,7 +492,7 @@ tfoot td{background:#f8fafc;font-weight:700}
     </table>
 
     @if(count($exchangeRows) > 0)
-    <div class="section-title" style="margin-top:14px">Exchange Items</div>
+    <div class="section-title" style="margin-top:14px">{{ !empty($orderno) ? 'Exchange Order Items' : 'Exchange Items' }}</div>
     <table>
         <thead>
             <tr>
@@ -445,6 +554,8 @@ tfoot td{background:#f8fafc;font-weight:700}
                 <th>Item Name</th>
                 <th class="num" style="width:56px">Qty</th>
                 <th class="num" style="width:96px">Weight (g)</th>
+                <th class="num" style="width:86px">Rate/gm</th>
+                <th class="num" style="width:70px">VA %</th>
                 <th class="num" style="width:110px">Amount</th>
             </tr>
         </thead>
@@ -452,14 +563,25 @@ tfoot td{background:#f8fafc;font-weight:700}
         @php $srTotWgt = 0; $srTotAmt = 0; @endphp
         @foreach($sretRows as $i => $r)
             @php
-                $srTotWgt += (float)($r['weight'] ?? 0);
+                $srWeight = (float)($r['weight'] ?? 0);
+                $srStoneWgt = (float)($r['stonewgt'] ?? 0);
+                $srNetWgt = max($srWeight - $srStoneWgt, 0);
+                $srRate = (float)($r['rate'] ?? 0);
+                $srMc = (float)($r['mcharge'] ?? 0);
+                $srVaPerc = (float)($r['vaperc'] ?? 0);
+                if ($srVaPerc <= 0 && $srNetWgt > 0 && $srRate > 0 && $srMc > 0) {
+                    $srVaPerc = ($srMc * 100) / ($srNetWgt * $srRate);
+                }
+                $srTotWgt += $srWeight;
                 $srTotAmt += (float)($r['amount'] ?? 0);
             @endphp
             <tr>
                 <td class="center">{{ $i + 1 }}</td>
                 <td>{{ $r['name'] ?? '' }}</td>
                 <td class="num">{{ (int)($r['qty'] ?? 0) ?: '' }}</td>
-                <td class="num">{{ number_format((float)($r['weight'] ?? 0), 3, '.', '') }}</td>
+                <td class="num">{{ number_format($srWeight, 3, '.', '') }}</td>
+                <td class="num">{{ number_format($srRate, 2, '.', '') }}</td>
+                <td class="num">{{ number_format($srVaPerc, 2, '.', '') }}</td>
                 <td class="num">{{ number_format((float)($r['amount'] ?? 0), 2, '.', '') }}</td>
             </tr>
         @endforeach
@@ -468,6 +590,8 @@ tfoot td{background:#f8fafc;font-weight:700}
             <tr>
                 <td colspan="3">Total</td>
                 <td class="num">{{ number_format($srTotWgt, 3, '.', '') }}</td>
+                <td></td>
+                <td></td>
                 <td class="num">{{ number_format($srTotAmt, 2, '.', '') }}</td>
             </tr>
         </tfoot>
@@ -476,10 +600,12 @@ tfoot td{background:#f8fafc;font-weight:700}
 
     <div class="totals">
         <div class="stack">
+            @if(trim((string) $note) !== '')
             <div class="note-box">
                 <h4>Note</h4>
-                <div>{{ trim((string) $note) !== '' ? $note : 'No notes.' }}</div>
+                <div>{{ $note }}</div>
             </div>
+            @endif
 
             @if($printFooter && ($billFooter1 || $billFooter2))
             <div class="foot-box">
@@ -506,7 +632,6 @@ tfoot td{background:#f8fafc;font-weight:700}
         <div class="summary">
             <table>
                 <tbody>
-                    <tr><td>Subtotal</td><td class="num">{{ number_format($subtotal, 2, '.', '') }}</td></tr>
                     <tr><td>{{ $gstLabel }}</td><td class="num">{{ number_format($cgst, 2, '.', '') }}</td></tr>
                     @if($cst !== 'Y' && $sgst > 0)
                     <tr><td>{{ $sgstLabel }}</td><td class="num">{{ number_format($sgst, 2, '.', '') }}</td></tr>
@@ -515,16 +640,15 @@ tfoot td{background:#f8fafc;font-weight:700}
                     @if(($discount > 0 && $printDiscount) || $printDiscAlways)<tr><td>Discount{{ $discperc > 0 ? ' (' . number_format($discperc, 2, '.', '') . '%)' : '' }}</td><td class="num">{{ number_format($discount, 2, '.', '') }}</td></tr>@endif
                     @if($eamt > 0)<tr><td>Exchange Amount</td><td class="num">{{ number_format($eamt, 2, '.', '') }}</td></tr>@endif
                     @if($sretamt > 0)<tr><td>Sales Return Amount</td><td class="num">{{ number_format($sretamt, 2, '.', '') }}</td></tr>@endif
-                    @if($advance > 0)<tr><td>Advance</td><td class="num">{{ number_format($advance, 2, '.', '') }}</td></tr>@endif
+                    @if($advance > 0)<tr><td>Advance Amount</td><td class="num">{{ number_format($advance, 2, '.', '') }}</td></tr>@endif
                     @if($schmamt > 0)<tr><td>Scheme Amount</td><td class="num">{{ number_format($schmamt, 2, '.', '') }}</td></tr>@endif
                     @if($tcsamt > 0)<tr><td>TCS ({{ number_format($tcsperc, 1, '.', '') }}%)</td><td class="num">{{ number_format($tcsamt, 2, '.', '') }}</td></tr>@endif
                     <tr><td>Sales Total</td><td class="num">{{ number_format($salesTotal, 2, '.', '') }}</td></tr>
                     <tr class="total"><td>Grand Total</td><td class="num">{{ number_format($grandTotal, 2, '.', '') }}</td></tr>
                     <tr><td>Received Amount</td><td class="num">{{ number_format($ramt, 2, '.', '') }}</td></tr>
-                    @if($chqCcTotal > 0)<tr><td>Cheque / Card</td><td class="num">{{ number_format($chqCcTotal, 2, '.', '') }}</td></tr>@endif
-                    <tr><td>{{ $cashRcvd >= 0 ? 'Cash Received' : 'Refund' }}</td><td class="num">{{ number_format(abs($cashRcvd), 2, '.', '') }}</td></tr>
+                    @if($cashReceived > 0)<tr><td>CASH</td><td class="num">{{ number_format($cashReceived, 2, '.', '') }}</td></tr>@endif
+                    @if($bankReceived > 0)<tr><td>BANK</td><td class="num">{{ number_format($bankReceived, 2, '.', '') }}</td></tr>@endif
                     <tr><td>Balance</td><td class="num">{{ number_format($balance, 2, '.', '') }}</td></tr>
-                    @if($ob != 0 && $advance == 0)<tr><td>Closing Balance</td><td class="num">{{ number_format($clBalance, 2, '.', '') }}</td></tr>@endif
                 </tbody>
             </table>
         </div>
@@ -536,6 +660,113 @@ tfoot td{background:#f8fafc;font-weight:700}
             <div class="sign">Customer Signature</div>
             <div class="sign">Authorised Signature</div>
         </div>
+    </div>
+</div>
+
+<div class="sales-slip" id="salesSlipCard">
+    @php
+        $slipAddressParts = array_values(array_filter([
+            trim((string) $addr),
+            trim((string) $ad2),
+            trim((string) $ad3),
+            trim((string) $ad4),
+        ], fn($v) => $v !== ''));
+        $slipAddress = implode(', ', array_unique($slipAddressParts));
+        $slipPhone = trim((string) $phoneLine);
+        $slipSalesman = trim((string) ($smanName ?: $smcode));
+        $slipTitle = $printSlipTitle ?? ((int) $control === 1 ? 'Sales Bill' : 'Estimate Bill');
+        $slipShown = 0;
+        $slipDiaTotal = 0.0;
+    @endphp
+    <div class="slip-head">
+        <h1>{{ $companyName ?: 'Company' }}</h1>
+        @if(trim($companyAddr) !== '')<div class="slip-shop-line">{!! nl2br(e(trim($companyAddr))) !!}</div>@endif
+        @if(trim($companyAddr2) !== '')<div class="slip-shop-line">{!! nl2br(e(trim($companyAddr2))) !!}</div>@endif
+        @if(trim($companyPhone) !== '')<div class="slip-shop-line">Ph: {{ trim($companyPhone) }}</div>@endif
+        <div class="slip-title">{{ $slipTitle }}</div>
+    </div>
+
+    <div class="slip-meta">
+        <div>
+            <div class="slip-line"><b>Bill No</b><span>:</span><span>{{ $billno }}</span></div>
+            <div class="slip-line"><b>Date</b><span>:</span><span>{{ $tdate ? date('d-m-Y', strtotime($tdate)) : '' }}</span></div>
+            @if($showDueDate)<div class="slip-line"><b>DueDate</b><span>:</span><span>{{ date('d-m-Y', strtotime($duedate)) }}</span></div>@endif
+            <div class="slip-line"><b>SalesmanName</b><span>:</span><span>{{ $slipSalesman }}</span></div>
+        </div>
+        <div>
+            <div class="slip-line"><b>CustomerName</b><span>:</span><span>{{ $custname }}</span></div>
+            <div class="slip-line"><b>Address</b><span>:</span><span>{{ $slipAddress }}</span></div>
+            <div class="slip-line"><b>PhoneNo</b><span>:</span><span>{{ $printCustMob ? $slipPhone : '' }}</span></div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:28px">SlNo</th>
+                <th>ItemName</th>
+                <th class="num">Nos</th>
+                <th class="num">Grwt</th>
+                <th class="num">Stwt</th>
+                <th class="num">Diawt</th>
+                <th class="num">Netwt</th>
+                <th class="num">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($rows as $r)
+                @php
+                    $w = (float)($r['salesd_weight'] ?? 0);
+                    $q = (int)($r['salesd_qty'] ?? 0);
+                    $vis = $w > 0 || $q > 0;
+                    if (!$vis) continue;
+                    $slipShown++;
+                    $netwgt = (float)($r['netwgt'] ?? 0);
+                    $dmdwgt = (float)($r['salesd_dmdwgt'] ?? 0);
+                    $stonewgt = (float)($r['salesd_stonewgt'] ?? 0);
+                    $slipDiaTotal += $dmdwgt;
+                    $iname = trim((string) (!empty($r['salesd_name']) ? $r['salesd_name'] : ($r['itemname'] ?? '')));
+                    if ($iname === '') $iname = trim((string) ($r['code'] ?? ''));
+                @endphp
+                <tr>
+                    <td class="num">{{ $slipShown }}</td>
+                    <td>{{ $iname }}</td>
+                    <td class="num">{{ number_format($q, 0, '.', '') }}</td>
+                    <td class="num">{{ number_format($w, 3, '.', '') }}</td>
+                    <td class="num">{{ number_format($stonewgt, 3, '.', '') }}</td>
+                    <td class="num">{{ number_format($dmdwgt, 2, '.', '') }}</td>
+                    <td class="num">{{ number_format($netwgt, 3, '.', '') }}</td>
+                    <td class="num">{{ number_format((float)($r['itemamt'] ?? 0), 2, '.', '') }}</td>
+                </tr>
+            @endforeach
+            <tr class="slip-total">
+                <td></td>
+                <td>Total</td>
+                <td class="num">{{ number_format($totQty, 0, '.', '') }}</td>
+                <td class="num">{{ number_format($totGrossWgt, 3, '.', '') }}</td>
+                <td class="num">{{ number_format($totStWgt, 3, '.', '') }}</td>
+                <td class="num">{{ number_format($slipDiaTotal, 2, '.', '') }}</td>
+                <td class="num">{{ number_format($totNetWgt, 3, '.', '') }}</td>
+                <td class="num">{{ number_format($totItemAmt, 2, '.', '') }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="slip-summary">
+        @if($staxamt > 0)<div class="slip-line"><b>GST</b><span>:</span><span class="num">{{ number_format($staxamt, 2, '.', '') }}</span></div>@endif
+        @if(($discount > 0 && $printDiscount) || $printDiscAlways)<div class="slip-line"><b>Discount</b><span>:</span><span class="num">{{ number_format($discount, 2, '.', '') }}</span></div>@endif
+        <div class="slip-line"><b>Grand Total</b><span>:</span><span class="num">{{ number_format($grandTotal, 2, '.', '') }}</span></div>
+        <div class="slip-line"><b>Received</b><span>:</span><span class="num">{{ number_format($ramt, 2, '.', '') }}</span></div>
+        <div class="slip-line"><b>Balance</b><span>:</span><span class="num">{{ number_format($balance, 2, '.', '') }}</span></div>
+    </div>
+
+    <div class="slip-remarks"><div>Remarks :-</div><div>{{ trim((string) $note) }}</div></div>
+
+    <div class="slip-sign">
+        <div>Prepared by</div>
+        <div>Checked by</div>
+        <div>Authorized</div>
+        <div>Received by</div>
     </div>
 </div>
 </div>
@@ -611,10 +842,13 @@ function applyBillZoom(value) {
 function syncShopHeaderVisibility() {
     const cbShopInfo = document.getElementById('cbShopInfo');
     const shopHdr = document.getElementById('shopHdr');
+    const shopName = document.getElementById('shopName');
     if (!cbShopInfo || !shopHdr) return;
     const layoutMode = window.GoldAppPrintLayout?.getState?.().letterheadMode || document.body.dataset.goldappLetterheadMode || '';
     const canShowHeader = String(layoutMode).toUpperCase() !== 'PREPRINTED';
-    shopHdr.style.display = cbShopInfo.checked && canShowHeader ? 'flex' : 'none';
+    // Header always visible (so address/phone/GSTIN stay) — checkbox controls only the shop name h1
+    shopHdr.style.display = canShowHeader ? 'flex' : 'none';
+    if (shopName) shopName.style.display = cbShopInfo.checked ? '' : 'none';
 }
 
 function reloadSalesBillWithFlags() {

@@ -150,6 +150,8 @@ class SalesReturnRegisterController extends Controller
     /* ── Filters ───────────────────────────────────────────────────── */
     private function applyFilters($q, int $rlevel, array $filters): void
     {
+        $this->applyTransferShadowDocFilter($q, 'm.billno');
+
         if ($this->hasCol('salesrm', 'control')) $q->where('m.control', '<=', $rlevel);
 
         if ($filters['smcode'] !== '' && $this->hasCol('salesrm', 'smcode'))

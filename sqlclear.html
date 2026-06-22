@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Clear — Daybook Fixed</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #1e1e2e; color: #cdd6f4; min-height: 100vh; padding: 30px 20px; }
+        .container { max-width: 860px; margin: 0 auto; }
+        h1 { color: #cba6f7; font-size: 24px; margin-bottom: 6px; }
+        .subtitle { color: #6c7086; font-size: 14px; margin-bottom: 30px; }
+        .card { background: #313244; border-radius: 10px; padding: 24px; margin-bottom: 24px; border: 1px solid #45475a; }
+        .card-title { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+        .error { color: #f38ba8; }
+        .fixed { color: #a6e3a1; }
+        .info  { color: #89b4fa; }
+        .diff-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+        .badge { font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; white-space: nowrap; margin-top: 2px; }
+        .badge-bad  { background: #f38ba8; color: #1e1e2e; }
+        .badge-good { background: #a6e3a1; color: #1e1e2e; }
+        .diff-code { font-family: monospace; font-size: 13px; background: #1e1e2e; padding: 8px 12px; border-radius: 6px; flex: 1; }
+        .diff-code.bad  { border-left: 3px solid #f38ba8; color: #f38ba8; }
+        .diff-code.good { border-left: 3px solid #a6e3a1; color: #a6e3a1; }
+        pre { background: #1e1e2e; color: #cdd6f4; padding: 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.7; border: 1px solid #45475a; }
+        .keyword { color: #cba6f7; }
+        .type    { color: #89dceb; }
+        .str     { color: #a6e3a1; }
+        .num     { color: #fab387; }
+        .comment { color: #6c7086; font-style: italic; }
+        .highlight { background: #2a2a3e; border-left: 3px solid #a6e3a1; }
+        .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        button {
+            padding: 10px 22px; border: none; border-radius: 6px;
+            font-size: 14px; cursor: pointer; font-weight: bold; transition: opacity .15s;
+        }
+        button:hover { opacity: 0.85; }
+        .btn-copy   { background: #89b4fa; color: #1e1e2e; }
+        .btn-dl     { background: #a6e3a1; color: #1e1e2e; }
+        .btn-clear  { background: #f38ba8; color: #1e1e2e; }
+        .toast {
+            position: fixed; bottom: 30px; right: 30px;
+            background: #a6e3a1; color: #1e1e2e;
+            padding: 12px 24px; border-radius: 8px;
+            font-weight: bold; font-size: 14px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s;
+        }
+        .toast.show { opacity: 1; }
+        .steps { counter-reset: step; }
+        .step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+        .step-num {
+            background: #89b4fa; color: #1e1e2e;
+            font-weight: bold; font-size: 13px;
+            min-width: 26px; height: 26px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .step-text { font-size: 14px; color: #cdd6f4; padding-top: 3px; line-height: 1.6; }
+        code { background: #1e1e2e; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 13px; color: #fab387; }
+        textarea#sqlbox {
+            width: 100%; height: 320px; background: #1e1e2e; color: #cdd6f4;
+            font-family: monospace; font-size: 13px; border: 1px solid #45475a;
+            border-radius: 8px; padding: 16px; resize: vertical; line-height: 1.7;
+        }
+        textarea#sqlbox:focus { outline: 2px solid #89b4fa; }
+        .status-bar {
+            display: flex; align-items: center; gap: 8px;
+            background: #1e1e2e; border-radius: 6px; padding: 10px 14px;
+            font-size: 13px; margin-top: 12px; border: 1px solid #45475a;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-ok  { background: #a6e3a1; }
+        .dot-err { background: #f38ba8; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>SQL Clear — Daybook Table Fix</h1>
+    <p class="subtitle">MySQL compatibility fix: <code>DEFAULT curdate()</code> removed for MySQL &lt; 8.0.13</p>
+
+    <!-- WHAT WAS WRONG -->
+    <div class="card">
+        <div class="card-title error">What Was Wrong</div>
+        <div class="diff-row">
+            <span class="badge badge-bad">BEFORE</span>
+            <div class="diff-code bad">`tdate` date DEFAULT curdate(),</div>
+        </div>
+        <div class="diff-row">
+            <span class="badge badge-good">FIXED</span>
+            <div class="diff-code good">`tdate` date DEFAULT NULL,</div>
+        </div>
+        <p style="font-size:13px; color:#6c7086; margin-top:12px;">
+            <code>DEFAULT curdate()</code> requires MySQL 8.0.13+. XAMPP ships with MySQL 5.7 where this causes a syntax error.
+            The fix sets <code>DEFAULT NULL</code> and lets the application supply today's date on insert.
+        </p>
+    </div>
+
+    <!-- COMPLETE FIXED SQL -->
+    <div class="card">
+        <div class="card-title fixed">Complete Fixed SQL — Ready to Run</div>
+        <textarea id="sqlbox">-- ------------------------------------------------------------
+-- Table: daybook
+-- Fixed: DEFAULT curdate() replaced with DEFAULT NULL
+-- Compatible with MySQL 5.7+ and MySQL 8.x
+-- ------------------------------------------------------------
+
+CREATE TABLE `daybook` (
+  `slno`     decimal(10,0)  NOT NULL,
+  `tdate`    date           DEFAULT NULL,
+  `accode`   char(8)        DEFAULT NULL,
+  `amount`   decimal(11,2)  DEFAULT 0.00,
+  `control`  smallint(6)    DEFAULT 1,
+  `sno`      smallint(6)    DEFAULT NULL,
+  `opaccode` varchar(10)    DEFAULT NULL,
+  `note`     varchar(30)    DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</textarea>
+
+        <div class="status-bar">
+            <div class="dot dot-ok"></div>
+            <span style="color:#a6e3a1; font-weight:bold;">No curdate() — safe for all MySQL versions</span>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-copy" onclick="copySQL()">Copy SQL</button>
+            <button class="btn-dl"   onclick="downloadSQL()">Download .sql File</button>
+            <button class="btn-clear" onclick="clearBox()">Clear</button>
+        </div>
+    </div>
+
+    <!-- IF TABLE EXISTS -->
+    <div class="card">
+        <div class="card-title info">If Table Already Exists — Run This ALTER</div>
+        <pre id="alterSQL">ALTER TABLE `daybook` MODIFY `tdate` date DEFAULT NULL;</pre>
+        <div class="btn-row">
+            <button class="btn-copy" onclick="copyText('alterSQL')">Copy ALTER SQL</button>
+        </div>
+    </div>
+
+    <!-- HOW TO USE IN PHPMAYADMIN -->
+    <div class="card">
+        <div class="card-title info">How to Run in phpMyAdmin</div>
+        <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-text">Open <code>http://localhost/phpmyadmin</code> in your browser.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Select your database from the left panel.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Click the <strong>SQL</strong> tab at the top.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Paste the fixed SQL above and click <strong>Go</strong>.</div></div>
+        </div>
+    </div>
+
+    <!-- LARAVEL AUTO DATE -->
+    <div class="card">
+        <div class="card-title info">Auto-Fill Today's Date in Laravel (Model)</div>
+        <pre><span class="comment">// Add to your Daybook model (app/Models/Daybook.php)</span>
+<span class="keyword">protected static function</span> <span class="str">boot</span>() {
+    <span class="keyword">parent</span>::boot();
+    <span class="keyword">static</span>::creating(<span class="keyword">function</span> ($model) {
+        <span class="keyword">if</span> (empty($model->tdate)) {
+            $model->tdate = now()-><span class="str">toDateString</span>(); <span class="comment">// sets today's date</span>
+        }
+    });
+}</pre>
+    </div>
+
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+const FIXED_SQL = `-- ------------------------------------------------------------
+-- Table: daybook
+-- Fixed: DEFAULT curdate() replaced with DEFAULT NULL
+-- Compatible with MySQL 5.7+ and MySQL 8.x
+-- ------------------------------------------------------------
+
+CREATE TABLE \`daybook\` (
+  \`slno\`     decimal(10,0)  NOT NULL,
+  \`tdate\`    date           DEFAULT NULL,
+  \`accode\`   char(8)        DEFAULT NULL,
+  \`amount\`   decimal(11,2)  DEFAULT 0.00,
+  \`control\`  smallint(6)    DEFAULT 1,
+  \`sno\`      smallint(6)    DEFAULT NULL,
+  \`opaccode\` varchar(10)    DEFAULT NULL,
+  \`note\`     varchar(30)    DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg || 'Copied!';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copySQL() {
+    navigator.clipboard.writeText(document.getElementById('sqlbox').value)
+        .then(() => showToast('SQL Copied!'))
+        .catch(() => {
+            document.getElementById('sqlbox').select();
+            document.execCommand('copy');
+            showToast('SQL Copied!');
+        });
+}
+
+function copyText(id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text)
+        .then(() => showToast('Copied!'))
+        .catch(() => showToast('Select and copy manually'));
+}
+
+function downloadSQL() {
+    const blob = new Blob([FIXED_SQL], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'daybook_fixed.sql';
+    a.click();
+    showToast('Downloaded!');
+}
+
+function clearBox() {
+    document.getElementById('sqlbox').value = '';
+    document.getElementById('sqlbox').focus();
+}
+</script>
+</body>
+</html>

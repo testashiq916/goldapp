@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Throwable;
@@ -271,6 +272,11 @@ class NativeCustomerController extends Controller
         $type = strtoupper(trim((string) ($payload['type'] ?? $payload['ctype'] ?? 'C')));
         if (trim((string) ($payload['name'] ?? '')) === '') {
             return response()->json(['success' => false, 'message' => 'Name is required'], 400);
+        }
+        if (in_array($type, ['C', 'D'], true)
+            && trim((string) ($payload['telephone'] ?? '')) === ''
+            && trim((string) ($payload['mobile'] ?? '')) === '') {
+            return response()->json(['success' => false, 'message' => 'Phone or mobile number is required'], 400);
         }
 
         $isDepositor = $type === 'D';
@@ -788,21 +794,15 @@ class NativeCustomerController extends Controller
 
     private function buildClientRow(array $data, string $code, string $type): array
     {
-        $customerLike = in_array(strtoupper($type), ['C', 'D'], true);
+        $upper = static fn (string $value, int $length = 0): string => $length > 0
+            ? substr(strtoupper(trim($value)), 0, $length)
+            : strtoupper(trim($value));
         $opBalance = (float) ($data['opbalance'] ?? 0);
         $opBalanceType = strtolower((string) ($data['balance_type'] ?? 'debit'));
-        if ($customerLike) {
-            $opBalance = $opBalanceType === 'debit' ? abs($opBalance) : -abs($opBalance);
-        } else {
-            $opBalance = $opBalanceType === 'credit' ? abs($opBalance) : -abs($opBalance);
-        }
+        $opBalance = $opBalanceType === 'credit' ? abs($opBalance) : -abs($opBalance);
         $opBalanceB = (float) ($data['opbalanceb'] ?? 0);
         $opBalanceTypeB = strtolower((string) ($data['balance_type_b'] ?? 'debit'));
-        if ($customerLike) {
-            $opBalanceB = $opBalanceTypeB === 'debit' ? abs($opBalanceB) : -abs($opBalanceB);
-        } else {
-            $opBalanceB = $opBalanceTypeB === 'credit' ? abs($opBalanceB) : -abs($opBalanceB);
-        }
+        $opBalanceB = $opBalanceTypeB === 'credit' ? abs($opBalanceB) : -abs($opBalanceB);
         $weight = (float) ($data['opweight'] ?? 0);
         $weight = strtolower((string) ($data['weight_type'] ?? 'debit')) === 'credit' ? abs($weight) : -abs($weight);
         $depWeight = (float) ($data['opdepwgtbal'] ?? 0);
@@ -815,19 +815,19 @@ class NativeCustomerController extends Controller
 
         $row = [
             'code' => $code,
-            'name' => substr(trim((string) ($data['name'] ?? '')), 0, 40),
-            'addr1' => $addr1,
-            'addr2' => $addr2,
-            'addr3' => $addr3,
-            'city' => trim((string) ($data['city'] ?? '')),
+            'name' => $upper((string) ($data['name'] ?? ''), 40),
+            'addr1' => $upper($addr1),
+            'addr2' => $upper($addr2),
+            'addr3' => $upper($addr3),
+            'city' => $upper((string) ($data['city'] ?? '')),
             'telephone' => trim((string) ($data['telephone'] ?? '')),
             'mobile' => trim((string) ($data['mobile'] ?? '')),
             'email' => trim((string) ($data['email'] ?? '')),
-            'pin' => trim((string) ($data['pin'] ?? '')),
-            'state' => trim((string) ($data['state'] ?? '')),
-            'panadhar' => trim((string) ($data['panadhar'] ?? '')),
-            'tin' => trim((string) ($data['tin'] ?? '')),
-            'cst' => trim((string) ($data['cst'] ?? '')),
+            'pin' => $upper((string) ($data['pin'] ?? '')),
+            'state' => $upper((string) ($data['state'] ?? '')),
+            'panadhar' => $upper((string) ($data['panadhar'] ?? '')),
+            'tin' => $upper((string) ($data['tin'] ?? '')),
+            'cst' => $upper((string) ($data['cst'] ?? '')),
             'opbalance' => $opBalance,
             'opbalanceb' => $opBalanceB,
             'ctype' => $type,
@@ -835,26 +835,26 @@ class NativeCustomerController extends Controller
             'removed' => isset($data['removed']) ? 1 : 0,
             'blocked' => isset($data['blocked']) ? 'Y' : 'N',
             'salary' => (float) ($data['salary'] ?? 0),
-            'cocode' => trim((string) ($data['cocode'] ?? '')),
-            'grp' => trim((string) ($data['grp'] ?? 'O')),
-            'route' => trim((string) ($data['route'] ?? '')),
-            'carea' => trim((string) ($data['carea'] ?? ($data['area'] ?? ''))),
+            'cocode' => $upper((string) ($data['cocode'] ?? '')),
+            'grp' => $upper((string) ($data['grp'] ?? 'O')),
+            'route' => $upper((string) ($data['route'] ?? '')),
+            'carea' => $upper((string) ($data['carea'] ?? ($data['area'] ?? ''))),
             'adate' => $this->normalizeDate($data['adate'] ?? ''),
             'duedate' => $this->normalizeDate($data['duedate'] ?? ''),
             'cutrate' => (float) ($data['cutrate'] ?? 0),
             'colncomn' => (float) ($data['colncomn'] ?? 0),
             'opweight' => $weight,
             'opdepwgtbal' => $depWeight,
-            'idno' => trim((string) ($data['idno'] ?? '')),
-            'religion' => trim((string) ($data['religion'] ?? '')),
-            'note' => trim((string) ($data['note'] ?? '')),
+            'idno' => $upper((string) ($data['idno'] ?? '')),
+            'religion' => $upper((string) ($data['religion'] ?? '')),
+            'note' => $upper((string) ($data['note'] ?? '')),
             'coparty' => isset($data['coparty']) ? 'Y' : 'N',
-            'pcard' => trim((string) ($data['pcard'] ?? '')),
-            'smcode' => trim((string) ($data['smcode'] ?? '')),
+            'pcard' => $upper((string) ($data['pcard'] ?? '')),
+            'smcode' => $upper((string) ($data['smcode'] ?? '')),
             'pospwd' => trim((string) ($data['pospwd'] ?? '')),
             'agent' => isset($data['agent']) ? 'Y' : 'N',
             'oppcardpoints' => (float) ($data['oppcardpoints'] ?? 0),
-            'pcardno' => trim((string) ($data['pcardno'] ?? '')),
+            'pcardno' => $upper((string) ($data['pcardno'] ?? '')),
             'approval' => isset($data['approval']) ? 'Y' : 'N',
             'homemobile' => trim((string) ($data['homemobile'] ?? '')),
             'distance' => (int) ($data['distance'] ?? 0),
@@ -961,13 +961,9 @@ class NativeCustomerController extends Controller
             'mobile' => (string) ($row['mobile'] ?? ''),
             'telephone' => (string) ($row['telephone'] ?? ($row['mobile'] ?? '')),
             'opbalance' => abs($openingBalance),
-            'balance_type' => $type === 'S'
-                ? ($openingBalance >= 0 ? 'credit' : 'debit')
-                : ($openingBalance >= 0 ? 'debit' : 'credit'),
+            'balance_type' => $openingBalance >= 0 ? 'credit' : 'debit',
             'opbalanceb' => abs($openingBalance),
-            'balance_type_b' => $type === 'S'
-                ? ($openingBalance >= 0 ? 'credit' : 'debit')
-                : ($openingBalance >= 0 ? 'debit' : 'credit'),
+            'balance_type_b' => $openingBalance >= 0 ? 'credit' : 'debit',
             'grp' => $type === 'C' ? 'SCHM' : '',
             'adate' => $createdDate,
             'billdate' => $createdDate,
@@ -1067,7 +1063,7 @@ class NativeCustomerController extends Controller
     private function syncCodeCounter(string $code, string $type): void
     {
         $type = strtoupper(trim($type));
-        if (!in_array($type, ['C', 'S'], true)) {
+        if (!in_array($type, ['C', 'S', 'F'], true)) {
             return;
         }
 
@@ -1099,9 +1095,16 @@ class NativeCustomerController extends Controller
             $type = 'C';
         }
 
-        $prefixCode = $type === 'C' ? 'CPREFIX' : 'SPREFIX';
-        $fallbackPrefix = $type === 'C' ? 'C' : ($type !== '' ? $type : 'S');
-        $prefix = trim((string) (DB::table('generals')->where('code', $prefixCode)->value('cvalue') ?? $fallbackPrefix));
+        $fallbackPrefix = $type === 'D' ? 'C' : ($type !== '' ? $type : 'S');
+        $prefixCode = match ($type) {
+            'C', 'D' => 'CPREFIX',
+            'S' => 'SPREFIX',
+            default => '',
+        };
+        $prefix = $fallbackPrefix;
+        if ($prefixCode !== '') {
+            $prefix = trim((string) (DB::table('generals')->where('code', $prefixCode)->value('cvalue') ?? $fallbackPrefix));
+        }
 
         $database = strtolower(trim((string) Config::get('database.connections.mysql.database', '')));
         $overrides = $this->loadCompanyCodePrefixOverrides();
@@ -1206,7 +1209,7 @@ class NativeCustomerController extends Controller
 
                 $sync->syncParty($code, $type);
             } catch (Throwable $e) {
-                report($e);
+                $this->logSecondarySyncWarning($e, 'customer_sync', $code, $type);
             }
         });
     }
@@ -1224,9 +1227,23 @@ class NativeCustomerController extends Controller
             try {
                 $this->customerSync()->deleteParty($code, $type);
             } catch (Throwable $e) {
-                report($e);
+                $this->logSecondarySyncWarning($e, 'customer_delete', $code, $type);
             }
         });
+    }
+
+    private function logSecondarySyncWarning(Throwable $e, string $action, string $code, string $type): void
+    {
+        try {
+            Log::warning('Customer secondary sync skipped.', [
+                'action' => $action,
+                'code' => $code,
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        } catch (Throwable) {
+            // Never let best-effort background sync logging break the customer/save response.
+        }
     }
 
     private function normalizeImportHeader(string $header): string

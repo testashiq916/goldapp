@@ -5,6 +5,8 @@
 <title>{{ $title }}</title>
 @include('customers._style')
 @include('partials.print-layout-head')
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -74,5 +76,6 @@ function load(){
 }
 function printPage(){window.print();}
 document.getElementById('name').addEventListener('keydown',e=>{if(e.key==='Enter')load();});
+if(new URLSearchParams(window.location.search).get('auto_load')==='1'){load();}
 </script>
 </body></html>

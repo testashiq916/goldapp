@@ -61,7 +61,9 @@ tfoot td{position:sticky;bottom:0;background:#edf4fc;font-weight:700;color:#0f34
     .summary-bar{background:#f0f0f0;color:#000;border-radius:0}.summary-bar .lbl{color:#555}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -155,7 +157,7 @@ tfoot td{position:sticky;bottom:0;background:#edf4fc;font-weight:700;color:#0f34
     </div>
 </div>
 
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', 'table',
   'order_profit_analysis_{{ $dateFrom }}_{{ $dateTo }}');

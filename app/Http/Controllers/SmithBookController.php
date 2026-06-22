@@ -80,6 +80,8 @@ class SmithBookController extends Controller
                     'nettwgt2'  => round((float) ($r->nettwgt2 ?? 0), 3),
                     'totwstg'   => round((float) ($r->totwstg ?? 0), 3),
                     'totmc'     => round((float) ($r->totmc ?? 0), 2),
+                    'sgst'      => round(((float) ($r->taxamt ?? 0)) / 2, 2),
+                    'cgst'      => round(((float) ($r->taxamt ?? 0)) - round(((float) ($r->taxamt ?? 0)) / 2, 2), 2),
                     'taxamt'    => round((float) ($r->taxamt ?? 0), 2),
                     'tdsamt'    => round((float) ($r->tdsamt ?? 0), 2),
                 ];
@@ -103,6 +105,8 @@ class SmithBookController extends Controller
             $t['nettwgt2'] += (float) ($r['nettwgt2'] ?? 0);
             $t['totwstg']  += (float) ($r['totwstg'] ?? 0);
             $t['totmc']    += (float) ($r['totmc'] ?? 0);
+            $t['sgst']     += (float) ($r['sgst'] ?? 0);
+            $t['cgst']     += (float) ($r['cgst'] ?? 0);
             $t['taxamt']   += (float) ($r['taxamt'] ?? 0);
             $t['tdsamt']   += (float) ($r['tdsamt'] ?? 0);
         }
@@ -112,6 +116,6 @@ class SmithBookController extends Controller
     private function emptyTotals(): array
     {
         return ['count' => 0, 'totwgt1' => 0, 'netwgt1' => 0, 'totwgt2' => 0,
-                'nettwgt2' => 0, 'totwstg' => 0, 'totmc' => 0, 'taxamt' => 0, 'tdsamt' => 0];
+                'nettwgt2' => 0, 'totwstg' => 0, 'totmc' => 0, 'sgst' => 0, 'cgst' => 0, 'taxamt' => 0, 'tdsamt' => 0];
     }
 }

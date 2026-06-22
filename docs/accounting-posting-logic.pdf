@@ -1,0 +1,370 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 4110 >>
+stream
+BT
+/F2 18 Tf 54.00 784.00 Td (GoldApp Accounting Posting Logic) Tj
+/F1 10 Tf 54.00 751.00 Td (Generated from the project at `c:\\xampp\\htdocs\\goldapp`.) Tj
+/F2 14 Tf 54.00 729.00 Td (Scope) Tj
+/F1 10 Tf 54.00 704.00 Td (This note documents the account master, account grouping/tagging area, daybook, daybookpart,) Tj
+/F1 10 Tf 54.00 692.00 Td (daybookratewgt, transaction master relationship, and posting rules found in the current) Tj
+/F1 10 Tf 54.00 680.00 Td (Laravel project.) Tj
+/F1 10 Tf 54.00 663.00 Td (The user term `accotgtag` was not found as an exact table, route, controller, or symbol. In) Tj
+/F1 10 Tf 54.00 651.00 Td (this document it is treated as the account group/tag/classification logic around `accountm`,) Tj
+/F1 10 Tf 54.00 639.00 Td (`accountg`, `accountgbs`, account type fields, and report positions.) Tj
+/F2 14 Tf 54.00 617.00 Td (Core Tables) Tj
+/F2 12 Tf 54.00 589.00 Td (accountm) Tj
+/F1 10 Tf 54.00 568.00 Td (`accountm` is the account master. Live/demo columns include:) Tj
+/F1 10 Tf 66.00 551.00 Td (- `accode`: account code, primary key, char\(8\).) Tj
+/F1 10 Tf 66.00 539.00 Td (- `name`: account name.) Tj
+/F1 10 Tf 66.00 527.00 Td (- `actype1`: broad account class. The account master accepts `R`, `E`, `A`, `L` for) Tj
+/F1 10 Tf 66.00 515.00 Td (  revenue, expense, asset, and liability.) Tj
+/F1 10 Tf 66.00 503.00 Td (- `actype2`: special account type marker. Common meanings in the code include `H` for) Tj
+/F1 10 Tf 66.00 491.00 Td (  cash, `B` for bank, and linked party categories such as customer, supplier, smith,) Tj
+/F1 10 Tf 66.00 479.00 Td (  goldsmith, refinery, and staff-style accounts.) Tj
+/F1 10 Tf 66.00 467.00 Td (- `reserve`: reserved account marker.) Tj
+/F1 10 Tf 66.00 455.00 Td (- `grcode`: link to `accountg`.) Tj
+/F1 10 Tf 66.00 443.00 Td (- `bshead`: link to `accountgbs` for asset/liability accounts.) Tj
+/F1 10 Tf 66.00 431.00 Td (- `opbal`, `opbalb`: opening balance for control level 1 and secondary level.) Tj
+/F1 10 Tf 66.00 419.00 Td (- `control`: visibility/control flag.) Tj
+/F1 10 Tf 66.00 407.00 Td (- `tplpos`, `shepos`, `shedgrp`: report/schedule placement fields.) Tj
+/F1 10 Tf 66.00 395.00 Td (- `sp`, `removed`, `blocked`, `note`: status and reporting flags.) Tj
+/F1 10 Tf 66.00 383.00 Td (- `opwgt`, `opwgtb`: opening weight fields where weight-ledger logic uses them.) Tj
+/F1 10 Tf 54.00 366.00 Td (Opening amount sign convention in `AccountMasterController`:) Tj
+/F1 10 Tf 66.00 349.00 Td (- Debit opening balance is stored as negative.) Tj
+/F1 10 Tf 66.00 337.00 Td (- Credit opening balance is stored as positive.) Tj
+/F1 10 Tf 66.00 325.00 Td (- The active opening column is `opbal` when session `gilevel` is 1, otherwise `opbalb`.) Tj
+/F1 10 Tf 54.00 308.00 Td (Account save validation:) Tj
+/F1 10 Tf 66.00 291.00 Td (- `accode`, description, and group are compulsory.) Tj
+/F1 10 Tf 66.00 279.00 Td (- `bshead` is compulsory for asset/liability accounts.) Tj
+/F1 10 Tf 66.00 267.00 Td (- Existing account codes cannot be duplicated.) Tj
+/F1 10 Tf 66.00 255.00 Td (- Account code cannot be changed after transactions exist in `daybook`.) Tj
+/F1 10 Tf 66.00 243.00 Td (- Reserved accounts and linked party accounts cannot be deleted through the normal account) Tj
+/F1 10 Tf 66.00 231.00 Td (  master.) Tj
+/F1 10 Tf 66.00 219.00 Td (- Accounts with `daybook` transactions cannot be deleted.) Tj
+/F2 12 Tf 54.00 199.00 Td (accountg) Tj
+/F1 10 Tf 54.00 178.00 Td (`accountg` is the account group master. Important columns are:) Tj
+/F1 10 Tf 66.00 161.00 Td (- `grcode`: group code.) Tj
+/F1 10 Tf 66.00 149.00 Td (- `name`: group name.) Tj
+/F1 10 Tf 66.00 137.00 Td (- `actype1`: group class.) Tj
+/F1 10 Tf 66.00 125.00 Td (- `reserve`: reserved group marker.) Tj
+/F1 10 Tf 66.00 113.00 Td (- `pos`, `position`, `grp`, `mgrp`, `bscode`: report positioning and grouping fields.) Tj
+/F1 10 Tf 54.00 96.00 Td (Group delete validation blocks deletion when:) Tj
+/F1 10 Tf 66.00 79.00 Td (- The group is reserved.) Tj
+/F1 10 Tf 66.00 67.00 Td (- Any `accountm` row uses the group code.) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 1 of 6) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 3936 >>
+stream
+BT
+/F2 12 Tf 54.00 790.00 Td (accountgbs) Tj
+/F1 10 Tf 54.00 769.00 Td (`accountgbs` is the balance sheet head master. Important columns are:) Tj
+/F1 10 Tf 66.00 752.00 Td (- `hcode`: head code.) Tj
+/F1 10 Tf 66.00 740.00 Td (- `hname`: head name.) Tj
+/F1 10 Tf 66.00 728.00 Td (- `actype1`: asset/liability classification.) Tj
+/F1 10 Tf 66.00 716.00 Td (- `pos`: report position.) Tj
+/F1 10 Tf 66.00 704.00 Td (- `reserve`: reserved marker.) Tj
+/F1 10 Tf 66.00 692.00 Td (- `expand`: report expand/collapse flag.) Tj
+/F1 10 Tf 66.00 680.00 Td (- `amount`: optional stored amount.) Tj
+/F1 10 Tf 54.00 663.00 Td (Balance sheet head delete validation blocks deletion when:) Tj
+/F1 10 Tf 66.00 646.00 Td (- The head is reserved.) Tj
+/F1 10 Tf 66.00 634.00 Td (- Any `accountm.bshead` uses the head code.) Tj
+/F2 12 Tf 54.00 614.00 Td (daybook) Tj
+/F1 10 Tf 54.00 593.00 Td (`daybook` is the ledger posting table. Live/demo columns include:) Tj
+/F1 10 Tf 66.00 576.00 Td (- `slno`: shared transaction serial number.) Tj
+/F1 10 Tf 66.00 564.00 Td (- `sno`: line number within the transaction.) Tj
+/F1 10 Tf 66.00 552.00 Td (- `tdate`: transaction date.) Tj
+/F1 10 Tf 66.00 540.00 Td (- `accode`: posted account code.) Tj
+/F1 10 Tf 66.00 528.00 Td (- `amount`: signed ledger amount.) Tj
+/F1 10 Tf 66.00 516.00 Td (- `control`: posting/control level.) Tj
+/F1 10 Tf 66.00 504.00 Td (- `opaccode`: opposite account code used for ledger display and navigation.) Tj
+/F1 10 Tf 54.00 487.00 Td (Important sign convention:) Tj
+/F1 10 Tf 66.00 470.00 Td (- Negative `daybook.amount` is shown as debit in ledger reports.) Tj
+/F1 10 Tf 66.00 458.00 Td (- Positive `daybook.amount` is shown as credit in ledger reports.) Tj
+/F1 10 Tf 66.00 446.00 Td (- Every complete transaction should balance to zero when grouped by `slno`.) Tj
+/F2 12 Tf 54.00 426.00 Td (daybookpart) Tj
+/F1 10 Tf 54.00 405.00 Td (`daybookpart` is the voucher header/detail table for a `daybook.slno`. Live/demo columns) Tj
+/F1 10 Tf 54.00 393.00 Td (include:) Tj
+/F1 10 Tf 66.00 376.00 Td (- `slno`: transaction serial number, shared with `daybook`.) Tj
+/F1 10 Tf 66.00 364.00 Td (- `vchno`: voucher/document number.) Tj
+/F1 10 Tf 66.00 352.00 Td (- `particular`: narration.) Tj
+/F1 10 Tf 66.00 340.00 Td (- `staff`: staff/salesman code.) Tj
+/F1 10 Tf 66.00 328.00 Td (- `chequedate`, `chequeno`, `duedate`: cheque and due date details.) Tj
+/F1 10 Tf 66.00 316.00 Td (- `ic`, `uid`, `ttime`: user/time metadata.) Tj
+/F1 10 Tf 66.00 304.00 Td (- `slno2`: used by suspense/linked allocation flows.) Tj
+/F1 10 Tf 66.00 292.00 Td (- `rate`, `taxperc`, `taxamt`, `interstate`, `taxreverse`, `refno`: tax/rate/reference) Tj
+/F1 10 Tf 66.00 280.00 Td (  data.) Tj
+/F1 10 Tf 54.00 263.00 Td (There is a migration intended to add `daybookpart.discount`, but the live/demo table) Tj
+/F1 10 Tf 54.00 251.00 Td (inspected here does not currently show that column. The receipt controller filters insert) Tj
+/F1 10 Tf 54.00 239.00 Td (columns dynamically, so the code can save without the column, but discount-specific) Tj
+/F1 10 Tf 54.00 227.00 Td (persistence depends on the migration being applied.) Tj
+/F2 12 Tf 54.00 207.00 Td (daybookratewgt) Tj
+/F1 10 Tf 54.00 186.00 Td (`daybookratewgt` stores rate and weight details tied to a daybook transaction:) Tj
+/F1 10 Tf 66.00 169.00 Td (- `slno`: primary key and link to the transaction.) Tj
+/F1 10 Tf 66.00 157.00 Td (- `rate`: rate.) Tj
+/F1 10 Tf 66.00 145.00 Td (- `mcp`: making-charge percent.) Tj
+/F1 10 Tf 66.00 133.00 Td (- `wgt`: weight.) Tj
+/F1 10 Tf 66.00 121.00 Td (- `code`: optional code.) Tj
+/F1 10 Tf 66.00 109.00 Td (- `tdate`: transaction date.) Tj
+/F1 10 Tf 66.00 97.00 Td (- `control`: control level.) Tj
+/F1 10 Tf 54.00 80.00 Td (Ledger reports read this table when the ledger type requests rate or weight details.) Tj
+/F2 14 Tf 54.00 58.00 Td (Transaction Master Relationship) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 2 of 6) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4171 >>
+stream
+BT
+/F1 10 Tf 54.00 790.00 Td (The project uses `slno` as the common transaction key across legacy master and posting) Tj
+/F1 10 Tf 54.00 778.00 Td (tables.) Tj
+/F1 10 Tf 54.00 761.00 Td (Examples:) Tj
+/F1 10 Tf 66.00 744.00 Td (- Sales: `salesm.slno` plus `salesd` detail rows plus `daybook` and `daybookpart`.) Tj
+/F1 10 Tf 66.00 732.00 Td (- Sales return: `salesrm.slno` plus `salesrd` plus postings.) Tj
+/F1 10 Tf 66.00 720.00 Td (- Purchase: `purchasem.slno` plus purchase details plus postings.) Tj
+/F1 10 Tf 66.00 708.00 Td (- Purchase return: `purchaserm.slno` plus return details plus postings.) Tj
+/F1 10 Tf 66.00 696.00 Td (- Receipt/payment/journal/direct vouchers: `daybookpart.slno` plus one or more `daybook`) Tj
+/F1 10 Tf 66.00 684.00 Td (  rows.) Tj
+/F1 10 Tf 66.00 672.00 Td (- PDC vouchers: `pdclist.slno` until collection/posting.) Tj
+/F1 10 Tf 66.00 660.00 Td (- Smith/refinery/repair/order modules also share the same `slno` pattern.) Tj
+/F1 10 Tf 54.00 643.00 Td (New serial numbers are reserved from `generali.SERIALNO`, but controllers also scan existing) Tj
+/F1 10 Tf 54.00 631.00 Td (transaction tables \(`salesm`, `salesrm`, `purchasem`, `purchaserm`, `daybook`,) Tj
+/F1 10 Tf 54.00 619.00 Td (`daybookpart`, `orderm`, `smithm`, `refinerym`, `repairm`\) and choose max existing `slno`) Tj
+/F1 10 Tf 54.00 607.00 Td (plus one.) Tj
+/F1 10 Tf 54.00 590.00 Td (On edit, most modules delete old `daybook`, `daybookpart`, and related rows for the same) Tj
+/F1 10 Tf 54.00 578.00 Td (`slno`, then reinsert the recalculated postings.) Tj
+/F2 14 Tf 54.00 556.00 Td (Voucher Number Logic) Tj
+/F1 10 Tf 54.00 531.00 Td (Receipt and payment vouchers use counters in `generali` and also scan `daybookpart.vchno` to) Tj
+/F1 10 Tf 54.00 519.00 Td (avoid reusing an existing number.) Tj
+/F1 10 Tf 54.00 502.00 Td (Receipt prefixes:) Tj
+/F1 10 Tf 66.00 485.00 Td (- Level 1 default receipt: `VRB/`.) Tj
+/F1 10 Tf 66.00 473.00 Td (- Lower/other control receipt: `VRE/`.) Tj
+/F1 10 Tf 66.00 461.00 Td (- If cash/bank separate voucher numbering is enabled and selected account is bank: `VRB/`.) Tj
+/F1 10 Tf 66.00 449.00 Td (- If separate numbering is enabled and selected account is cash: `VRC/`.) Tj
+/F1 10 Tf 66.00 437.00 Td (- PDC receipt: `PDCR/` or `PDCR`.) Tj
+/F1 10 Tf 66.00 425.00 Td (- Secondary database prefix can override level 1 receipt prefix.) Tj
+/F1 10 Tf 54.00 408.00 Td (Payment prefixes:) Tj
+/F1 10 Tf 66.00 391.00 Td (- Level 1 default payment: `VPB/`.) Tj
+/F1 10 Tf 66.00 379.00 Td (- Lower/other control payment: `VPE/`.) Tj
+/F1 10 Tf 66.00 367.00 Td (- If cash/bank separate voucher numbering is enabled and selected account is bank: `VPB/`.) Tj
+/F1 10 Tf 66.00 355.00 Td (- If separate numbering is enabled and selected account is cash: `VPC/`.) Tj
+/F1 10 Tf 66.00 343.00 Td (- PDC payment: `PDCP/` or `PDCP`.) Tj
+/F1 10 Tf 66.00 331.00 Td (- Secondary database prefix can override level 1 payment prefix.) Tj
+/F2 14 Tf 54.00 309.00 Td (Posting Rules) Tj
+/F2 12 Tf 54.00 281.00 Td (Receipt Voucher) Tj
+/F1 10 Tf 54.00 260.00 Td (Controller: `ReceiptController`.) Tj
+/F1 10 Tf 54.00 243.00 Td (Normal receipt inserts one `daybookpart` header and two or three `daybook` rows:) Tj
+/F1 10 Tf 66.00 226.00 Td (- Party account: `amount + discount`, positive, `opaccode = cash/bank`.) Tj
+/F1 10 Tf 66.00 214.00 Td (- Cash/bank account: receipt amount, negative, `opaccode = party`.) Tj
+/F1 10 Tf 66.00 202.00 Td (- Discount account, when discount is present: discount amount, negative, `opaccode =) Tj
+/F1 10 Tf 66.00 190.00 Td (  party`.) Tj
+/F1 10 Tf 54.00 173.00 Td (The discount account comes from `generals.RDISCAC`, defaulting to `DISC`.) Tj
+/F1 10 Tf 54.00 156.00 Td (The total should balance:) Tj
+/F1 10 Tf 54.00 139.00 Td (`party credit = cash/bank debit + discount debit`) Tj
+/F1 10 Tf 54.00 122.00 Td (PDC receipt writes to `pdclist` instead of immediate `daybook` postings.) Tj
+/F2 12 Tf 54.00 102.00 Td (Payment Voucher) Tj
+/F1 10 Tf 54.00 81.00 Td (Controller: `PaymentController`.) Tj
+/F1 10 Tf 54.00 64.00 Td (Normal payment inserts one `daybookpart` header and two `daybook` rows:) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 3 of 6) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 3806 >>
+stream
+BT
+/F1 10 Tf 66.00 790.00 Td (- Cash/bank account: payment amount, positive, `opaccode = party`.) Tj
+/F1 10 Tf 66.00 778.00 Td (- Party account: payment amount, negative, `opaccode = cash/bank`.) Tj
+/F1 10 Tf 54.00 761.00 Td (The total should balance to zero. PDC payment writes to `pdclist` instead of immediate) Tj
+/F1 10 Tf 54.00 749.00 Td (`daybook` postings.) Tj
+/F2 12 Tf 54.00 729.00 Td (Sales Bill) Tj
+/F1 10 Tf 54.00 708.00 Td (Controller: `SalesBillController`.) Tj
+/F1 10 Tf 54.00 691.00 Td (Sales posting builds an in-memory `entries` list, then inserts it to `daybook` with `vtype =) Tj
+/F1 10 Tf 54.00 679.00 Td (SL` where the schema supports that column.) Tj
+/F1 10 Tf 54.00 662.00 Td (Common heads used:) Tj
+/F1 10 Tf 66.00 645.00 Td (- Customer/cash/bank settlement side.) Tj
+/F1 10 Tf 66.00 633.00 Td (- `RS`: sales account.) Tj
+/F1 10 Tf 66.00 621.00 Td (- `ESR`: exchange/sales-return side when returns are included.) Tj
+/F1 10 Tf 66.00 609.00 Td (- `EP`: old gold exchange purchase side, or configured old-gold purchase account.) Tj
+/F1 10 Tf 66.00 597.00 Td (- `DISC`: discount.) Tj
+/F1 10 Tf 66.00 585.00 Td (- `SGST`, `CGST`, `IGST`, or configured `STAXAC`: tax heads.) Tj
+/F1 10 Tf 66.00 573.00 Td (- `AST`: cess/additional sales tax.) Tj
+/F1 10 Tf 66.00 561.00 Td (- `PTAX`/`PTAXEXP`: purchase tax external mapping.) Tj
+/F1 10 Tf 66.00 549.00 Td (- `VA`: value-addition account when configured separately.) Tj
+/F1 10 Tf 66.00 537.00 Td (- `ROUND`: balancing/round-off row.) Tj
+/F1 10 Tf 54.00 520.00 Td (After all sales rows are inserted, the controller sums `daybook.amount` for the `slno`. If) Tj
+/F1 10 Tf 54.00 508.00 Td (the sum is not zero, it inserts a `ROUND` row for the negative of the sum.) Tj
+/F2 12 Tf 54.00 488.00 Td (Purchase Bill) Tj
+/F1 10 Tf 54.00 467.00 Td (Controller: `PurchaseBillController`.) Tj
+/F1 10 Tf 54.00 450.00 Td (Purchase posting inserts a `daybookpart` header and then posts purchase ledger rows. Common) Tj
+/F1 10 Tf 54.00 438.00 Td (heads used:) Tj
+/F1 10 Tf 66.00 421.00 Td (- `CASH`: cash payment.) Tj
+/F1 10 Tf 66.00 409.00 Td (- Selected bank or `CNP`: cheque payment or cheque-not-presented.) Tj
+/F1 10 Tf 66.00 397.00 Td (- Supplier account.) Tj
+/F1 10 Tf 66.00 385.00 Td (- `EP`: purchase account.) Tj
+/F1 10 Tf 66.00 373.00 Td (- `ADD`: additional/other amount.) Tj
+/F1 10 Tf 66.00 361.00 Td (- `HMC`: making charge.) Tj
+/F1 10 Tf 66.00 349.00 Td (- `TCSAC`: TCS.) Tj
+/F1 10 Tf 66.00 337.00 Td (- `DISC`: discount.) Tj
+/F1 10 Tf 66.00 325.00 Td (- `SGST`, `CGST`, `IGST`, or `PTAXEXP`: tax heads.) Tj
+/F1 10 Tf 66.00 313.00 Td (- `ROUND`: round-off and residual balancing.) Tj
+/F1 10 Tf 54.00 296.00 Td (After purchase rows are inserted, the controller sums all `daybook.amount` rows for the) Tj
+/F1 10 Tf 54.00 284.00 Td (`slno`; if the result is not zero, a `ROUND` entry is added.) Tj
+/F2 12 Tf 54.00 264.00 Td (Sales Ledger Repair Logic) Tj
+/F1 10 Tf 54.00 243.00 Td (Controller: `AccountLedgerController`.) Tj
+/F1 10 Tf 54.00 226.00 Td (When viewing account ledgers, the controller can repair sales bills that exist in `salesm`) Tj
+/F1 10 Tf 54.00 214.00 Td (but have no `daybook` rows. For each missing sale:) Tj
+/F1 10 Tf 66.00 197.00 Td (- It creates a `daybookpart` row with voucher number from `salesm.billno`.) Tj
+/F1 10 Tf 66.00 185.00 Td (- It posts customer account negative for net amount.) Tj
+/F1 10 Tf 66.00 173.00 Td (- It posts `RS` positive for net amount.) Tj
+/F1 10 Tf 54.00 156.00 Td (This is a pragmatic repair path for legacy or incomplete posting data.) Tj
+/F2 14 Tf 54.00 134.00 Td (Reporting Logic) Tj
+/F2 12 Tf 54.00 106.00 Td (Account Ledger) Tj
+/F1 10 Tf 54.00 85.00 Td (Controller: `AccountLedgerController`.) Tj
+/F1 10 Tf 54.00 68.00 Td (Opening balance:) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 4 of 6) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4249 >>
+stream
+BT
+/F1 10 Tf 66.00 790.00 Td (- Reads `accountm.opbal` for level 1 or `opbalb` otherwise.) Tj
+/F1 10 Tf 66.00 778.00 Td (- Adds all prior `daybook.amount` for the account before the from-date and `control <=) Tj
+/F1 10 Tf 66.00 766.00 Td (  gilevel`.) Tj
+/F1 10 Tf 54.00 749.00 Td (Ledger rows:) Tj
+/F1 10 Tf 66.00 732.00 Td (- Join `daybook` to `daybookpart`.) Tj
+/F1 10 Tf 66.00 720.00 Td (- Filter by `daybook.accode`, date range, and `control <= gilevel`.) Tj
+/F1 10 Tf 66.00 708.00 Td (- Use `daybook.opaccode` to display the opposite account name.) Tj
+/F1 10 Tf 66.00 696.00 Td (- Negative amount is debit, positive amount is credit.) Tj
+/F1 10 Tf 66.00 684.00 Td (- Running balance is opening plus signed transaction amount.) Tj
+/F1 10 Tf 66.00 672.00 Td (- Optional rate/weight columns are loaded from `daybookratewgt`.) Tj
+/F2 12 Tf 54.00 652.00 Td (Day Book) Tj
+/F1 10 Tf 54.00 631.00 Td (Controller: `DayBookController`.) Tj
+/F1 10 Tf 54.00 614.00 Td (The daybook report always resolves the level to 1 in this controller.) Tj
+/F1 10 Tf 54.00 597.00 Td (Forms:) Tj
+/F1 10 Tf 66.00 580.00 Td (- Form 1: cash book style report with opening and closing cash balances.) Tj
+/F1 10 Tf 66.00 568.00 Td (- Form 2: grouped by `slno`, showing debit/credit totals per voucher; optional filter can) Tj
+/F1 10 Tf 66.00 556.00 Td (  show only difference/unbalanced vouchers.) Tj
+/F1 10 Tf 66.00 544.00 Td (- Form 3: detailed daybook rows with account code and voucher data.) Tj
+/F1 10 Tf 66.00 532.00 Td (- Form 4: receipt/payment grouped by date with balance brought down/carried through.) Tj
+/F1 10 Tf 66.00 520.00 Td (- Form 5: full daily report combining sales, sales returns, purchases, purchase returns,) Tj
+/F1 10 Tf 66.00 508.00 Td (  receipts, and payments.) Tj
+/F1 10 Tf 54.00 491.00 Td (Cash balance:) Tj
+/F1 10 Tf 66.00 474.00 Td (- Starts with `accountm.opbal` for `CASH`.) Tj
+/F1 10 Tf 66.00 462.00 Td (- Adds `daybook.amount` for `CASH` before/from/to dates with `control <= 1`.) Tj
+/F1 10 Tf 54.00 445.00 Td (Particulars:) Tj
+/F1 10 Tf 66.00 428.00 Td (- For `RS`, the report derives sales bill range from `salesm`.) Tj
+/F1 10 Tf 66.00 416.00 Td (- For `EP`, it derives purchase document range from `purchasem`.) Tj
+/F1 10 Tf 66.00 404.00 Td (- Otherwise it uses `daybookpart.particular`, or `Day Total` when multiple matching) Tj
+/F1 10 Tf 66.00 392.00 Td (  vouchers exist.) Tj
+/F2 12 Tf 54.00 372.00 Td (All Transaction Report) Tj
+/F1 10 Tf 54.00 351.00 Td (Controller: `AllTransReportController`.) Tj
+/F1 10 Tf 54.00 334.00 Td (Receipt, payment, and journal sections are derived from `daybook` plus `daybookpart`:) Tj
+/F1 10 Tf 66.00 317.00 Td (- Receipt mode filters `daybookpart.vchno LIKE 'VR%'` and positive `daybook.amount`.) Tj
+/F1 10 Tf 66.00 305.00 Td (- Payment mode filters `daybookpart.vchno LIKE 'VP%'` and negative `daybook.amount`.) Tj
+/F1 10 Tf 66.00 293.00 Td (- Journal mode filters `daybookpart.vchno LIKE 'JL%'`.) Tj
+/F1 10 Tf 54.00 276.00 Td (The report joins `accountm` for account names and applies the selected date and control) Tj
+/F1 10 Tf 54.00 264.00 Td (filters.) Tj
+/F2 14 Tf 54.00 242.00 Td (Integrity Rules) Tj
+/F1 10 Tf 54.00 217.00 Td (Important consistency checks implied by the code:) Tj
+/F1 10 Tf 66.00 200.00 Td (- A complete `slno` group in `daybook` should sum to zero.) Tj
+/F1 10 Tf 66.00 188.00 Td (- Every posted `daybook.accode` should exist in `accountm`.) Tj
+/F1 10 Tf 66.00 176.00 Td (- Most reports use `control <= gilevel`; daybook itself standardizes to level 1.) Tj
+/F1 10 Tf 66.00 164.00 Td (- `daybookpart` should exist for normal vouchers so reports and voucher lookup can find) Tj
+/F1 10 Tf 66.00 152.00 Td (  `vchno` and narration.) Tj
+/F1 10 Tf 66.00 140.00 Td (- PDC rows may exist in `pdclist` without immediate `daybook` rows.) Tj
+/F1 10 Tf 66.00 128.00 Td (- Deleting a voucher should delete rows from `daybook`, `daybookpart`, `pdclist`, and) Tj
+/F1 10 Tf 66.00 116.00 Td (  `daybookratewgt` where applicable.) Tj
+/F2 14 Tf 54.00 94.00 Td (Main Source Files) Tj
+/F1 10 Tf 66.00 69.00 Td (- `app/Http/Controllers/AccountMasterController.php`) Tj
+/F1 10 Tf 66.00 57.00 Td (- `app/Http/Controllers/AccountLedgerController.php`) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 5 of 6) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 1678 >>
+stream
+BT
+/F1 10 Tf 66.00 790.00 Td (- `app/Http/Controllers/DayBookController.php`) Tj
+/F1 10 Tf 66.00 778.00 Td (- `app/Http/Controllers/AllTransReportController.php`) Tj
+/F1 10 Tf 66.00 766.00 Td (- `app/Http/Controllers/ReceiptController.php`) Tj
+/F1 10 Tf 66.00 754.00 Td (- `app/Http/Controllers/PaymentController.php`) Tj
+/F1 10 Tf 66.00 742.00 Td (- `app/Http/Controllers/SalesBillController.php`) Tj
+/F1 10 Tf 66.00 730.00 Td (- `app/Http/Controllers/PurchaseBillController.php`) Tj
+/F1 10 Tf 66.00 718.00 Td (- `app/Support/SecondaryDatabaseSync.php`) Tj
+/F1 10 Tf 66.00 706.00 Td (- `database/migrations/2026_03_30_143836_add_discount_to_daybookpart.php`) Tj
+/F2 14 Tf 54.00 684.00 Td (Practical Notes) Tj
+/F1 10 Tf 66.00 659.00 Td (- The code uses schema checks and column filtering in many controllers, so it can run) Tj
+/F1 10 Tf 66.00 647.00 Td (  against slightly different legacy table layouts.) Tj
+/F1 10 Tf 66.00 635.00 Td (- The inspected live/demo `daybook` table is minimal and does not include every optional) Tj
+/F1 10 Tf 66.00 623.00 Td (  column used by some controllers, such as `ddate`, `vtype`, or `vno`.) Tj
+/F1 10 Tf 66.00 611.00 Td (- The inspected live/demo `daybookpart` table does not currently include `discount`, even) Tj
+/F1 10 Tf 66.00 599.00 Td (  though a migration exists for it.) Tj
+/F1 10 Tf 66.00 587.00 Td (- For debugging, start from `slno`, then inspect `daybookpart`, `daybook`, and any module) Tj
+/F1 10 Tf 66.00 575.00 Td (  master table such as `salesm` or `purchasem`.) Tj
+/F1 10 Tf 66.00 563.00 Td (- For balance mismatches, group `daybook` by `slno` and check `SUM\(amount\) <> 0`.) Tj
+/F1 8 Tf 500.00 28.00 Td (Page 6 of 6) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 15 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] /Count 6 >>
+endobj
+16 0 obj
+<< /Type /Catalog /Pages 15 0 R >>
+endobj
+xref
+0 17
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000004316 00000 n 
+0000004453 00000 n 
+0000008441 00000 n 
+0000008578 00000 n 
+0000012801 00000 n 
+0000012938 00000 n 
+0000016796 00000 n 
+0000016934 00000 n 
+0000021236 00000 n 
+0000021375 00000 n 
+0000023106 00000 n 
+0000023245 00000 n 
+0000023336 00000 n 
+trailer
+<< /Size 17 /Root 16 0 R >>
+startxref
+23387
+%%EOF

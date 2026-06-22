@@ -524,7 +524,7 @@ class StockController extends Controller
     private function loadLedgerItems(array $filters, array $itemsColumns): array
     {
         $select = ['code', 'name'];
-        foreach (['grpcode', 'subgrpcode', 'itype'] as $col) {
+        foreach (['grpcode', 'subgrpcode', 'itype', 'ornament', 'orn'] as $col) {
             if (in_array($col, $itemsColumns, true)) {
                 $select[] = $col;
             }
@@ -550,6 +550,8 @@ class StockController extends Controller
                 ->all();
         }
 
+        $ornamentColumn = in_array('ornament', $itemsColumns, true) ? 'ornament' : (in_array('orn', $itemsColumns, true) ? 'orn' : null);
+
         return DB::table('items')
             ->select($select)
             ->when(in_array('disabled', $itemsColumns, true), fn ($q) => $q->where(function ($qq) {
@@ -559,6 +561,15 @@ class StockController extends Controller
                 $qq->where('showinstkrep', '!=', 'N')->orWhereNull('showinstkrep');
             }))
             ->when($filters['grpcode'] !== '' && in_array('grpcode', $itemsColumns, true), fn ($q) => $q->where('grpcode', $filters['grpcode']))
+            ->when($ornamentColumn !== null && $filters['ornament_filter'] === 'Ornaments Only', function ($q) use ($ornamentColumn): void {
+                $q->whereRaw("UPPER(TRIM(COALESCE({$ornamentColumn},''))) IN ('Y','YES','1','TRUE')");
+            })
+            ->when($ornamentColumn !== null && $filters['ornament_filter'] === 'Not Ornaments', function ($q) use ($ornamentColumn): void {
+                $q->where(function ($inner) use ($ornamentColumn): void {
+                    $inner->whereRaw("UPPER(TRIM(COALESCE({$ornamentColumn},''))) NOT IN ('Y','YES','1','TRUE')")
+                        ->orWhereNull($ornamentColumn);
+                });
+            })
             ->when($filters['search'] !== '', function ($q) use ($filters): void {
                 $s = '%' . $filters['search'] . '%';
                 $q->where(function ($qq) use ($s): void {
@@ -844,6 +855,7 @@ class StockController extends Controller
             'stktype' => strtoupper(trim((string) $request->input('stktype', ''))),
             'grpcode' => strtoupper(trim((string) $request->input('grpcode', ''))),
             'itype' => (string) $request->input('itype', 'All'),
+            'ornament_filter' => (string) $request->input('ornament_filter', 'All'),
             'stock_view' => (string) $request->input('stock_view', 'opening'),
             'level' => (int) $request->input('level', (int) config('stock.default_level', 1)),
             'search' => trim((string) $request->input('search', '')),

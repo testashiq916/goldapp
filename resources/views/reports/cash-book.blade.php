@@ -18,12 +18,17 @@
         .headbox { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
         .card { border: 1px solid #d8e2ef; border-radius: 8px; background: #f8fbff; padding: 10px; }
         .strong { font-weight: 700; color: #163b63; }
-        .table-wrap { border: 1px solid #d8e2ef; border-radius: 8px; overflow: auto; max-height: 72vh; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border-bottom: 1px solid #e5ecf5; padding: 7px 8px; vertical-align: top; }
-        th { position: sticky; top: 0; background: #edf4fc; text-align: left; z-index: 1; }
+        .table-wrap { border: 2px solid #0f766e; border-radius: 8px; overflow: auto; max-height: 72vh; box-shadow: 0 10px 26px rgba(15, 118, 110, .14); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fffdf5; }
+        th, td { border-bottom: 1px solid #d7c79d; padding: 8px 9px; vertical-align: top; }
+        th { position: sticky; top: 0; background: #0f766e; color: #fff7d6; text-align: left; z-index: 1; font-size: 13px; letter-spacing: .01em; }
         td.num, th.num { text-align: right; white-space: nowrap; }
-        .group-row td { background: #f7fbff; font-weight: 700; color: #264968; }
+        tbody td { color: #27170b; font-weight: 500; }
+        tbody tr:nth-child(even):not(.group-row) td { background: #fff7e8; }
+        tbody tr:nth-child(odd):not(.group-row) td { background: #fffbf2; }
+        tbody tr:not(.group-row):hover td { background: #dff8ef; color: #12352f; }
+        tfoot td { background: #e8f7ef; color: #103c36; font-size: 14px; }
+        .group-row td { background: #d7f3e9; font-weight: 800; color: #0d3f38; }
         .empty { padding: 24px; text-align: center; color: #64748b; border: 1px dashed #c7d4e4; border-radius: 8px; background: #fbfdff; }
         .status { margin-left: auto; align-self: center; font-size: 12px; color: #5b6e85; }
         .clickable-row { cursor: pointer; }
@@ -34,10 +39,20 @@
             body { background: #fff; }
             .wrap { max-width: none; margin: 0; border: 0; }
             .table-wrap { max-height: none; overflow: visible; border: 0; }
-            th { position: static; }
+            th { position: static; background: #e6efec; color: #111827; }
         }
-    </style>
+    
+/* ── Font size overrides ── */
+body { font-size: 20px !important; }
+label { font-size: 17px !important; }
+input, select, button { font-size: 18px !important; height: 36px !important; }
+table { font-size: 18px !important; }
+th { font-size: 15px !important; }
+td { font-size: 18px !important; }
+.btn, button { font-size: 17px !important; height: 36px !important; }</style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -215,12 +230,17 @@
 <script>
 function openCashTarget(url){
     if (!url) return;
+    const target = String(url);
+    const isOrderSale = target.indexOf('/order-sale/') !== -1;
+    const isSalesBill = target.indexOf('/sales-bill/') !== -1;
     try {
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({
                 type: 'goldapp:open-module-url',
                 url: url,
-                title: 'Voucher',
+                moduleId: isOrderSale ? 'order-bill-order-sale' : (isSalesBill ? 'sales-bill-edit' : undefined),
+                title: isOrderSale ? 'Order Sale' : (isSalesBill ? 'Sales Bill' : 'Voucher'),
+                forceNewTab: isOrderSale || isSalesBill,
             }, '*');
             return;
         }

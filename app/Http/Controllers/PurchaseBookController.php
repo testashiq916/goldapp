@@ -90,7 +90,9 @@ class PurchaseBookController extends Controller
                 'm.pr', 'm.duedate', 'm.smcode', 'm.round', 'm.netamt',
                 'm.ic', 'm.billtype'
             );
+        $q->selectRaw($this->partyGstExpr('purchasem', 'm', 'suppcode', 'gstno', ['tin', 'tinno']));
 
+        $this->addOptionalCol($q, 'purchasem', 'billno', 'm');
         $this->addOptionalCol($q, 'purchasem', 'counter', 'm');
         $this->addOptionalCol($q, 'purchasem', 'taxamt', 'm');
         $this->addOptionalCol($q, 'purchasem', 'hmc', 'm');
@@ -102,11 +104,14 @@ class PurchaseBookController extends Controller
 
         // Gold/Silver weight subqueries
         if ($this->hasTable('purchased') && $this->hasTable('items')) {
+            $q->selectRaw("(SELECT COALESCE(SUM(d.weight), 0) FROM purchased d WHERE d.slno = m.slno) as grosswgt");
+            $q->selectRaw("(SELECT COALESCE(SUM(d.stwgt), 0) FROM purchased d WHERE d.slno = m.slno) as stonewgt");
+            $q->selectRaw("(SELECT COALESCE(SUM(d.lesswgt), 0) FROM purchased d WHERE d.slno = m.slno) as lesswgt");
             $q->selectRaw("(SELECT COALESCE(SUM(d.weight), 0) FROM purchased d JOIN items i ON i.code = d.code WHERE d.slno = m.slno AND i.itype = 'G') as goldwgt");
             $q->selectRaw("(SELECT COALESCE(SUM(d.weight), 0) FROM purchased d JOIN items i ON i.code = d.code WHERE d.slno = m.slno AND i.itype = 'S') as silverwgt");
             $q->selectRaw("(SELECT COALESCE(SUM(d.weight), 0) FROM purchased d JOIN items i ON i.code = d.code WHERE d.slno = m.slno AND i.itype = 'O') as otherwgt");
         } else {
-            $q->selectRaw('0 as goldwgt, 0 as silverwgt, 0 as otherwgt');
+            $q->selectRaw('0 as grosswgt, 0 as stonewgt, 0 as lesswgt, 0 as goldwgt, 0 as silverwgt, 0 as otherwgt');
         }
 
         $q->whereBetween('m.tdate', [$date1, $date2]);
@@ -146,8 +151,10 @@ class PurchaseBookController extends Controller
                 'd.code', 'd.qty', 'd.weight', 'd.amount',
                 'd.stwgt', 'd.stprice', 'd.lesswgt', 'd.stktype'
             );
+        $q->selectRaw($this->partyGstExpr('purchasem', 'm', 'suppcode', 'gstno', ['tin', 'tinno']));
 
         $this->addOptionalCol($q, 'purchased', 'name', 'd', 'dname');
+        $this->addOptionalCol($q, 'purchasem', 'billno', 'm');
         $this->addOptionalCol($q, 'purchasem', 'counter', 'm');
         $this->addOptionalCol($q, 'purchasem', 'billtype', 'm');
 
@@ -160,12 +167,14 @@ class PurchaseBookController extends Controller
 
         $rows = $q->get()->map(function ($r) {
             $row = (array) $r;
+            $row['billno'] = $this->displayBillNo($row);
             $row['qty']     = (int) ($row['qty'] ?? 0);
             $row['weight']  = (float) ($row['weight'] ?? 0);
             $row['amount']  = (float) ($row['amount'] ?? 0);
             $row['stwgt']   = (float) ($row['stwgt'] ?? 0);
             $row['stprice'] = (float) ($row['stprice'] ?? 0);
             $row['lesswgt'] = (float) ($row['lesswgt'] ?? 0);
+            $row['netwgt'] = round($row['weight'] - $row['lesswgt'] - $row['stwgt'], 3);
             $row['navigate_url'] = $this->purchaseNavigateUrl((string) ($row['docno'] ?? ''), (string) ($row['pr'] ?? ''));
             return $row;
         })->values()->all();
@@ -212,9 +221,11 @@ class PurchaseBookController extends Controller
 
     private function formatBookRow(array $row): array
     {
-        foreach (['billamt','pamt','addamt','eamt','discount','taxamt','hmc','round','astamt','goldwgt','silverwgt','otherwgt','sgst','cgst','igst'] as $k) {
+        $row['billno'] = $this->displayBillNo($row);
+        foreach (['billamt','pamt','addamt','eamt','discount','taxamt','hmc','round','astamt','grosswgt','stonewgt','lesswgt','goldwgt','silverwgt','otherwgt','sgst','cgst','igst'] as $k) {
             $row[$k] = (float) ($row[$k] ?? 0);
         }
+        $row['netwgt'] = round($row['grosswgt'] - $row['lesswgt'] - $row['stonewgt'], 3);
         $row['calcnet'] = $row['billamt'] - $row['discount'] + $row['taxamt'] + $row['round'] + $row['hmc'] - $row['eamt'];
         $row['navigate_url'] = $this->purchaseNavigateUrl((string) ($row['docno'] ?? ''), (string) ($row['pr'] ?? ''));
         return $row;
@@ -231,10 +242,17 @@ class PurchaseBookController extends Controller
         return url('/purchase-bill/edit?' . http_build_query(['doc_no' => $docNo]));
     }
 
+    private function displayBillNo(array $row): string
+    {
+        $billNo = trim((string) ($row['billno'] ?? ''));
+        return $billNo !== '' ? $billNo : trim((string) ($row['docno'] ?? ''));
+    }
+
     private function buildBookTotals(array $rows): array
     {
         $t = ['count' => count($rows), 'billamt' => 0, 'eamt' => 0, 'discount' => 0,
               'taxamt' => 0, 'hmc' => 0, 'round' => 0, 'calcnet' => 0,
+              'grosswgt' => 0, 'stonewgt' => 0, 'lesswgt' => 0, 'netwgt' => 0,
               'goldwgt' => 0, 'silverwgt' => 0, 'otherwgt' => 0, 'pamt' => 0, 'addamt' => 0,
               'sgst' => 0, 'cgst' => 0, 'igst' => 0];
 
@@ -249,13 +267,14 @@ class PurchaseBookController extends Controller
 
     private function buildRegTotals(array $rows): array
     {
-        $t = ['count' => count($rows), 'qty' => 0, 'weight' => 0, 'amount' => 0,
+        $t = ['count' => count($rows), 'qty' => 0, 'weight' => 0, 'netwgt' => 0, 'amount' => 0,
               'stwgt' => 0, 'stprice' => 0, 'lesswgt' => 0,
               'goldwgt' => 0, 'silverwgt' => 0, 'otherwgt' => 0];
 
         foreach ($rows as $row) {
             $t['qty']     += (int) ($row['qty'] ?? 0);
             $t['weight']  += (float) ($row['weight'] ?? 0);
+            $t['netwgt']  += (float) ($row['netwgt'] ?? 0);
             $t['amount']  += (float) ($row['amount'] ?? 0);
             $t['stwgt']   += (float) ($row['stwgt'] ?? 0);
             $t['stprice'] += (float) ($row['stprice'] ?? 0);
@@ -267,5 +286,24 @@ class PurchaseBookController extends Controller
             else $t['otherwgt'] += (float) ($row['weight'] ?? 0);
         }
         return $t;
+    }
+
+    private function partyGstExpr(string $table, string $alias, string $codeColumn, string $as, array $sourceColumns = []): string
+    {
+        $sources = [];
+        foreach ($sourceColumns as $column) {
+            if (Schema::hasColumn($table, $column)) {
+                $sources[] = "NULLIF(TRIM(COALESCE({$alias}.{$column}, \"\")), \"\")";
+            }
+        }
+        if ($this->hasTable('clients') && Schema::hasColumn($table, $codeColumn) && Schema::hasColumn('clients', 'code')) {
+            foreach (['tin', 'tinno'] as $column) {
+                if (Schema::hasColumn('clients', $column)) {
+                    $sources[] = "(select NULLIF(TRIM(COALESCE(c.{$column}, \"\")), \"\") from clients c where TRIM(COALESCE(c.code, \"\")) = TRIM(COALESCE({$alias}.{$codeColumn}, \"\")) limit 1)";
+                }
+            }
+        }
+
+        return ($sources ? 'COALESCE(' . implode(', ', $sources) . ', "")' : '""') . " as {$as}";
     }
 }

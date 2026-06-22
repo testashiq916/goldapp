@@ -170,6 +170,108 @@ class ItemMasterController extends Controller
         }
     }
 
+    public function codeExists(Request $request): JsonResponse
+    {
+        if (!$this->isAuthorized($request)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+        if (!$this->hasTable('items')) {
+            return response()->json(['success' => false, 'message' => 'items table not found'], 500);
+        }
+
+        $code = strtoupper(trim((string) $request->input('code', '')));
+        if ($code === '') {
+            return response()->json(['success' => true, 'exists' => false]);
+        }
+
+        $item = DB::table('items')->whereRaw('UPPER(TRIM(code)) = ?', [$code])->first(['code', 'name']);
+        return response()->json([
+            'success' => true,
+            'exists' => (bool) $item,
+            'code' => $item ? trim((string) $item->code) : null,
+            'name' => $item ? trim((string) $item->name) : null,
+            'item' => $item ? ['code' => trim((string) $item->code), 'name' => trim((string) $item->name)] : null,
+        ]);
+    }
+
+    public function renameCode(Request $request): JsonResponse
+    {
+        if (!$this->isAuthorized($request)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+        if (!$this->hasTable('items')) {
+            return response()->json(['success' => false, 'message' => 'items table not found'], 500);
+        }
+
+        $oldCode = strtoupper(trim((string) $request->input('old_code', '')));
+        $newCode = strtoupper(trim((string) $request->input('new_code', '')));
+        $mergeExisting = $request->boolean('merge_existing');
+
+        if ($oldCode === '' || $newCode === '') {
+            return response()->json(['success' => false, 'message' => 'Old code and new code are required'], 422);
+        }
+        if (mb_strlen($oldCode) > 10 || mb_strlen($newCode) > 10) {
+            return response()->json(['success' => false, 'message' => 'Item code maximum length is 10'], 422);
+        }
+        if ($oldCode === $newCode) {
+            return response()->json(['success' => false, 'message' => 'Old code and new code are same'], 422);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($request, $oldCode, $newCode, $mergeExisting): array {
+                $oldExists = DB::table('items')->whereRaw('UPPER(TRIM(code)) = ?', [$oldCode])->exists();
+                if (!$oldExists) {
+                    return ['success' => false, 'message' => 'Invalid old item code'];
+                }
+
+                $newExists = DB::table('items')->whereRaw('UPPER(TRIM(code)) = ?', [$newCode])->exists();
+                if ($newExists && !$mergeExisting) {
+                    return ['success' => false, 'message' => 'New item code already exists', 'exists' => true];
+                }
+
+                $counts = [];
+                if ($newExists) {
+                    $counts['items_deleted'] = DB::table('items')->whereRaw('UPPER(TRIM(code)) = ?', [$oldCode])->delete();
+                } else {
+                    $counts['items'] = DB::table('items')->whereRaw('UPPER(TRIM(code)) = ?', [$oldCode])->update(['code' => $newCode]);
+                }
+
+                foreach ($this->itemRenameReferences() as $table => $columns) {
+                    if (!$this->hasTable($table)) {
+                        continue;
+                    }
+                    $tableCols = array_map('strtolower', $this->columnList($table));
+                    foreach ($columns as $column) {
+                        if (!in_array(strtolower($column), $tableCols, true)) {
+                            continue;
+                        }
+                        $affected = DB::table($table)
+                            ->whereRaw('UPPER(TRIM(' . $column . ')) = ?', [$oldCode])
+                            ->update([$column => $newCode]);
+                        if ($affected > 0) {
+                            $counts[$table . '.' . $column] = $affected;
+                        }
+                    }
+                }
+
+                $this->logDelpart($request, 'Item Code Renamed ' . $oldCode . ' to ' . $newCode, ['utype' => 'E', 'ttype' => 'R']);
+
+                return [
+                    'success' => true,
+                    'message' => 'Item renamed successfully',
+                    'old_code' => $oldCode,
+                    'new_code' => $newCode,
+                    'merged' => $newExists,
+                    'counts' => $counts,
+                ];
+            });
+
+            return response()->json($result, ($result['success'] ?? false) ? 200 : (($result['exists'] ?? false) ? 409 : 422));
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Error renaming item: ' . $e->getMessage()], 500);
+        }
+    }
+
     private function payloadFromRequest(Request $request, array $columns, bool $forAdd): array
     {
         $has = fn (string $c): bool => in_array(strtolower($c), $columns, true);
@@ -251,6 +353,32 @@ class ItemMasterController extends Controller
         return $set;
     }
 
+    private function itemRenameReferences(): array
+    {
+        return [
+            'itemadj' => ['fromcode', 'tocode'],
+            'itemsstk' => ['code'],
+            'orderd' => ['code'],
+            'orderdmodel' => ['code'],
+            'orderdga' => ['code'],
+            'salesd' => ['code'],
+            'salesrd' => ['code'],
+            'purchased' => ['code'],
+            'purchaserd' => ['code'],
+            'refineryd' => ['code'],
+            'repaird' => ['code'],
+            'smithd' => ['code'],
+            'smithnewwrk' => ['code'],
+            'smithsusp' => ['code'],
+            'wstgtable' => ['code'],
+            'mctable' => ['code'],
+            'barcode' => ['icode'],
+            'itemadjverify' => ['code'],
+            'itemstmp' => ['code'],
+            'modelm' => ['icode'],
+        ];
+    }
+
     private function canDeleteItem(string $code): bool
     {
         $total = 0.0;
@@ -311,7 +439,34 @@ class ItemMasterController extends Controller
     {
         // Prefer legacy purity master used by current migration work.
         foreach (['itemsqtype', 'qtype'] as $table) {
-            $rows = $this->safeLookup($table);
+            if (!$this->hasTable($table)) {
+                continue;
+            }
+            $cols = array_map('strtolower', $this->columnList($table));
+            if (!in_array('code', $cols, true)) {
+                continue;
+            }
+            $nameCol = in_array('name', $cols, true) ? 'name' : 'code';
+            $hasTouch = in_array('touch', $cols, true);
+
+            $select = ['code', DB::raw($nameCol . ' as name')];
+            if ($hasTouch) {
+                $select[] = 'touch';
+            }
+
+            $rows = DB::table($table)
+                ->select($select)
+                ->orderBy($nameCol)
+                ->limit(500)
+                ->get()
+                ->map(fn ($r) => [
+                    'code' => (string) $r->code,
+                    'name' => (string) $r->name,
+                    'touch' => $hasTouch ? (float) ($r->touch ?? 0) : 0,
+                ])
+                ->values()
+                ->toArray();
+
             if (!empty($rows)) {
                 return $rows;
             }
@@ -334,7 +489,7 @@ class ItemMasterController extends Controller
             ->orderBy('code')
             ->limit(500)
             ->get()
-            ->map(fn ($r) => ['code' => (string) $r->code, 'name' => (string) $r->code])
+            ->map(fn ($r) => ['code' => (string) $r->code, 'name' => (string) $r->code, 'touch' => 0])
             ->values()
             ->toArray();
     }

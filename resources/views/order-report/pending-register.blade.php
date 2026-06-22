@@ -75,7 +75,9 @@ tr.overdue:hover td{background:#fee2e2}
     .tbl-wrap{max-height:none;overflow:visible;border:0}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -337,7 +339,7 @@ document.getElementById('cbDuedate').addEventListener('change', function(){
     document.querySelectorAll('.duedate-fields').forEach(function(el){ el.style.display = show; });
 });
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', 'table',
   'pending_register_{{ date("Y-m-d") }}');

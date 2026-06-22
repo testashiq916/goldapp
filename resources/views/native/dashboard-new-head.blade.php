@@ -16,7 +16,7 @@ body{font-family:var(--ff-body);background:var(--bg);color:var(--ink);font-size:
 @keyframes shellIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
 
 /* SIDEBAR */
-.sidebar{background:var(--navy);display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:100}
+.sidebar{background:var(--navy);display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:100;min-height:0}
 .sidebar::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(0,158,154,.18) 0%,transparent 70%);pointer-events:none}
 .sidebar::after{content:'';position:absolute;bottom:-40px;left:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(192,147,24,.12) 0%,transparent 70%);pointer-events:none}
 .sidebar-brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.07);position:relative;z-index:1}
@@ -33,8 +33,8 @@ body{font-family:var(--ff-body);background:var(--bg);color:var(--ink);font-size:
 .sbr-22 .sbr-dot{background:var(--gold3);box-shadow:0 0 6px var(--gold2)}.sbr-22 .sbr-val{color:var(--gold3)}
 .sbr-18 .sbr-dot{background:#f4a94e;box-shadow:0 0 6px #e07a20}.sbr-18 .sbr-val{color:#f4a94e}
 .sbr-ag .sbr-dot{background:#c8d0dc}.sbr-ag .sbr-val{color:#c8d0dc}
-.sb-nav{flex:1;overflow-y:auto;padding:10px;position:relative;z-index:1}
-.sb-nav::-webkit-scrollbar{width:3px}.sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
+.sb-nav{flex:1;min-height:0;overflow-y:scroll;overflow-x:hidden;padding:10px 7px 10px 10px;position:relative;z-index:1;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#8aa896 rgba(255,255,255,.12)}
+.sb-nav::-webkit-scrollbar{width:12px}.sb-nav::-webkit-scrollbar-track{background:rgba(255,255,255,.12);border-left:1px solid rgba(255,255,255,.08)}.sb-nav::-webkit-scrollbar-thumb{background:#8aa896;border:3px solid #123f22;border-radius:10px}.sb-nav::-webkit-scrollbar-thumb:hover{background:#b7c8bd}
 .sb-section-label{font-size:8.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);padding:10px 8px 4px}
 .sb-link{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r-xs);color:rgba(255,255,255,.55);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .18s var(--ez);position:relative;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-link:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9);padding-left:14px}

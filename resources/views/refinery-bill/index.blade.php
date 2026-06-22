@@ -135,6 +135,7 @@ table.totals-table td.t-label{color:#059669;text-align:left;padding-left:8px;fon
 ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:#94a3b8}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="app" id="mainApp">

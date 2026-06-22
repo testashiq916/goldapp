@@ -7,26 +7,26 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .toolbar h1{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;margin-right:4px}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:11px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:17px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus,.tb-select:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .tb-select option{color:#1e293b;background:#fff}
 .f-group{display:flex;align-items:center;gap:3px}
 .sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 1px}
-.btn{padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:4px 12px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
-.tb-cb{display:flex;align-items:center;gap:4px;color:rgba(255,255,255,.85);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap}
+.tb-cb{display:flex;align-items:center;gap:4px;color:rgba(255,255,255,.85);font-size:17px;font-weight:600;cursor:pointer;white-space:nowrap}
 .tb-cb input{accent-color:#60a5fa;width:14px;height:14px;cursor:pointer}
 
 .grid-wrap{flex:1;overflow:auto}
-table{width:100%;border-collapse:collapse;background:#fff;font-size:11px}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:18px}
 /* Two-row header */
-th{position:sticky;background:#f1f5f9;border-bottom:1px solid #e2e8f0;padding:4px 6px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:center;white-space:nowrap;z-index:2}
+th{position:sticky;background:#f1f5f9;border-bottom:1px solid #e2e8f0;padding:4px 6px;font-size:15px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:center;white-space:nowrap;z-index:2}
 th.top{top:0;border-bottom:1px solid #cbd5e1;background:#e2e8f0}
 th.sub{top:26px;background:#f1f5f9;border-bottom:2px solid #e2e8f0;cursor:pointer;user-select:none}
 th.sub:hover{background:#dbeafe}
@@ -39,18 +39,20 @@ tr:hover td{background:#f8fafc}
 tr.neg td.hl{color:#dc2626;font-weight:600}
 tr.pos td.hl{color:#16a34a;font-weight:600}
 
-.sub-header{background:#eff6ff;padding:5px 14px;font-size:11px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
+.sub-header{background:#eff6ff;padding:5px 14px;font-size:17px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
 
-.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:14px;flex-wrap:wrap;font-size:11px;flex-shrink:0}
+.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:14px;flex-wrap:wrap;font-size:17px;flex-shrink:0}
 .summary span{color:#64748b}.summary b{color:#1e40af}
 .summary .sub-tot{margin-left:8px;padding-left:8px;border-left:1px solid #e2e8f0}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 
 @media print{.toolbar,.summary,.sub-header{display:none !important}.grid-wrap{overflow:visible !important}body{height:auto;overflow:visible}th{position:static !important}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 

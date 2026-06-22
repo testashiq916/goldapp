@@ -75,6 +75,7 @@ class NativeAuthController extends Controller
         $request->session()->put('gsusername', $userName);
         $request->session()->put('login_time', time());
         $request->session()->put('selected_database', (string) config('database.connections.mysql.database', ''));
+        $request->session()->put('show_startup_popups', true);
 
         $blockedItems = [];
         if ($this->hasTable('userd')) {
@@ -105,6 +106,12 @@ class NativeAuthController extends Controller
             }
             if (Schema::hasColumn('userhist', 'time1')) {
                 $history['time1'] = date('H:i:s');
+            }
+            if (Schema::hasColumn('userhist', 'ip')) {
+                $history['ip'] = $request->ip();
+            }
+            if (Schema::hasColumn('userhist', 'useragent')) {
+                $history['useragent'] = substr((string) $request->userAgent(), 0, 512);
             }
             DB::table('userhist')->insert($history);
         }

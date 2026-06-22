@@ -7,19 +7,19 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:6px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:11px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-input,.tb-select{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:17px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus,.tb-select:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .tb-input::placeholder{color:rgba(255,255,255,.4)}
 .tb-select option{background:#1e3a5f;color:#fff}
-.tb-check{display:flex;align-items:center;gap:3px;color:rgba(255,255,255,.85);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap}
+.tb-check{display:flex;align-items:center;gap:3px;color:rgba(255,255,255,.85);font-size:17px;font-weight:600;cursor:pointer;white-space:nowrap}
 .tb-check input{width:13px;height:13px;accent-color:#60a5fa;cursor:pointer}
 .f-group{display:flex;align-items:center;gap:3px}
 .sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 1px}
-.btn{padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:4px 12px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
 
@@ -27,7 +27,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
 
 /* Report page */
 .content-wrap{flex:1;overflow:auto;padding:10px;background:#e2e8f0}
-.report-page{background:#fff;max-width:960px;margin:0 auto;padding:20px 28px;box-shadow:0 2px 8px rgba(0,0,0,.12);font-family:'Consolas','Courier New',monospace;font-size:11px;color:#1e293b;line-height:1.5}
+.report-page{background:#fff;width:100%;max-width:100%;margin:0 auto;padding:20px 32px;box-shadow:0 2px 8px rgba(0,0,0,.12);font-family:'Consolas','Courier New',monospace;font-size:11px;color:#1e293b;line-height:1.5}
 
 .rp-title{text-align:center;font-size:13px;font-weight:700;margin-bottom:0}
 .rp-subtitle{text-align:center;font-size:11px;color:#475569;margin-bottom:10px}
@@ -59,10 +59,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
 .rp-suspense{margin-top:10px;font-size:10px;color:#92400e}
 .rp-suspense b{font-weight:700}
 
-.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;flex-shrink:0}
+.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:17px;flex-shrink:0}
 .summary span{color:#64748b}.summary b{color:#1e40af}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 .wait-mask{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;z-index:300}
 .wait-mask.show{display:flex}
@@ -79,7 +79,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
   .report-page{box-shadow:none;max-width:100%;padding:10px}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wait-mask" id="waitMask">
@@ -89,10 +91,19 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
   </div>
 </div>
 
-<!-- Row 1: Smith, Dates, Show/SaveAs/Print/Exit -->
+<!-- Row 1: Type, Smith, Dates, Show/SaveAs/Print/Exit -->
 <div class="toolbar">
   <div class="f-group">
-    <span class="tb-lbl">{{ $ctype === 'J' ? 'Jewellery' : ($ctype === 'C' ? 'Party' : 'GoldSmith') }}</span>
+    <span class="tb-lbl">Type</span>
+    <select id="ctype" class="tb-select" style="width:120px">
+      <option value="G" {{ $ctype === 'G' || $ctype === '' ? 'selected' : '' }}>GoldSmith</option>
+      <option value="S" {{ $ctype === 'S' ? 'selected' : '' }}>Supplier</option>
+      <option value="J" {{ $ctype === 'J' ? 'selected' : '' }}>Jewellery</option>
+    </select>
+  </div>
+  <div class="sep"></div>
+  <div class="f-group">
+    <span class="tb-lbl" id="partyLabel">{{ $ctype === 'J' ? 'Jewellery' : ($ctype === 'S' ? 'Supplier' : 'GoldSmith') }}</span>
     <select id="smithcode" class="tb-select" style="width:180px"><option value="">-- All --</option></select>
   </div>
   <div class="sep"></div>
@@ -139,9 +150,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
 <script>
 const SITE = @json(request()->root());
 const RLEVEL = {{ $rlevel }};
-const CTYPE = @json($ctype ?? '');
+let CTYPE = @json($ctype ?? 'G') || 'G';
 let reportData = null, allRows = [];
 const WAIT = document.getElementById('waitMask');
+
+const TYPE_LABELS = { G: 'GoldSmith', S: 'Supplier', J: 'Jewellery', C: 'Party' };
 
 function nf(n,d=2){ return Number(n||0).toFixed(d); }
 function nfz(n,d=2){ const v=Number(n||0); return v!==0?v.toFixed(d):''; }
@@ -165,9 +178,10 @@ function exportHeaders(){
   ];
 }
 
-async function loadLookups(){
+async function loadLookups(ct){
+  ct = ct || CTYPE || 'G';
   try {
-    const r = await fetch(SITE+'/api/goldsmith-transactions/lookups'+(CTYPE?'?ctype='+CTYPE:''));
+    const r = await fetch(SITE+'/api/goldsmith-transactions/lookups?ctype='+ct);
     const d = await r.json();
     if(!d.ok) return;
     const sel1 = document.getElementById('smithcode');
@@ -178,7 +192,19 @@ async function loadLookups(){
       (d.items||[]).map(i=>'<option value="'+esc(i.code)+'">'+esc(i.code)+' - '+esc(i.name)+'</option>').join('');
   } catch(e){}
 }
-loadLookups();
+loadLookups(CTYPE);
+
+// TYPE selector change — reload party list and update label
+document.getElementById('ctype').onchange = function(){
+  CTYPE = this.value;
+  const lbl = TYPE_LABELS[CTYPE] || 'Party';
+  document.getElementById('partyLabel').textContent = lbl;
+  document.getElementById('smithcode').innerHTML = '<option value="">-- All --</option>';
+  loadLookups(CTYPE);
+  reportData = null;
+  document.getElementById('reportPage').innerHTML = '<div class="placeholder">Press <b>Show</b> to load the report. Leave '+lbl+' empty for <b>All</b>.</div>';
+  document.getElementById('summary').innerHTML = '';
+};
 
 async function loadData(){
   const scode = document.getElementById('smithcode').value;
@@ -406,7 +432,7 @@ document.getElementById('btnExit').onclick = ()=> window.parent.postMessage({typ
   document.getElementById(id).onchange = ()=>{ if(reportData) render(); };
 });
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.init('btnSaveAs', exportHeaders, ()=>allRows,
   ()=>'goldsmith-ledger-'+document.getElementById('smithcode').value+'-'+document.getElementById('date1').value);

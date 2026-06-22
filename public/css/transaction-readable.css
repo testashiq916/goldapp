@@ -1,0 +1,241 @@
+/* Shared readability pass for transaction entry screens.
+   Loaded only by transaction Blade views that opt into this stylesheet. */
+
+:root {
+  --txn-font-base: 16px;
+  --txn-font-label: 15px;
+  --txn-font-small: 14px;
+  --txn-control-height: 32px;
+  --txn-row-height: 32px;
+}
+
+html,
+body {
+  width: 100% !important;
+  min-height: 100% !important;
+  overflow: auto !important;
+}
+
+body {
+  font-size: var(--txn-font-base) !important;
+  line-height: 1.35 !important;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.main-window,
+.window {
+  width: calc(100vw - 16px) !important;
+  max-width: calc(100vw - 16px) !important;
+  min-width: 0 !important;
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+}
+
+.title-bar,
+.titlebar,
+#topbar,
+#topbar h2 {
+  font-size: 18px !important;
+  line-height: 1.3 !important;
+}
+
+.top-section label,
+.bottom-section label,
+.label,
+label,
+.fl,
+.fl1,
+.fl2,
+.flbl,
+.inline-check,
+.inline-chk,
+.foot-chk,
+.fchk,
+#summary,
+.summary,
+.table-footer,
+.exch-bar,
+.status {
+  font-size: var(--txn-font-label) !important;
+  line-height: 1.3 !important;
+}
+
+input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+select,
+textarea,
+button,
+.btn,
+.fbtn,
+.mbtn,
+.lookup-btn,
+.grid-btns button,
+.actions-ring button,
+.sup-btns button,
+.table-footer button,
+.exch-bar button {
+  font-size: var(--txn-font-label) !important;
+  line-height: 1.25 !important;
+}
+
+input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+select,
+button,
+.btn,
+.fbtn,
+.mbtn,
+.lookup-btn,
+.grid-btns button,
+.actions-ring button,
+.sup-btns button {
+  min-height: var(--txn-control-height) !important;
+}
+
+textarea {
+  min-height: 78px !important;
+}
+
+.top-section .row,
+.bottom-section .row,
+.frow,
+.fp1 .fr,
+.fp2 .fr,
+.fp3 .fr {
+  min-height: var(--txn-control-height) !important;
+  height: auto !important;
+}
+
+.table-container,
+.grid-wrap,
+#gridwrap,
+.table-scroll {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+table,
+table.items,
+table.exch,
+table.exchange-table,
+table.sr-table,
+table.sreturn-table,
+table.dmd-tbl,
+.srch-tbl,
+.modal-body table {
+  font-size: var(--txn-font-label) !important;
+  line-height: 1.3 !important;
+}
+
+th,
+table.items thead th,
+table.exch thead th,
+table.exchange-table thead th,
+table.sr-table thead th,
+table.sreturn-table thead th,
+table.dmd-tbl thead th,
+.srch-tbl th,
+.modal-body th {
+  font-size: var(--txn-font-small) !important;
+  line-height: 1.25 !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+td,
+table.items tbody td,
+table.exch tbody td,
+table.exchange-table tbody td,
+table.sr-table tbody td,
+table.sreturn-table tbody td,
+table.dmd-tbl tbody td,
+.srch-tbl td,
+.modal-body td {
+  font-size: var(--txn-font-label) !important;
+  line-height: 1.25 !important;
+  min-height: var(--txn-row-height) !important;
+  height: var(--txn-row-height) !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+td input,
+td select,
+table.items tbody input,
+table.exch tbody input,
+table.exchange-table tbody input,
+table.exchange-table tbody select,
+table.sr-table tbody input,
+table.sr-table tbody select,
+table.sreturn-table tbody input,
+table.dmd-tbl tbody input {
+  font-size: var(--txn-font-label) !important;
+  min-height: 28px !important;
+}
+
+.modal-box,
+.modal {
+  max-width: calc(100vw - 32px) !important;
+}
+
+.modal-head,
+.modal-head span,
+.modal-head strong,
+.modal-search input,
+.modal-footer,
+.msg-box .head,
+.msg-box .body,
+.msg-box .foot,
+.ac-drop div,
+.suggest-list div,
+#supDrop,
+#custSearchResults {
+  font-size: var(--txn-font-label) !important;
+  line-height: 1.35 !important;
+}
+
+.msg-box {
+  width: min(520px, calc(100vw - 24px)) !important;
+}
+
+.action-buttons button {
+  min-height: 38px !important;
+  font-size: var(--txn-font-label) !important;
+}
+
+.top-grid,
+#master,
+.totals {
+  gap: 10px 12px !important;
+}
+
+@media (max-width: 900px) {
+  .main-window,
+  .window {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    margin-left: 4px !important;
+    margin-right: 4px !important;
+  }
+
+  .top-section,
+  .top-grid,
+  #master,
+  .totals {
+    grid-template-columns: 1fr !important;
+  }
+
+  .top-grid > *,
+  #master > *,
+  .totals > * {
+    grid-column: auto !important;
+  }
+}
+
+@media print {
+  .main-window,
+  .window {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+}

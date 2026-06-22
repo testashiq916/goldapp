@@ -25,6 +25,7 @@ use App\Http\Controllers\AcReceivablePayableSummaryController;
 use App\Http\Controllers\GroupAccountSummaryController;
 use App\Http\Controllers\GroupwiseExpandedListController;
 use App\Http\Controllers\ReceiptPaymentReportController;
+use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\CustomerOpBillsController;
 use App\Http\Controllers\CustomerPopupController;
 use App\Http\Controllers\DenominationMasterController;
@@ -59,6 +60,8 @@ use App\Http\Controllers\StockSummaryCostWiseController;
 use App\Http\Controllers\StockSummaryRateWiseController;
 use App\Http\Controllers\ModelMasterController;
 use App\Http\Controllers\NativeAuthController;
+use App\Http\Controllers\OwnerAppApiController;
+use App\Http\Controllers\SaasTenantAdminController;
 use App\Http\Controllers\NativeCustomerController;
 use App\Http\Controllers\NativeDashboardController;
 use App\Http\Controllers\NativeStatesController;
@@ -75,13 +78,16 @@ use App\Http\Controllers\RepairReceiptMemoPartyController;
 use App\Http\Controllers\RepairReturnController;
 use App\Http\Controllers\SalesBillController;
 use App\Http\Controllers\SalesBillPrintController;
+use App\Http\Controllers\SalesReturnPrintController;
 use App\Http\Controllers\SalesBookReportController;
+use App\Http\Controllers\EInvoiceRegisterController;
 use App\Http\Controllers\SmithController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockPeriodLedgerController;
 use App\Http\Controllers\StockTypeController;
 use App\Http\Controllers\PurchaseBillController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\PurchaseReturnPrintController;
 use App\Http\Controllers\DiamondPurchaseBillController;
 use App\Http\Controllers\DiamondPurchaseReturnController;
 use App\Http\Controllers\GoldsmithTransactionController;
@@ -125,6 +131,7 @@ use App\Http\Controllers\OtherItemReportController;
 use App\Http\Controllers\RemakeReportController;
 use App\Http\Controllers\ApplicationSettingsController;
 use App\Http\Controllers\CustomerBillwiseRcptController;
+use App\Http\Controllers\CustomerDataCheckController;
 use App\Http\Controllers\CustomerReportsController;
 use App\Http\Controllers\SupplierReportsController;
 use App\Http\Controllers\CustomerCampaignController;
@@ -154,7 +161,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('/', function (Request $request) {
-    return redirect()->away(rtrim($request->root(), '/') . '/login');
+    return redirect('/login');
 });
 Route::get('/company-select', [CompanySelectController::class, 'index']);
 Route::post('/company-select/save', [CompanySelectController::class, 'save']);
@@ -244,6 +251,14 @@ Route::get('/customer-campaign', [CustomerCampaignController::class, 'index']);
 Route::get('/api/customer-campaign/recipients', [CustomerCampaignController::class, 'recipients']);
 Route::get('/phone-book', [PhoneBookController::class, 'index']);
 Route::get('/api/phone-book/contacts', [PhoneBookController::class, 'contacts']);
+Route::get('/api/phone-book/quick-lookup', [PhoneBookController::class, 'quickLookup']);
+Route::get('/reminders', [ReminderController::class, 'index']);
+Route::get('/api/reminders', [ReminderController::class, 'list']);
+Route::get('/api/reminders/customers', [ReminderController::class, 'customers']);
+Route::get('/api/reminders/bills', [ReminderController::class, 'bills']);
+Route::post('/api/reminders', [ReminderController::class, 'store']);
+Route::patch('/api/reminders/{id}/toggle', [ReminderController::class, 'toggle']);
+Route::delete('/api/reminders/{id}', [ReminderController::class, 'destroy']);
 Route::get('/cash-balance', [CashBalanceController::class, 'index']);
 Route::get('/year-end-account-close', [YearEndAccountCloseController::class, 'index']);
 Route::post('/api/year-end-account-close/init-doc-nos', [YearEndAccountCloseController::class, 'initDocNos']);
@@ -292,7 +307,9 @@ Route::get('/api/restart-date/load-account', [AccountRestartDateController::clas
 Route::get('/api/restart-date/search-account', [AccountRestartDateController::class, 'searchAccount']);
 Route::post('/api/restart-date/save', [AccountRestartDateController::class, 'save']);
 Route::get('/accounts/ac-ledger', [AccountLedgerController::class, 'index']);
+Route::get('/api/accounts/ac-ledger/search-accounts', [AccountLedgerController::class, 'searchAccounts']);
 Route::post('/accounts/ac-ledger/repair-sales', [AccountLedgerController::class, 'repairSalesLedger']);
+Route::post('/accounts/ac-ledger/clear-issue', [AccountLedgerController::class, 'clearLedgerIssue']);
 Route::get('/api/accounts/customer-ledger', [AccountLedgerController::class, 'customerLedgerApi']);
 Route::get('/accounts/group-ledger', [GroupLedgerController::class, 'index']);
 Route::get('/accounts/cash-book', [CashBookController::class, 'index']);
@@ -305,6 +322,7 @@ Route::get('/accounts/all-trans-report', [AllTransReportController::class, 'inde
 Route::get('/accounts/chart-of-accounts', [ChartOfAccountsController::class, 'index']);
 Route::get('/accounts/non-transactional-days-report', [NonTransactionalDaysReportController::class, 'index']);
 Route::get('/accounts/ac-receivable-payable-summary', [AcReceivablePayableSummaryController::class, 'index']);
+Route::post('/api/accounts/ac-receivable-payable-summary/duedate', [AcReceivablePayableSummaryController::class, 'updateDuedate']);
 
 // Customer Reports
 Route::get('/customers/credit-bill-details',    [CustomerReportsController::class, 'creditBillIndex']);
@@ -329,6 +347,9 @@ Route::get('/customers/visit-report',           [CustomerReportsController::clas
 Route::get('/api/customers/visit-report',       [CustomerReportsController::class, 'visitReportData']);
 Route::get('/customers/list',                   [CustomerReportsController::class, 'customerListIndex']);
 Route::get('/api/customers/list',               [CustomerReportsController::class, 'customerListData']);
+Route::get('/customers/data-check',             [CustomerDataCheckController::class, 'index']);
+Route::get('/api/customers/data-check',         [CustomerDataCheckController::class, 'data']);
+Route::post('/api/customers/data-check/update', [CustomerDataCheckController::class, 'updateIssue']);
 
 // Supplier Reports
 Route::get('/suppliers/duedate-report',         [SupplierReportsController::class, 'duedateIndex']);
@@ -373,9 +394,37 @@ Route::get('/accounts/denomination-entry', [DenominationEntryController::class, 
 Route::get('/api/denomination-entry/load', [DenominationEntryController::class, 'load']);
 Route::post('/api/denomination-entry/save', [DenominationEntryController::class, 'save']);
 
+// ── Owner App API (token-based, no session required) ────────────────────────
+Route::post('/api/owner/login',             [OwnerAppApiController::class, 'login']);
+Route::post('/api/owner/logout',            [OwnerAppApiController::class, 'logout']);
+Route::get('/api/owner/tenant',             [OwnerAppApiController::class, 'tenantInfo']);
+Route::get('/api/owner/users',              [OwnerAppApiController::class, 'users']);
+Route::get('/api/owner/shop-info',          [OwnerAppApiController::class, 'shopInfo']);
+Route::get('/api/owner/companies',          [OwnerAppApiController::class, 'companies']);
+Route::get('/api/owner/dashboard',          [OwnerAppApiController::class, 'dashboard']);
+Route::get('/api/owner/receivable-payable', [OwnerAppApiController::class, 'receivablePayable']);
+Route::get('/api/owner/stock-summary',      [OwnerAppApiController::class, 'stockSummary']);
+Route::get('/api/owner/goldsmith-summary',  [OwnerAppApiController::class, 'goldsmithSummary']);
+Route::get('/api/owner/item-movement',      [OwnerAppApiController::class, 'itemMovement']);
+Route::get('/api/owner/staff-sales',        [OwnerAppApiController::class, 'staffSales']);
+Route::get('/api/owner/financial-report',   [OwnerAppApiController::class, 'financialReport']);
+Route::get('/api/owner/term-summary',       [OwnerAppApiController::class, 'termSummary']);
+Route::get('/api/owner/log-report',         [OwnerAppApiController::class, 'logReport']);
+Route::get('/api/owner/pending-advances',   [OwnerAppApiController::class, 'pendingAdvances']);
+// Branch management (admin only)
+Route::get('/api/owner/admin/branches',                 [OwnerAppApiController::class, 'branchList']);
+Route::post('/api/owner/admin/branches',                [OwnerAppApiController::class, 'branchCreate']);
+Route::put('/api/owner/admin/branches/{id}',            [OwnerAppApiController::class, 'branchUpdate']);
+Route::delete('/api/owner/admin/branches/{id}',         [OwnerAppApiController::class, 'branchDelete']);
+Route::get('/api/owner/admin/branches/test-connection', [OwnerAppApiController::class, 'branchTestConnection']);
+
 Route::get('/login', [NativeAuthController::class, 'showLogin']);
 Route::post('/login', [NativeAuthController::class, 'login']);
 Route::get('/logout', [NativeAuthController::class, 'logout']);
+Route::get('/goldplus-admin', [SaasTenantAdminController::class, 'index']);
+Route::post('/goldplus-admin/unlock', [SaasTenantAdminController::class, 'unlock']);
+Route::post('/goldplus-admin/tenants', [SaasTenantAdminController::class, 'save']);
+Route::post('/goldplus-admin/tenants/{id}/delete', [SaasTenantAdminController::class, 'delete']);
 Route::get('/dashboard', [NativeDashboardController::class, 'index']);
 Route::get('/goldsmith-transactions-print', [GoldsmithTransactionController::class, 'printView'])->name('goldsmith-transactions.print');
 Route::get('/goldsmith-transactions', [GoldsmithTransactionController::class, 'index'])->name('goldsmith-transactions.index');
@@ -493,6 +542,8 @@ Route::post('/api/sales-bill/edit-resolve', [SalesBillController::class, 'resolv
 Route::post('/api/sales-bill/action-resolve', [SalesBillController::class, 'resolveBillAction'])->name('sales-bill.action-resolve');
 Route::get('/sales-bill/{mode?}', [SalesBillController::class, 'index'])->name('sales-bill.index');
 Route::get('/sales-bill-print', [SalesBillPrintController::class, 'show'])->name('sales-bill.print');
+Route::get('/sales-return-print', [SalesReturnPrintController::class, 'show'])->name('sales-return.print');
+Route::get('/purchase-return-print', [PurchaseReturnPrintController::class, 'show'])->name('purchase-return.print');
 Route::post('/api/sales-bill/save-setting', [SalesBillPrintController::class, 'saveSetting']);
 Route::get('/api/sales-bill/next-number', [SalesBillController::class, 'nextBillNo'])->name('sales-bill.next-number');
 Route::get('/api/sales-bill/check-bill-no', [SalesBillController::class, 'checkBillNo'])->name('sales-bill.check-bill-no');
@@ -507,6 +558,21 @@ Route::get('/api/sales-bill/item-lookup', [SalesBillController::class, 'itemLook
 Route::post('/api/sales-bill/recalc', [SalesBillController::class, 'recalc'])->name('sales-bill.recalc');
 Route::post('/api/sales-bill/save', [SalesBillController::class, 'save'])->name('sales-bill.save');
 Route::post('/api/sales-bill/einvoice', [SalesBillController::class, 'generateEInvoice'])->name('sales-bill.einvoice');
+Route::post('/api/sales-bill/ewaybill', [SalesBillController::class, 'generateEWayBill'])->name('sales-bill.ewaybill');
+
+/*
+|--------------------------------------------------------------------------
+| E-Invoice Register
+|--------------------------------------------------------------------------
+*/
+Route::get('/e-invoice-register', [EInvoiceRegisterController::class, 'index'])->name('e-invoice-register.index');
+Route::get('/e-invoice-print', [EInvoiceRegisterController::class, 'printView'])->name('e-invoice-register.print');
+Route::get('/e-invoice-pdf', [EInvoiceRegisterController::class, 'pdf'])->name('e-invoice-register.pdf');
+Route::get('/api/e-invoice-register/data', [EInvoiceRegisterController::class, 'data']);
+Route::get('/api/e-invoice-register/details', [EInvoiceRegisterController::class, 'details']);
+Route::get('/api/e-invoice-register/reprint', [EInvoiceRegisterController::class, 'reprint']);
+Route::get('/api/e-invoice-register/irn-lookup', [EInvoiceRegisterController::class, 'lookupIrn']);
+Route::post('/api/e-invoice-register/cancel', [EInvoiceRegisterController::class, 'cancel']);
 Route::post('/api/sales-bill/cancel', [SalesBillController::class, 'cancelBill'])->name('sales-bill.cancel');
 Route::post('/api/sales-bill/confirm', [SalesBillController::class, 'confirmBill'])->name('sales-bill.confirm');
 Route::post('/api/sales-bill/reprint', [SalesBillController::class, 'reprint'])->name('sales-bill.reprint');
@@ -541,6 +607,9 @@ Route::get('/api/monthly-sales-report/data', [App\Http\Controllers\MonthlySalesR
 Route::get('/sales-register', [App\Http\Controllers\SalesRegisterController::class, 'index']);
 Route::get('/api/sales-register/lookups', [App\Http\Controllers\SalesRegisterController::class, 'lookups']);
 Route::get('/api/sales-register/data', [App\Http\Controllers\SalesRegisterController::class, 'data']);
+Route::get('/salesman-category-report', [App\Http\Controllers\SalesmanCategoryReportController::class, 'index']);
+Route::get('/api/salesman-category-report/lookups', [App\Http\Controllers\SalesmanCategoryReportController::class, 'lookups']);
+Route::get('/api/salesman-category-report/data', [App\Http\Controllers\SalesmanCategoryReportController::class, 'data']);
 Route::get('/sales-check-list', [App\Http\Controllers\SalesCheckListController::class, 'index']);
 Route::get('/api/sales-check-list/data', [App\Http\Controllers\SalesCheckListController::class, 'data']);
 Route::get('/sales-return-register', [App\Http\Controllers\SalesReturnRegisterController::class, 'index']);
@@ -730,6 +799,7 @@ Route::get('/api/order-advance-after/search',                [OrderAdvanceAfterC
 Route::post('/api/order-advance-after/delete',               [OrderAdvanceAfterController::class, 'delete']);
 Route::get('/api/order-advance-after/prev',                  [OrderAdvanceAfterController::class, 'prevBill']);
 Route::get('/api/order-advance-after/next',                  [OrderAdvanceAfterController::class, 'nextBill']);
+Route::get('/order-advance-after-receipt',                   [OrderAdvanceAfterController::class, 'receipt'])->name('order-advance-after.receipt');
 
 /*
 |--------------------------------------------------------------------------
@@ -748,6 +818,7 @@ Route::get('/api/order-sale/get',                   [OrderSaleController::class,
 Route::get('/api/order-sale/search',                [OrderSaleController::class, 'search']);
 Route::get('/api/order-sale/prev',                  [OrderSaleController::class, 'prevBill']);
 Route::get('/api/order-sale/next',                  [OrderSaleController::class, 'nextBill']);
+Route::get('/api/order-sale/peek-billno',           [OrderSaleController::class, 'peekBillNo']);
 Route::post('/api/order-sale/cancel',               [OrderSaleController::class, 'cancelBill']);
 Route::get('/order-rate-fix',                       [OrderRateFixController::class, 'index']);
 Route::get('/api/order-rate-fix/search',            [OrderRateFixController::class, 'search']);
@@ -955,6 +1026,7 @@ Route::get('/api/barcode-entry/get', [BarcodeEntryController::class, 'get'])->na
 Route::post('/api/barcode-entry/save', [BarcodeEntryController::class, 'save'])->name('barcode-entry.save');
 Route::post('/api/barcode-entry/delete', [BarcodeEntryController::class, 'delete'])->name('barcode-entry.delete');
 Route::post('/api/barcode-entry/print', [BarcodeEntryController::class, 'printBarcode'])->name('barcode-entry.print');
+Route::post('/api/barcode-entry/print-pair', [BarcodeEntryController::class, 'printBarcodePair'])->name('barcode-entry.print-pair');
 Route::post('/api/barcode-entry/print-sample', [BarcodeEntryController::class, 'printSample'])->name('barcode-entry.print-sample');
 Route::get('/api/barcode-entry/search', [BarcodeEntryController::class, 'search'])->name('barcode-entry.search');
 Route::get('/api/barcode-entry/next-barcode', [BarcodeEntryController::class, 'nextBarcode'])->name('barcode-entry.next-barcode');
@@ -1078,6 +1150,8 @@ Route::get('/accounts/receipt-print', [App\Http\Controllers\ReceiptController::c
 Route::get('/accounts/party-code-merge', [App\Http\Controllers\PartyCodeMergeController::class, 'index']);
 Route::post('/api/accounts/party-code-merge/preview', [App\Http\Controllers\PartyCodeMergeController::class, 'preview']);
 Route::post('/api/accounts/party-code-merge/merge', [App\Http\Controllers\PartyCodeMergeController::class, 'merge']);
+Route::post('/api/accounts/party-code-merge/sale-bills-preview', [App\Http\Controllers\PartyCodeMergeController::class, 'saleBillsPreview']);
+Route::post('/api/accounts/party-code-merge/sale-bills-link', [App\Http\Controllers\PartyCodeMergeController::class, 'saleBillsLink']);
 Route::get('/accounts/payment', [App\Http\Controllers\PaymentController::class, 'index']);
 Route::post('/api/accounts/payment', [App\Http\Controllers\PaymentController::class, 'api']);
 Route::get('/accounts/payment-print', [App\Http\Controllers\PaymentController::class, 'print']);
@@ -1136,6 +1210,7 @@ Route::get('/stock/ledger', [StockController::class, 'ledger'])->name('stock.led
 Route::get('/stock/ledger/export', [StockController::class, 'ledgerExport'])->name('stock.ledger.export');
 Route::get('/stock/period-ledger', [StockPeriodLedgerController::class, 'index'])->name('stock.period-ledger');
 Route::get('/stock/item-history',  [StockPeriodLedgerController::class, 'itemHistory'])->name('stock.item-history');
+Route::get('/api/stock/item-search', [StockPeriodLedgerController::class, 'itemSearch'])->name('stock.item-search');
 
 /*
 |--------------------------------------------------------------------------
@@ -1258,6 +1333,8 @@ Route::prefix('item-master')->name('item-master.')->group(function () {
     Route::post('/get-item', [ItemMasterController::class, 'getItem'])->name('get-item');
     Route::post('/save', [ItemMasterController::class, 'save'])->name('save');
     Route::post('/delete', [ItemMasterController::class, 'delete'])->name('delete');
+    Route::post('/code-exists', [ItemMasterController::class, 'codeExists'])->name('code-exists');
+    Route::post('/rename-code', [ItemMasterController::class, 'renameCode'])->name('rename-code');
 });
 
 /*
@@ -1346,6 +1423,7 @@ Route::post('/bill-prefix/check-delete', [BillPrefixController::class, 'checkDel
 Route::get('/repair-complaints', [RepairComplaintsController::class, 'index'])->name('repair-complaints.index');
 Route::get('/remake-rcpt-memo-to-party/{mode?}', [RepairReceiptMemoPartyController::class, 'index']);
 Route::get('/api/remake-rcpt-memo-to-party/next', [RepairReceiptMemoPartyController::class, 'nextDoc']);
+Route::get('/api/remake-rcpt-memo-to-party/nav', [RepairReceiptMemoPartyController::class, 'navigate']);
 Route::get('/api/remake-rcpt-memo-to-party/search', [RepairReceiptMemoPartyController::class, 'search']);
 Route::get('/api/remake-rcpt-memo-to-party/get', [RepairReceiptMemoPartyController::class, 'get']);
 Route::post('/api/remake-rcpt-memo-to-party/save', [RepairReceiptMemoPartyController::class, 'save']);
@@ -1354,10 +1432,27 @@ Route::get('/api/remake-rcpt-memo-to-party/item', [RepairReceiptMemoPartyControl
 Route::get('/api/remake-rcpt-memo-to-party/items', [RepairReceiptMemoPartyController::class, 'searchItems']);
 Route::get('/api/remake-rcpt-memo-to-party/customer', [RepairReceiptMemoPartyController::class, 'lookupCustomer']);
 Route::get('/api/remake-rcpt-memo-to-party/customers', [RepairReceiptMemoPartyController::class, 'searchCustomers']);
+Route::get('/api/remake-rcpt-memo-to-party/cash-banks', [RepairReceiptMemoPartyController::class, 'cashBanks']);
+Route::get('/api/remake-rcpt-memo-to-party/load-issue', [RepairReceiptMemoPartyController::class, 'loadIssueBill']);
+
+// Remake Issue Memo to Party (RM2) — modern dedicated module
+Route::get('/remake-issue-memo-party/{mode?}', [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'index']);
+Route::get('/api/remake-issue-memo-party/next',      [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'nextDoc']);
+Route::get('/api/remake-issue-memo-party/nav',       [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'navigate']);
+Route::get('/api/remake-issue-memo-party/search',    [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'search']);
+Route::get('/api/remake-issue-memo-party/get',       [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'get']);
+Route::post('/api/remake-issue-memo-party/save',     [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'save']);
+Route::post('/api/remake-issue-memo-party/cancel',   [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'cancel']);
+Route::get('/api/remake-issue-memo-party/item',      [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'lookupItem']);
+Route::get('/api/remake-issue-memo-party/items',     [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'searchItems']);
+Route::get('/api/remake-issue-memo-party/customer',  [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'lookupCustomer']);
+Route::get('/api/remake-issue-memo-party/customers', [App\Http\Controllers\RemakeIssueMemoPartyController::class, 'searchCustomers']);
+
 // Repair Return (RM4)
 Route::get('/repair-return/picker/{action?}', [RepairReturnController::class, 'picker']);
 Route::get('/repair-return/{mode?}', [RepairReturnController::class, 'index']);
 Route::get('/api/repair-return/next', [RepairReturnController::class, 'nextDoc']);
+Route::get('/api/repair-return/navigate', [RepairReturnController::class, 'navigate']);
 Route::get('/api/repair-return/search', [RepairReturnController::class, 'search']);
 Route::get('/api/repair-return/picker-search', [RepairReturnController::class, 'pickerSearch']);
 Route::post('/api/repair-return/picker-resolve', [RepairReturnController::class, 'pickerResolve']);
@@ -1614,6 +1709,8 @@ Route::get('/api/integrity-checking/check',   [App\Http\Controllers\IntegrityChe
 Route::get('/tax-purchase-book',                 [App\Http\Controllers\TaxPurchaseBookController::class, 'index']);
 Route::get('/api/tax-purchase-book/lookups',     [App\Http\Controllers\TaxPurchaseBookController::class, 'lookups']);
 Route::get('/api/tax-purchase-book/data',        [App\Http\Controllers\TaxPurchaseBookController::class, 'data']);
+Route::post('/api/tax-purchase-book/bill-correct/preview', [App\Http\Controllers\TaxPurchaseBookController::class, 'billCorrectPreview']);
+Route::post('/api/tax-purchase-book/bill-correct/apply',   [App\Http\Controllers\TaxPurchaseBookController::class, 'billCorrectApply']);
 
 /*
 |--------------------------------------------------------------------------
@@ -1642,3 +1739,107 @@ Route::get('/api/goldsmith-transactions/lookups',  [App\Http\Controllers\Goldsmi
 Route::get('/api/goldsmith-transactions/data',     [App\Http\Controllers\GoldsmithTransactionsController::class, 'data']);
 
 Route::get('/reports/avg-rate-profit', [App\Http\Controllers\AvgRateProfitController::class, 'index']);
+
+/*
+|--------------------------------------------------------------------------
+| WhatsApp / SMS Gateway
+|--------------------------------------------------------------------------
+*/
+Route::get('/whatsapp-gateway/settings',    [App\Http\Controllers\WhatsAppGatewayController::class, 'settings']);
+Route::get('/whatsapp-gateway/log',         [App\Http\Controllers\WhatsAppGatewayController::class, 'log']);
+Route::post('/api/whatsapp/save-settings',  [App\Http\Controllers\WhatsAppGatewayController::class, 'saveSettings']);
+Route::post('/api/whatsapp/test-send',      [App\Http\Controllers\WhatsAppGatewayController::class, 'testSend']);
+Route::get('/api/whatsapp/log',             [App\Http\Controllers\WhatsAppGatewayController::class, 'logData']);
+Route::post('/api/whatsapp/bulk-send',      [App\Http\Controllers\WhatsAppGatewayController::class, 'bulkSend']);
+
+/*
+|--------------------------------------------------------------------------
+| GSTR Reports
+|--------------------------------------------------------------------------
+*/
+Route::get('/gstr-reports',        [App\Http\Controllers\GstrReportController::class, 'index']);
+Route::get('/api/gstr/data',       [App\Http\Controllers\GstrReportController::class, 'data']);
+
+/*
+|--------------------------------------------------------------------------
+| Gold Loan Module
+|--------------------------------------------------------------------------
+*/
+Route::get('/gold-loan',                        [App\Http\Controllers\GoldLoanController::class, 'index']);
+Route::get('/gold-loan/report',                 [App\Http\Controllers\GoldLoanController::class, 'report']);
+Route::post('/api/gold-loan/save',              [App\Http\Controllers\GoldLoanController::class, 'save']);
+Route::post('/api/gold-loan/collection',        [App\Http\Controllers\GoldLoanController::class, 'addCollection']);
+Route::post('/api/gold-loan/interest-calc',     [App\Http\Controllers\GoldLoanController::class, 'interestCalc']);
+Route::get('/api/gold-loan/report',             [App\Http\Controllers\GoldLoanController::class, 'reportData']);
+Route::get('/api/gold-loan/customer-search',    [App\Http\Controllers\GoldLoanController::class, 'customerSearch']);
+
+/*
+|--------------------------------------------------------------------------
+| Product Image Catalogue
+|--------------------------------------------------------------------------
+*/
+Route::get('/catalogue',                [App\Http\Controllers\ItemCatalogueController::class, 'index']);
+Route::get('/catalogue/gallery',        [App\Http\Controllers\ItemCatalogueController::class, 'gallery']);
+Route::post('/api/catalogue/upload',    [App\Http\Controllers\ItemCatalogueController::class, 'upload']);
+Route::post('/api/catalogue/delete',    [App\Http\Controllers\ItemCatalogueController::class, 'delete']);
+Route::post('/api/catalogue/set-primary', [App\Http\Controllers\ItemCatalogueController::class, 'setPrimary']);
+Route::get('/api/catalogue/gallery',    [App\Http\Controllers\ItemCatalogueController::class, 'galleryData']);
+
+/*
+|--------------------------------------------------------------------------
+| Tally Export
+|--------------------------------------------------------------------------
+*/
+Route::get('/tally-export',             [App\Http\Controllers\TallyExportController::class, 'index']);
+Route::post('/api/tally-export/export', [App\Http\Controllers\TallyExportController::class, 'export']);
+
+/*
+|--------------------------------------------------------------------------
+| Hallmarking Records (BIS)
+|--------------------------------------------------------------------------
+*/
+Route::get('/hallmark',                 [App\Http\Controllers\HallmarkController::class, 'index']);
+Route::get('/api/hallmark/load',        [App\Http\Controllers\HallmarkController::class, 'load']);
+Route::post('/api/hallmark/save',       [App\Http\Controllers\HallmarkController::class, 'save']);
+Route::post('/api/hallmark/delete',     [App\Http\Controllers\HallmarkController::class, 'delete']);
+Route::get('/api/hallmark/check-huid',  [App\Http\Controllers\HallmarkController::class, 'checkHuid']);
+Route::get('/api/hallmark/batches',     [App\Http\Controllers\HallmarkController::class, 'batches']);
+
+/*
+|--------------------------------------------------------------------------
+| Staff Payroll
+|--------------------------------------------------------------------------
+*/
+Route::get('/staff-payroll',                    [App\Http\Controllers\StaffPayrollController::class, 'index']);
+Route::get('/staff-payroll/salary-slip',        [App\Http\Controllers\StaffPayrollController::class, 'salarySlip']);
+Route::get('/api/payroll/staff-list',           [App\Http\Controllers\StaffPayrollController::class, 'staffList']);
+Route::get('/api/payroll/structure',            [App\Http\Controllers\StaffPayrollController::class, 'getStructure']);
+Route::post('/api/payroll/save-structure',      [App\Http\Controllers\StaffPayrollController::class, 'saveStructure']);
+Route::post('/api/payroll/calculate',           [App\Http\Controllers\StaffPayrollController::class, 'calculateSalary']);
+Route::post('/api/payroll/save-salary',         [App\Http\Controllers\StaffPayrollController::class, 'saveSalary']);
+Route::get('/api/payroll/monthly-register',     [App\Http\Controllers\StaffPayrollController::class, 'monthlyRegister']);
+Route::get('/api/payroll/slip-data',            [App\Http\Controllers\StaffPayrollController::class, 'slipData']);
+
+/*
+|--------------------------------------------------------------------------
+| Multi-Branch Consolidation
+|--------------------------------------------------------------------------
+*/
+Route::get('/branch-master',                    [App\Http\Controllers\BranchController::class, 'index']);
+Route::get('/branch-transfer',                  [App\Http\Controllers\BranchController::class, 'transfer']);
+Route::get('/branch-transfer-report',           [App\Http\Controllers\BranchController::class, 'report']);
+Route::get('/api/branch/list',                  [App\Http\Controllers\BranchController::class, 'list']);
+Route::post('/api/branch/save',                 [App\Http\Controllers\BranchController::class, 'saveBranch']);
+Route::post('/api/branch/delete',               [App\Http\Controllers\BranchController::class, 'deleteBranch']);
+Route::post('/api/branch/transfer/save',        [App\Http\Controllers\BranchController::class, 'saveTransfer']);
+Route::post('/api/branch/transfer/receive',     [App\Http\Controllers\BranchController::class, 'receiveTransfer']);
+Route::get('/api/branch/transfer/report',       [App\Http\Controllers\BranchController::class, 'transferReport']);
+
+/*
+|--------------------------------------------------------------------------
+| Digital Weighing Scale
+|--------------------------------------------------------------------------
+*/
+Route::get('/scale-settings',               [App\Http\Controllers\ScaleController::class, 'settings']);
+Route::post('/api/scale/save-settings',     [App\Http\Controllers\ScaleController::class, 'saveSettings']);
+Route::get('/api/scale/get-settings',       [App\Http\Controllers\ScaleController::class, 'getSettings']);

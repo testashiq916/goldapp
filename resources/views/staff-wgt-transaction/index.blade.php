@@ -52,6 +52,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#1f2937}
 .del-btn{color:#c0392b;cursor:pointer;font-weight:700;font-size:14px}
 .del-btn:hover{color:#e74c3c}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="wrap">

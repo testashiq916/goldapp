@@ -15,91 +15,92 @@ window.OAA_CONFIG = {
     platinum: {{ $rates['platinum'] ?? 0 }},
   },
   exchItems: @json($exchItems),
+  cashBanks: @json($cashBanks ?? []),
   gilevel:   {{ $gilevel ?? 1 }},
 };
 </script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:hidden;height:100vh;
-  background:radial-gradient(circle at 10% -10%,#eef3ff 0%,#f4f7fb 40%,#edf2f8 100%)}
+body{font-family:Arial,sans-serif;font-size:13px;color:#1f2937;overflow:hidden;height:100vh;background:#e6eef3}
 input,select,button{transition:all .15s ease}
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:#f7fafc}
 ::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
 
-.main-window{background:#fff;border:1px solid #d6dcea;border-radius:12px;
-  box-shadow:0 10px 30px rgba(33,52,89,.10);margin:8px;overflow:hidden;position:relative}
+.main-window{background:#fff;border:1px solid #99bdd0;border-radius:0;box-shadow:none;margin:8px;overflow:hidden;position:relative}
 
-.title-bar{background:linear-gradient(135deg,#1a3a5f,#2c6282);color:#fff;
-  padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
+.title-bar{background:#1a3a4a;color:#b8e6ff;padding:8px 10px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;letter-spacing:0}
 .title-bar .icon{width:16px;height:16px;background:#f6ad55;border-radius:4px;flex-shrink:0}
 
 /* Top form */
-.top-section{background:#f9fbff;padding:10px 14px;display:grid;
-  grid-template-columns:1fr 1fr;gap:6px 20px;border-bottom:1px solid #d6dcea}
+.top-section{background:#dce8f0;padding:8px;display:grid;
+  grid-template-columns:1fr 1fr;gap:5px 18px;border:1px solid #99bdd0;border-top:0}
 .top-section .row{display:flex;align-items:center;gap:6px;min-height:28px}
-.top-section label{font-weight:600;font-size:11px;min-width:100px;color:#6b7280;text-align:right}
-.top-section input{font-size:11px;padding:3px 8px;border:1px solid #d6dcea;
-  background:#fff;height:28px;border-radius:7px;color:#2d3748;
-  box-shadow:inset 0 1px 2px rgba(17,24,39,.03)}
-.top-section input:focus{border-color:#a9b7ff;
-  box-shadow:0 0 0 3px rgba(91,109,238,.14);outline:none}
+.top-section label{font-weight:700;font-size:13px;min-width:110px;color:#111827;text-align:right;padding-right:4px}
+.top-section input,.top-section select{font-size:11px;padding:3px 8px;border:1px solid #d6dcea;
+  background:#fff;height:30px;border-radius:4px;color:#111827;box-shadow:none}
+.top-section input:focus,.top-section select:focus{border-color:#a9b7ff;
+  box-shadow:none;outline:2px solid #b8e6ff}
 .top-section input.sm{width:80px}
 .top-section input.md{width:140px}
 .top-section input.lg{width:200px}
-.top-section input.readonly{background:#f1f5f9;color:#64748b}
-.top-section .btn-help{font-size:10px;padding:2px 10px;border:1px solid #d6dcea;border-radius:6px;
-  cursor:pointer;background:#fff;height:28px;color:#374151;font-weight:600}
-.top-section .btn-help:hover{background:#eef3ff}
+.top-section select.lg{width:240px}
+.top-section input.readonly{background:#e8e8e8;color:#1f2937}
+.top-section .btn-help{font-size:12px;padding:0 14px;border:1px solid #6a9ab8;border-radius:4px;
+  cursor:pointer;background:#d0e8f5;height:30px;color:#111827;font-weight:700}
+.top-section .btn-help:hover{background:#b8d8ee}
 
-.chk-row{display:flex;align-items:center;gap:14px;padding:4px 14px;background:#f9fbff;border-bottom:1px solid #d6dcea}
-.chk-row label{font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:4px;cursor:pointer}
+.chk-row{display:flex;align-items:center;gap:14px;padding:5px 14px;background:#dce8f0;border:1px solid #99bdd0;border-top:0}
+.chk-row label{font-size:12px;font-weight:700;color:#111827;display:flex;align-items:center;gap:4px;cursor:pointer}
 .chk-row input[type=checkbox]{accent-color:#2c6282}
 
 /* Weight advance heading */
-.section-heading{padding:6px 14px;font-size:12px;font-weight:700;color:#1a3a5f;
-  text-decoration:underline;background:#f0f4fa;border-bottom:1px solid #d6dcea;text-align:center}
+.section-heading{padding:6px 14px;font-size:13px;font-weight:700;color:#1a3a4a;
+  text-decoration:underline;background:#e6eef3;border-bottom:1px solid #99bdd0;text-align:center}
 
 /* Items table */
-.table-container{margin:0 8px;border:1px solid #d6dcea;border-radius:10px;
-  background:#fff;overflow:hidden;box-shadow:0 3px 10px rgba(32,55,92,.05)}
-table.items{width:100%;border-collapse:collapse;font-size:11px}
-table.items thead th{background:linear-gradient(180deg,#364891,#2d3d7b);color:#f7f9ff;
-  padding:5px 5px;border:1px solid #42529e;font-weight:600;font-size:10px;
-  text-align:center;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
-table.items tbody td{border:1px solid #edf1f7;padding:1px 2px;text-align:center;height:24px}
+.table-container{margin:0;border:1px solid #99bdd0;border-radius:0;
+  background:#fff;overflow-x:auto;overflow-y:hidden;box-shadow:none;
+  -webkit-overflow-scrolling:touch}
+.table-container::-webkit-scrollbar{height:8px}
+.table-container::-webkit-scrollbar-track{background:#f0f3f7}
+.table-container::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:4px}
+.table-container::-webkit-scrollbar-thumb:hover{background:#8fa0b5}
+table.items{width:100%;min-width:900px;border-collapse:collapse;font-size:12px}
+table.items thead th{background:#1a3a4a;color:#b8e6ff;
+  padding:4px 5px;border:1px solid #bbb;font-weight:700;font-size:11px;
+  text-align:center;white-space:nowrap;text-transform:none;letter-spacing:0}
+table.items tbody td{border:1px solid #bbb;padding:1px 2px;text-align:center;height:26px}
 table.items tbody tr:nth-child(odd){background:#fff}
-table.items tbody tr:nth-child(even){background:#f7faff}
-table.items tbody tr:hover{background:#edf3ff}
-table.items tbody tr.sel td{background:#dbeafe}
-table.items tbody input{font-size:11px;border:none;background:transparent;
+table.items tbody tr:nth-child(even){background:#f0f7fb}
+table.items tbody tr:hover{background:#dff1fb}
+table.items tbody tr.sel td{background:#b8e6ff}
+table.items tbody input{font-size:12px;border:none;background:transparent;
   text-align:center;width:100%;height:100%}
 table.items tbody input:focus{background:#fffff0;outline:2px solid #4299e1;border-radius:2px}
 table.items tbody input.num{text-align:right}
-table.items tfoot td{background:#f0f4fa;font-weight:700;font-size:11px;padding:4px 5px;
-  border:1px solid #d6dcea;text-align:center}
+table.items tfoot td{background:#1a3a4a;color:#b8e6ff;font-weight:700;font-size:12px;padding:4px 5px;
+  border:1px solid #bbb;text-align:center}
 
 /* Table footer buttons */
-.table-footer{display:flex;align-items:center;background:#f9fbff;
+.table-footer{display:flex;align-items:center;background:#e6eef3;
   padding:5px 10px;gap:8px;font-size:11px;font-weight:600;
-  color:#2d3748;border-top:1px solid #d6dcea}
-.table-footer button{background:#fff;border:1px solid #d0d9ea;border-radius:8px;
-  padding:2px 12px;font-size:11px;cursor:pointer;font-weight:600;color:#3f4a5b}
-.table-footer button:hover{background:#eef3ff;border-color:#bfcaf0}
+  color:#2d3748;border-top:1px solid #99bdd0}
+.table-footer button{background:#d0e8f5;border:1px solid #6a9ab8;border-radius:4px;
+  padding:0 14px;height:32px;font-size:12px;cursor:pointer;font-weight:700;color:#111827}
+.table-footer button:hover{background:#b8d8ee}
 .table-footer button:active{transform:translateY(1px)}
-.stktype-badge{font-size:10px;background:#f59e0b;color:#fff;padding:1px 8px;border-radius:4px;font-weight:700}
+.stktype-badge{font-size:10px;background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700}
 
 /* Bottom buttons */
 .bottom-bar{display:flex;align-items:center;justify-content:center;gap:8px;
-  padding:8px 14px;background:#f9fbff;border-top:1px solid #d6dcea}
-.bottom-bar button{padding:6px 22px;font-size:12px;font-weight:700;border-radius:8px;
-  cursor:pointer;border:1px solid #d6dcea;background:#fff;color:#374151;
+  padding:8px 14px;background:#e6eef3;border-top:1px solid #99bdd0}
+.bottom-bar button{height:32px;padding:0 22px;font-size:12px;font-weight:700;border-radius:4px;
+  cursor:pointer;border:1px solid #6a9ab8;background:#d0e8f5;color:#111827;
   transition:all .15s}
-.bottom-bar button:hover{background:#eef3ff;border-color:#bfcaf0}
-.bottom-bar button.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);
-  color:#fff;border-color:#1d4ed8}
-.bottom-bar button.primary:hover{background:linear-gradient(135deg,#1d4ed8,#1e40af)}
+.bottom-bar button:hover{background:#b8d8ee}
+.bottom-bar button.primary{background:#2d7d46;color:#fff;border-color:#256b3a}
+.bottom-bar button.primary:hover{background:#256b3a}
 .bottom-bar button.danger{background:#ef4444;color:#fff;border-color:#dc2626}
 .bottom-bar button.danger:hover{background:#dc2626}
 
@@ -107,24 +108,37 @@ table.items tfoot td{background:#f0f4fa;font-weight:700;font-size:11px;padding:4
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;
   align-items:center;justify-content:center}
 .modal-bg.show{display:flex}
-.modal{background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);
+.modal{background:#fff;border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.3);
   width:90%;max-width:620px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
-.modal-head{background:linear-gradient(135deg,#1a3a5f,#2c6282);color:#fff;padding:10px 14px;
-  font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.modal-head{background:#1a3a4a;color:#b8e6ff;padding:10px 14px;
+  font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
 .modal-head .close-btn{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1}
 .modal-body{padding:10px;overflow-y:auto;flex:1}
-.modal-body input{width:100%;padding:6px 10px;font-size:12px;border:1px solid #d6dcea;
-  border-radius:7px;margin-bottom:8px}
+.modal-body input{width:100%;padding:6px 10px;font-size:13px;border:1px solid #99bdd0;
+  border-radius:4px;margin-bottom:8px;height:30px}
 .modal-body table{width:100%;border-collapse:collapse;font-size:11px}
-.modal-body table th{background:#364891;color:#fff;padding:5px;font-weight:600;text-align:left;
+.modal-body table th{background:#1a3a4a;color:#b8e6ff;padding:5px;font-weight:700;text-align:left;
   position:sticky;top:0}
-.modal-body table td{padding:4px 6px;border-bottom:1px solid #edf1f7;cursor:pointer}
-.modal-body table tr:hover td{background:#edf3ff}
+.modal-body table td{padding:4px 6px;border-bottom:1px solid #ddd;cursor:pointer}
+.modal-body table tr:hover td{background:#dff1fb}
 
 /* Status strip */
 .status-strip{display:flex;align-items:center;gap:12px;padding:4px 14px;
-  font-size:10px;color:#64748b;background:#f0f4fa;border-top:1px solid #d6dcea}
+  font-size:10px;color:#64748b;background:#e6eef3;border-top:1px solid #99bdd0}
 .status-strip .dot{width:6px;height:6px;border-radius:50%;background:#10b981}
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .row{min-height:32px}
+.top-section label{font-size:14px}
+.top-section input,.top-section select{font-size:13px;height:32px}
+table.items{font-size:14px}
+table.items thead th{font-size:13px;padding:6px 5px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:14px}
+table.items tfoot td{font-size:14px}
+.table-footer{font-size:13px}
+.table-footer button{font-size:13px}
+.bottom-bar button{font-size:14px;height:36px}
 </style>
 </head>
 <body>
@@ -133,7 +147,7 @@ table.items tfoot td{background:#f0f4fa;font-weight:700;font-size:11px;padding:4
   <!-- Title -->
   <div class="title-bar">
     <div class="icon"></div>
-    <span id="titleText">Order Advance {{ $mode === 'edit' ? '- Edit' : '' }}</span>
+    <span id="titleText">Order Advance After {{ $mode === 'edit' ? '- Edit' : '' }}</span>
   </div>
 
   <!-- Top form fields -->
@@ -150,8 +164,12 @@ table.items tfoot td{background:#f0f4fa;font-weight:700;font-size:11px;padding:4
         <input type="text" id="fDate" class="md" placeholder="dd/mm/yyyy">
       </div>
       <div class="row">
-        <label>Amount :</label>
+        <label>Received Amt :</label>
         <input type="text" id="fAmount" class="md num" style="text-align:right" value="0.00">
+      </div>
+      <div class="row">
+        <label>Cash/Bank :</label>
+        <select id="fCashBank" class="lg"></select>
       </div>
     </div>
     <!-- Right column -->
@@ -217,6 +235,7 @@ table.items tfoot td{background:#f0f4fa;font-weight:700;font-size:11px;padding:4
   <!-- Bottom action buttons -->
   <div class="bottom-bar">
     <button class="primary" id="btnSave">Save</button>
+    <button id="btnPrint">Print Receipt</button>
     <button id="btnNew">New</button>
     <button id="btnPrev">&laquo; Prev</button>
     <button id="btnNext">Next &raquo;</button>
@@ -312,6 +331,7 @@ let focusedItemRow = -1;
 /* ── Init ── */
 function init() {
     sv('fGoldRate', fmt2(CFG.rates.gold));
+    populateCashBanks();
     const today = new Date();
     const dd = String(today.getDate()).padStart(2,'0');
     const mm = String(today.getMonth()+1).padStart(2,'0');
@@ -321,8 +341,37 @@ function init() {
     addItemRow();
 
     if(CFG.mode === 'edit') {
-        $('titleText').textContent = 'Order Advance - Edit';
+        $('titleText').textContent = 'Order Advance After - Edit';
     }
+}
+
+function populateCashBanks(selectedCode = '') {
+    const sel = $('fCashBank');
+    if(!sel) return;
+    const banks = Array.isArray(CFG.cashBanks) ? CFG.cashBanks : [];
+    sel.innerHTML = '';
+    if(!banks.length) {
+        const opt = document.createElement('option');
+        opt.value = 'CASH';
+        opt.textContent = 'CASH - CASH IN HAND';
+        sel.appendChild(opt);
+        sel.value = 'CASH';
+        return;
+    }
+    banks.forEach(b => {
+        const code = String(b.code || '').trim();
+        const name = String(b.name || '').trim();
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = code + (name ? ' - ' + name : '');
+        sel.appendChild(opt);
+    });
+    const wanted = String(selectedCode || '').trim().toUpperCase();
+    const cash = banks.find(b => String(b.type || '').toUpperCase() === 'H')
+        || banks.find(b => String(b.code || '').toUpperCase() === 'CASH')
+        || banks[0];
+    sel.value = wanted || (cash ? String(cash.code || 'CASH') : 'CASH');
+    if(!sel.value && sel.options.length) sel.selectedIndex = 0;
 }
 
 /* ── Item rows ── */
@@ -508,6 +557,11 @@ async function doSave() {
 
     if(!confirm('You want to save?')) return;
 
+    // Open the print popup NOW (within the user-gesture chain) so the browser
+    // doesn't block it. We'll redirect it to the receipt URL once save succeeds,
+    // or close it if save fails.
+    const printWin = window.open('about:blank', '_blank', 'width=900,height=820,scrollbars=yes');
+
     status('Saving...');
     try {
         const body = {
@@ -515,6 +569,7 @@ async function doSave() {
             date:      gv('fDate'),
             rate:      gf('fGoldRate'),
             amount:    amount,
+            cashbank_code: gv('fCashBank') || 'CASH',
             amttowgt:  $('chkAmtToWgt').checked ? 'Y' : 'N',
             printobcb: $('chkPrintObCb').checked ? 'Y' : 'N',
             edit_slno: currentSlno > 0 ? currentSlno : 0,
@@ -529,12 +584,20 @@ async function doSave() {
         if(d.ok) {
             currentSlno = d.slno || 0;
             status('Saved! Voucher: ' + (d.vchno || ''));
+            if (printWin && !printWin.closed && currentSlno > 0) {
+                printWin.location.href = BASE + '/order-advance-after-receipt?slno=' + currentSlno;
+            } else if (currentSlno > 0) {
+                // Popup was blocked — fall back to opening a new window now.
+                openAdvanceReceipt(currentSlno);
+            }
             alert('Advance saved successfully.\nVoucher: ' + (d.vchno || ''));
         } else {
+            if (printWin && !printWin.closed) printWin.close();
             alert(d.message || 'Save failed');
             status('Save failed');
         }
     } catch(e) {
+        if (printWin && !printWin.closed) printWin.close();
         alert('Error saving: ' + e.message);
         status('Error');
     }
@@ -575,6 +638,7 @@ async function loadAdvance(slno) {
             sv('fPrevAdv', fmt2(d.prev_advance || 0));
             sv('fAmount', fmt2(d.amount || 0));
             sv('fGoldRate', fmt2(d.rate || 0));
+            populateCashBanks(d.cashbank_code || 'CASH');
             currentControl = d.control || 1;
 
             // Parse date
@@ -597,7 +661,7 @@ async function loadAdvance(slno) {
                 addItemRow();
             }
 
-            $('titleText').textContent = 'Order Advance - Edit [' + (d.docno || '') + ']';
+            $('titleText').textContent = 'Order Advance After - Edit [' + (d.docno || '') + ']';
             status('Loaded: ' + (d.docno || 'slno=' + d.slno));
         } else {
             alert(d.message || 'Record not found');
@@ -615,6 +679,7 @@ function doNew() {
     sv('fDate', '');
     sv('fAmount', '0.00');
     sv('fGoldRate', fmt2(CFG.rates.gold));
+    populateCashBanks();
     sv('fPrevAdv', '0.00');
     $('chkAmtToWgt').checked = false;
     $('chkPrintObCb').checked = true;
@@ -627,7 +692,7 @@ function doNew() {
     const yyyy = today.getFullYear();
     sv('fDate', dd+'/'+mm+'/'+yyyy);
 
-    $('titleText').textContent = 'Order Advance';
+    $('titleText').textContent = 'Order Advance After';
     $('fOrdNo').focus();
     status('Ready');
 }
@@ -758,11 +823,31 @@ $('fOrdNo').addEventListener('keydown', e => {
 $('fDate').addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); $('fGoldRate').focus(); } });
 $('fGoldRate').addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); $('fAmount').focus(); } });
 $('fAmount').addEventListener('keydown', e => {
+    if(e.key === 'Enter') { e.preventDefault(); $('fCashBank').focus(); }
+});
+$('fCashBank').addEventListener('keydown', e => {
     if(e.key === 'Enter') { e.preventDefault(); doSave(); }
 });
 
+function openAdvanceReceipt(slno) {
+    const n = parseInt(slno, 10);
+    if (!n || n <= 0) return null;
+    const url = BASE + '/order-advance-after-receipt?slno=' + n;
+    const w = window.open(url, '_blank', 'width=900,height=820,scrollbars=yes');
+    return w;
+}
+
+function doPrintReceipt() {
+    if (!currentSlno || currentSlno <= 0) {
+        alert('Save or load an advance receipt before printing.');
+        return;
+    }
+    openAdvanceReceipt(currentSlno);
+}
+
 $('btnHelp').addEventListener('click', () => { openModal('modalOrder'); $('orderSearchInput').focus(); searchOrders(''); });
 $('btnSave').addEventListener('click', doSave);
+$('btnPrint').addEventListener('click', doPrintReceipt);
 $('btnNew').addEventListener('click', doNew);
 $('btnPrev').addEventListener('click', doPrev);
 $('btnNext').addEventListener('click', doNext);

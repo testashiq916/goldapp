@@ -49,6 +49,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;color:#1f2937}
 .part-row label{font-weight:700;font-size:13px;white-space:nowrap}
 .part-row input{flex:1;height:30px;border:1px solid #95a5b8;border-radius:4px;padding:0 8px;font-size:13px;text-transform:uppercase}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="wrap">

@@ -31,13 +31,14 @@ class DayBookController extends Controller
         $groups  = [];
         $opbal   = 0.0;
         $clbal   = 0.0;
+        $form5   = [];
 
         if ($showData && $this->hasTable('daybook')) {
-            ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal] =
+            ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal, 'form5' => $form5] =
                 $this->loadReportData($formType, $dateFrom, $dateTo, $withDiff);
 
             // Practical fallback: if level-1 shows nothing but higher-control entries exist, show level-2 report.
-            if (empty($rows) && empty($groups) && $this->gilevel < 2) {
+            if (empty($rows) && empty($groups) && empty($form5) && $this->gilevel < 2) {
                 $hasLevel2Rows = DB::table('daybook')
                     ->whereBetween('tdate', [$dateFrom, $dateTo])
                     ->where('control', '<=', 2)
@@ -45,7 +46,7 @@ class DayBookController extends Controller
 
                 if ($hasLevel2Rows) {
                     $this->gilevel = 2;
-                    ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal] =
+                    ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal, 'form5' => $form5] =
                         $this->loadReportData($formType, $dateFrom, $dateTo, $withDiff);
                 }
             }
@@ -56,7 +57,7 @@ class DayBookController extends Controller
 
         return view('daybook.index', compact(
             'dateFrom', 'dateTo', 'formType', 'breakDay', 'withDiff',
-            'showData', 'rows', 'groups', 'opbal', 'clbal',
+            'showData', 'rows', 'groups', 'opbal', 'clbal', 'form5',
             'companyName', 'companyAddr'
         ));
     }
@@ -67,6 +68,7 @@ class DayBookController extends Controller
         $groups = [];
         $opbal = 0.0;
         $clbal = 0.0;
+        $form5 = [];
 
         switch ($formType) {
             case 'form1':
@@ -95,9 +97,16 @@ class DayBookController extends Controller
                 $rows   = $this->getForm4Data($dateFrom, $dateTo);
                 $groups = $this->groupForm4ByDate($rows);
                 break;
+
+            case 'form5':
+                $bal   = $this->getCashBalances($dateFrom, $dateTo);
+                $opbal = $bal['opbal'];
+                $clbal = $bal['clbal'];
+                $form5 = $this->getForm5Data($dateFrom, $dateTo);
+                break;
         }
 
-        return ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal];
+        return ['rows' => $rows, 'groups' => $groups, 'opbal' => $opbal, 'clbal' => $clbal, 'form5' => $form5];
     }
 
     private function resolveLevel(Request $request): int
@@ -362,6 +371,148 @@ class DayBookController extends Controller
             $groups[$dt]['totcr']  += (float) $row['cramt'];
         }
         return $groups;
+    }
+
+    // ─── Form 5 — Full Daily Report (all transaction types combined) ────
+
+    private function getForm5Data(string $dateFrom, string $dateTo): array
+    {
+        $gl = $this->gilevel;
+
+        // Sales bills (sr is 'S' or blank for normal sales; 'R' is return — handled separately via salesrm)
+        $sales = [];
+        if ($this->hasTable('salesm')) {
+            $rows = DB::table('salesm')
+                ->whereBetween('tdate', [$dateFrom, $dateTo])
+                ->where('control', '<=', $gl)
+                ->where(function ($q) {
+                    $q->where('sr', '<>', 'R')->orWhereNull('sr');
+                })
+                ->orderBy('tdate')->orderBy('slno')
+                ->get(['slno', 'billno', 'tdate', 'custcode', 'custname', 'billamt', 'netamt', 'ramt'])
+                ->map(fn ($r) => (array) $r)->all();
+            $sales = $rows;
+        }
+
+        // Sales Returns (salesrm with sr='R')
+        $salesReturns = [];
+        if ($this->hasTable('salesrm')) {
+            $cols = ['slno', 'billno', 'tdate', 'custcode', 'custname', 'billamt', 'netamt'];
+            if ($this->hasColumn('salesrm', 'pamt')) $cols[] = 'pamt';
+            $rows = DB::table('salesrm')
+                ->whereBetween('tdate', [$dateFrom, $dateTo])
+                ->where('control', '<=', $gl)
+                ->where('sr', 'R')
+                ->orderBy('tdate')->orderBy('slno')
+                ->get($cols)
+                ->map(fn ($r) => (array) $r)->all();
+            $salesReturns = $rows;
+        }
+
+        // Purchase bills (purchasem)
+        $purchases = [];
+        if ($this->hasTable('purchasem')) {
+            $cols = ['slno', 'docno', 'tdate', 'billno', 'suppcode', 'name', 'billamt', 'netamt'];
+            if ($this->hasColumn('purchasem', 'pamt')) $cols[] = 'pamt';
+            $rows = DB::table('purchasem')
+                ->whereBetween('tdate', [$dateFrom, $dateTo])
+                ->where('control', '<=', $gl)
+                ->where(function ($q) {
+                    $q->where('pr', '<>', 'R')->orWhereNull('pr');
+                })
+                ->orderBy('tdate')->orderBy('slno')
+                ->get($cols)
+                ->map(fn ($r) => (array) $r)->all();
+            $purchases = $rows;
+        }
+
+        // Purchase Returns (purchaserm)
+        $purchaseReturns = [];
+        if ($this->hasTable('purchaserm')) {
+            $cols = ['slno', 'docno', 'tdate', 'billno', 'suppcode', 'name', 'billamt', 'netamt'];
+            if ($this->hasColumn('purchaserm', 'pamt')) $cols[] = 'pamt';
+            $rows = DB::table('purchaserm')
+                ->whereBetween('tdate', [$dateFrom, $dateTo])
+                ->where('control', '<=', $gl)
+                ->where('pr', 'R')
+                ->orderBy('tdate')->orderBy('slno')
+                ->get($cols)
+                ->map(fn ($r) => (array) $r)->all();
+            $purchaseReturns = $rows;
+        }
+
+        // Cash Receipts (daybook: CASH a/c debit, i.e. amount > 0 for CASH) — show as the OTHER account name
+        // We list non-CASH entries with negative amount → those are credits offsetting cash debit.
+        // To get receipts: find daybook slnos where CASH has amount > 0 (cash came in) and show the non-cash side.
+        $receipts = DB::select("
+            SELECT db.slno, db.tdate, db.accode, am.name AS acname,
+                   dbp.vchno, dbp.particular,
+                   ABS(db.amount) AS amount
+            FROM daybook db
+            JOIN daybookpart dbp ON db.slno = dbp.slno
+            JOIN accountm am ON db.accode = am.accode
+            WHERE db.tdate BETWEEN ? AND ?
+              AND db.control <= ?
+              AND db.accode <> 'CASH'
+              AND db.amount < 0
+              AND EXISTS (
+                  SELECT 1 FROM daybook db2
+                  WHERE db2.slno = db.slno AND db2.accode = 'CASH' AND db2.amount > 0
+              )
+            ORDER BY db.tdate, db.slno
+        ", [$dateFrom, $dateTo, $gl]);
+        $receipts = array_map(fn ($r) => (array) $r, $receipts);
+
+        // Cash Payments (daybook: CASH a/c credit, i.e. amount < 0 for CASH) — show the OTHER account name
+        $payments = DB::select("
+            SELECT db.slno, db.tdate, db.accode, am.name AS acname,
+                   dbp.vchno, dbp.particular,
+                   ABS(db.amount) AS amount
+            FROM daybook db
+            JOIN daybookpart dbp ON db.slno = dbp.slno
+            JOIN accountm am ON db.accode = am.accode
+            WHERE db.tdate BETWEEN ? AND ?
+              AND db.control <= ?
+              AND db.accode <> 'CASH'
+              AND db.amount > 0
+              AND EXISTS (
+                  SELECT 1 FROM daybook db2
+                  WHERE db2.slno = db.slno AND db2.accode = 'CASH' AND db2.amount < 0
+              )
+            ORDER BY db.tdate, db.slno
+        ", [$dateFrom, $dateTo, $gl]);
+        $payments = array_map(fn ($r) => (array) $r, $payments);
+
+        // Roll-up totals
+        $totals = [
+            'sales_count'     => count($sales),
+            'sales_amt'       => array_sum(array_column($sales, 'netamt')),
+            'sret_count'      => count($salesReturns),
+            'sret_amt'        => array_sum(array_column($salesReturns, 'netamt')),
+            'purch_count'     => count($purchases),
+            'purch_amt'       => array_sum(array_column($purchases, 'netamt')),
+            'pret_count'      => count($purchaseReturns),
+            'pret_amt'        => array_sum(array_column($purchaseReturns, 'netamt')),
+            'receipts_count'  => count($receipts),
+            'receipts_amt'    => array_sum(array_column($receipts, 'amount')),
+            'payments_count'  => count($payments),
+            'payments_amt'    => array_sum(array_column($payments, 'amount')),
+        ];
+
+        return [
+            'sales'           => $sales,
+            'sales_returns'   => $salesReturns,
+            'purchases'       => $purchases,
+            'purchase_returns'=> $purchaseReturns,
+            'receipts'        => $receipts,
+            'payments'        => $payments,
+            'totals'          => $totals,
+        ];
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        return in_array(strtolower($column), $this->columnList($table), true);
     }
 
     // ─── Part Description Helpers ────────────────────────────────────────

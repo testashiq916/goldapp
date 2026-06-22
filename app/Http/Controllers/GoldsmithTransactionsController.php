@@ -40,15 +40,19 @@ class GoldsmithTransactionsController extends Controller
         $ctype = strtoupper(trim((string) $request->query('ctype', '')));
 
         $smiths = [];
-        if ($this->hasTable('clients') && $this->hasTable('clientsgs')) {
+        if ($this->hasTable('clients')) {
+            $validTypes = ['G', 'J', 'C', 'S'];
             $q = DB::table('clients')
-                ->join('clientsgs', 'clientsgs.code', '=', 'clients.code')
                 ->select('clients.code', 'clients.name', 'clients.ctype')
                 ->orderBy('clients.name');
-            if (in_array($ctype, ['G', 'J', 'C'])) {
+            if (in_array($ctype, $validTypes)) {
                 $q->where('clients.ctype', $ctype);
             } else {
-                $q->whereIn('clients.ctype', ['G', 'J', 'C']);
+                $q->whereIn('clients.ctype', $validTypes);
+            }
+            // Also filter by clientsgs if table exists (goldsmith-linked clients)
+            if ($this->hasTable('clientsgs') && in_array($ctype, ['G', 'J', 'C'])) {
+                $q->join('clientsgs', 'clientsgs.code', '=', 'clients.code');
             }
             $smiths = $q->get()
                 ->map(fn($r) => ['code' => trim($r->code), 'name' => trim($r->name), 'ctype' => trim($r->ctype)])

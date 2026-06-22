@@ -50,7 +50,7 @@
   /* Help Modal */
   .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
   .modal-bg.show{display:flex}
-  .modal{width:min(640px,100%);max-height:80vh;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
+  .modal{width:min(900px,100%);max-height:80vh;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column}
   .modal-head{display:flex;gap:8px;align-items:center;padding:16px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
   .modal-head input{flex:1;height:40px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 12px;font-size:13px;outline:none}
   .modal-head input:focus{border-color:#3b82f6}
@@ -129,10 +129,12 @@
       <table>
         <thead>
           <tr>
-            <th style="width:22%">Bill No</th>
-            <th style="width:18%">Date</th>
+            <th style="width:20%">Bill No</th>
+            <th style="width:14%">Date</th>
             <th>Customer</th>
-            <th style="width:16%">Status</th>
+            <th style="width:13%;text-align:right">Sales Wgt</th>
+            <th style="width:13%;text-align:right">Exchange Wgt</th>
+            <th style="width:14%">Status</th>
           </tr>
         </thead>
         <tbody id="helpRows"></tbody>
@@ -179,6 +181,10 @@ function toDdMmYyyyFromDateInput(v){
   const [y,m,d] = v.split('-');
   return `${d}/${m}/${y}`;
 }
+function fmtWgt(v){
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(3) : '0.000';
+}
 function closeFrame(){
   window.parent.postMessage({ type:'goldapp:close-module-frame' }, '*');
 }
@@ -200,6 +206,8 @@ async function searchHelp(){
       <td>${r.billno || ''}</td>
       <td>${r.tdate || ''}</td>
       <td>${r.custname || ''}</td>
+      <td style="text-align:right">${fmtWgt(r.sales_weight)}</td>
+      <td style="text-align:right">${fmtWgt(r.exchange_weight)}</td>
       <td><span class="badge ${String(r.status||'').toLowerCase()==='cancelled' ? 'cancelled' : 'saved'}">${r.status || 'saved'}</span></td>
     </tr>
   `).join('');

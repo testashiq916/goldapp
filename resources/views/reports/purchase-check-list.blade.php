@@ -7,22 +7,22 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .toolbar h1{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;margin-right:4px}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-.tb-input{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:11px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-input{height:28px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 6px;font-size:17px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .f-group{display:flex;align-items:center;gap:3px}
 .sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 1px}
-.btn{padding:4px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:4px 12px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
 
 .grid-wrap{flex:1;overflow:auto}
-table{width:100%;border-collapse:collapse;background:#fff;font-size:11px}
-th{position:sticky;top:0;background:#f1f5f9;border-bottom:2px solid #e2e8f0;padding:5px 6px;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;z-index:2;cursor:pointer;user-select:none}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:18px}
+th{position:sticky;top:0;background:#f1f5f9;border-bottom:2px solid #e2e8f0;padding:5px 6px;font-size:15px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;z-index:2;cursor:pointer;user-select:none}
 th:hover{background:#e2e8f0}
 th.num{text-align:right}
 td{padding:4px 6px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
@@ -30,17 +30,19 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 tr:hover td{background:#f8fafc}
 tr.sel td{background:#dbeafe !important}
 
-.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;flex-shrink:0}
+.summary{background:#fff;border-top:2px solid #e2e8f0;padding:6px 14px;display:flex;gap:16px;flex-wrap:wrap;font-size:17px;flex-shrink:0}
 .summary span{color:#64748b}.summary b{color:#1e40af}
 
-.sub-header{background:#eff6ff;padding:5px 14px;font-size:11px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
+.sub-header{background:#eff6ff;padding:5px 14px;font-size:17px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 
 @media print{.toolbar,.summary,.sub-header{display:none !important}.grid-wrap{overflow:visible !important}body{height:auto;overflow:visible}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -82,14 +84,47 @@ function toast(msg,ok=true){
   t.textContent=msg; t.className='toast '+(ok?'ok':'err');
   t.style.display='block'; setTimeout(()=>t.style.display='none',3000);
 }
+function numericKeys(hs){ return hs.filter(h=>h[2]).map(h=>h[1]); }
+function dateTotalRow(hs, label, total){
+  return '<tr style="background:#fff7ed;font-weight:700;color:#9a3412">' + hs.map(h=>{
+    let val = '';
+    if(h[1] === 'docno') val = label;
+    else if(h[2] && total[h[1]] != null) val = nf(total[h[1]], h[3]!=null?h[3]:2);
+    return '<td class="'+(h[2]?'num':'')+'">'+esc(val)+'</td>';
+  }).join('') + '</tr>';
+}
+function rowsWithDateTotals(viewRows, hs){
+  const keys = numericKeys(hs);
+  let lastDate = null, total = {}, html = '';
+  const flush = () => {
+    if(lastDate !== null) html += dateTotalRow(hs, 'Date Total: '+lastDate, total);
+    total = {};
+    keys.forEach(k=>total[k]=0);
+  };
+  viewRows.forEach((row,idx)=>{
+    if(row.tdate !== lastDate){
+      flush();
+      lastDate = row.tdate;
+    }
+    keys.forEach(k=>total[k] += Number(row[k] || 0));
+    html += '<tr data-idx="'+idx+'">' + hs.map(h=>{
+      let val = row[h[1]];
+      if(h[2]) val = nf(val, h[3]!=null?h[3]:2);
+      return '<td class="'+(h[2]?'num':'')+'">'+esc(val)+'</td>';
+    }).join('') + '</tr>';
+  });
+  flush();
+  return html;
+}
 
 function headers(){
   return [
-    ['Date','tdate'],['Doc No','docno'],['Supplier','suppcode'],
+    ['Date','tdate'],['Doc No','docno'],['Bill No','billno'],['Supplier','suppcode'],
     ['Name','name'],['Bill Amt','billamt',1],['Paid Amt','pamt',1],
     ['Add Amt','addamt',1],['Ex.Amt','eamt',1],['Discount','discount',1],
-    ['Tax','taxamt',1],['HMC','hmc',1],['Round','round',1],
-    ['Net Amt','calcnet',1],['Gold Wgt','goldwgt',1,3],['Silver Wgt','silverwgt',1,3],
+    ['SGST','sgst',1],['CGST','cgst',1],['Tax','taxamt',1],['HMC','hmc',1],['Round','round',1],
+    ['Net Amt','calcnet',1],['Gross Wgt','grosswgt',1,3],['St.Wgt','stonewgt',1,3],['Net Wgt','netwgt',1,3],
+    ['Gold Wgt','goldwgt',1,3],['Silver Wgt','silverwgt',1,3],
     ['Due Date','duedate'],['SM','smcode'],['P/E','pr']
   ];
 }
@@ -128,13 +163,7 @@ function render(){
   if(!rows.length){
     tbody.innerHTML = '<tr><td colspan="'+hs.length+'" style="text-align:center;padding:40px;color:#94a3b8">No records found</td></tr>';
   } else {
-    tbody.innerHTML = rows.map((row,idx)=>{
-      return '<tr data-idx="'+idx+'">' + hs.map(h=>{
-        let val = row[h[1]];
-        if(h[2]) val = nf(val, h[3]!=null?h[3]:2);
-        return '<td class="'+(h[2]?'num':'')+'">'+esc(val)+'</td>';
-      }).join('') + '</tr>';
-    }).join('');
+    tbody.innerHTML = rowsWithDateTotals(rows, hs);
   }
 
   const t = totals;
@@ -143,8 +172,13 @@ function render(){
     '<span>Bill Amt: <b>'+nf(t.billamt)+'</b></span>',
     '<span>Ex.Amt: <b>'+nf(t.eamt)+'</b></span>',
     '<span>Disc: <b>'+nf(t.discount)+'</b></span>',
+    '<span>SGST: <b>'+nf(t.sgst)+'</b></span>',
+    '<span>CGST: <b>'+nf(t.cgst)+'</b></span>',
     '<span>Tax: <b>'+nf(t.taxamt)+'</b></span>',
     '<span>Net Amt: <b>'+nf(t.calcnet)+'</b></span>',
+    '<span>Gross Wgt: <b>'+nf(t.grosswgt,3)+'</b></span>',
+    '<span>St.Wgt: <b>'+nf(t.stonewgt,3)+'</b></span>',
+    '<span>Net Wgt: <b>'+nf(t.netwgt,3)+'</b></span>',
     '<span>Gold Wgt: <b>'+nf(t.goldwgt,3)+'</b></span>',
     '<span>Silver Wgt: <b>'+nf(t.silverwgt,3)+'</b></span>',
   ].join('');
@@ -172,7 +206,7 @@ document.getElementById('btnShow').onclick = loadData;
 document.getElementById('btnPrint').onclick = ()=> window.print();
 document.getElementById('btnExit').onclick = ()=> window.parent.postMessage({type:'goldapp:close-module-frame'}, '*');
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.init('btnSaveAs', headers, ()=>rows,
   ()=>'purchase-check-list-'+document.getElementById('date1').value+'-to-'+document.getElementById('date2').value);

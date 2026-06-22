@@ -133,13 +133,15 @@ class SalesBookReportController extends Controller
         ];
 
         if ($issr === 'R') {
-            $rows = $this->salesReturnRows($date1, $date2, $rlevel, $filters);
+            $rows = ($viewMode === 'tax' || $viewMode === 'other')
+                ? $this->salesReturnTaxRows($date1, $date2, $rlevel, $filters)
+                : $this->salesReturnRows($date1, $date2, $rlevel, $filters);
             return response()->json([
                 'success' => true,
                 'rows' => $rows,
                 'totals' => $this->buildTotals($rows),
                 'groupTotals' => $this->buildStatusTotals($rows),
-                'mode' => 'return',
+                'mode' => $viewMode === 'tax' ? 'tax-return' : 'return',
             ]);
         }
 
@@ -182,7 +184,7 @@ class SalesBookReportController extends Controller
                 'message' => 'Generated ' . $result['count'] . ' e-invoice JSON file(s).',
                 'count' => $result['count'],
                 'files' => $result['files'],
-                'download_url' => url('/sales-book-report/einvoice-download/' . urlencode($result['zip_name'])),
+                'download_url' => url('/sales-book-report/einvoice-download/' . urlencode($result['download_name'] ?? $result['zip_name'])),
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -387,12 +389,17 @@ class SalesBookReportController extends Controller
         $salesdExists = $this->hasTable('salesd');
         $q = DB::table('salesm as m')
             ->selectRaw('m.slno, m.tdate, m.billno, m.custname')
+            ->selectRaw($this->partyGstExpr('salesm', 'm', 'custcode', 'ctin', ['tin']))
+            ->selectRaw($this->columnExpr('salesm', 'orderno', 'm', 'orderno', "''"))
             ->selectRaw($this->columnExpr('salesm', 'billamt', 'm', 'billamt', '0'))
             ->selectRaw($this->columnExpr('salesm', 'status', 'm', 'status', '0'))
             ->selectRaw($this->columnExpr('salesm', 'discount', 'm', 'discount', '0'))
             ->selectRaw($this->columnExpr('salesm', 'discperc', 'm', 'discperc', '0'))
             ->selectRaw($this->columnExpr('salesm', 'ramt', 'm', 'ramt', '0'))
             ->selectRaw($this->columnExpr('salesm', 'eamt', 'm', 'eamt', '0'))
+            ->selectRaw($this->columnExpr('salesm', 'sgst', 'm', 'sgst', '0'))
+            ->selectRaw($this->columnExpr('salesm', 'cgst', 'm', 'cgst', '0'))
+            ->selectRaw($this->columnExpr('salesm', 'igst', 'm', 'igst', '0'))
             ->selectRaw($this->columnExpr('salesm', 'staxamt', 'm', 'staxamt', '0'))
             ->selectRaw($this->columnExpr('salesm', 'sretamt', 'm', 'sretamt', '0'))
             ->selectRaw($this->columnExpr('salesm', 'ramtafter', 'm', 'ramtafter', '0'))
@@ -421,6 +428,7 @@ class SalesBookReportController extends Controller
 
         $rows = $q->orderBy('tdate')->orderBy('billno')->get()->map(function ($r) {
             $row = (array) $r;
+            $this->applyTaxReportSplit($row);
             $row['ttax'] = (float) ($row['staxamt'] ?? 0) + (float) ($row['astamt'] ?? 0);
             $row['tnetamt'] = (float) ($row['netamt'] ?? 0);
             $row['tramt'] = (float) ($row['ramt'] ?? 0);
@@ -428,8 +436,11 @@ class SalesBookReportController extends Controller
             $totva = (float) ($row['totva'] ?? 0);
             $totwgt = (float) ($row['totwgt'] ?? 0);
             $totstwgt = (float) ($row['totstwgt'] ?? 0);
+            $row['grosswgt'] = $totwgt;
+            $row['stonewgt'] = $totstwgt;
+            $row['netwgt'] = $totwgt - $totstwgt;
             $row['dvperc'] = $totva > 0 ? (((float) ($row['discount'] ?? 0) / $totva) * 100) : 0;
-            $den = $totwgt - $totstwgt;
+            $den = $row['netwgt'];
             $row['va_per_gm'] = $den > 0 ? (($totva - (float) ($row['discount'] ?? 0)) / $den) : 0;
             $saleType = $this->deriveSaleType((float) $row['balance'], (float) $row['tramt'], (string) ($row['loan'] ?? 'N'));
             $row['sale_type_code'] = $saleType['code'];
@@ -623,11 +634,22 @@ class SalesBookReportController extends Controller
             ->selectRaw($this->columnExpr('salesrm', 'billamt', 'm', 'billamt', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'status', 'm', 'status', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'discount', 'm', 'discount', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'sgst', 'm', 'sgst', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'cgst', 'm', 'cgst', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'igst', 'm', 'igst', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'staxamt', 'm', 'staxamt', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'pamt', 'm', 'pamt', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'pamtafter', 'm', 'pamtafter', '0'))
             ->selectRaw($this->columnExpr('salesrm', 'duedate', 'm', 'duedate', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'billtype', 'm', 'billtype', "''"))
             ->selectRaw($this->columnExpr('salesrm', 'ic', 'm', 'ic', "''"));
+
+        if ($this->hasTable('salesrd')) {
+            $q->selectRaw('(select coalesce(sum(sd.weight),0) from salesrd sd where sd.slno = m.slno) as grosswgt');
+            $q->selectRaw('(select coalesce(sum(sd.stonewgt),0) from salesrd sd where sd.slno = m.slno) as stonewgt');
+        } else {
+            $q->selectRaw('0 as grosswgt, 0 as stonewgt');
+        }
 
         $q->whereBetween('m.tdate', [$date1, $date2]);
         if ($this->hasCol('salesrm', 'control')) {
@@ -639,16 +661,126 @@ class SalesBookReportController extends Controller
         if ($filters['counter'] !== '' && $this->hasCol('salesrm', 'counter')) {
             $q->where('m.counter', $filters['counter']);
         }
+        if ($filters['billtype'] !== '' && $this->hasCol('salesrm', 'billtype')) {
+            $q->where('m.billtype', $filters['billtype']);
+        }
 
         $rows = $q->orderBy('tdate')->orderBy('slno')->get()->map(function ($r) {
             $row = (array) $r;
-            $row['netamt'] = (float) ($row['billamt'] ?? 0) - (float) ($row['discount'] ?? 0) + (float) ($row['staxamt'] ?? 0);
+            $this->applyTaxReportSplit($row);
+            $row['netwgt'] = (float) ($row['grosswgt'] ?? 0) - (float) ($row['stonewgt'] ?? 0);
+            $row['netamt'] = (float) ($row['totamt'] ?? 0);
             $row['tramt'] = (float) ($row['pamt'] ?? 0) + (float) ($row['pamtafter'] ?? 0);
             $row['balance'] = $row['netamt'] - $row['tramt'];
             return $row;
         })->values()->all();
 
         return $rows;
+    }
+
+    private function salesReturnTaxRows(string $date1, string $date2, int $rlevel, array $filters): array
+    {
+        if (!$this->hasTable('salesrm')) {
+            return [];
+        }
+
+        $salesrdExists = $this->hasTable('salesrd');
+        $clientsExists = $this->hasTable('clients');
+        $itemsExists = $this->hasTable('items');
+
+        $q = DB::table('salesrm as m')
+            ->selectRaw('m.slno, m.billno, m.tdate, m.custname')
+            ->selectRaw($this->columnExpr('salesrm', 'orderno', 'm', 'orderno', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'addr', 'm', 'addr', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'pan', 'm', 'pan', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'statecode', 'm', 'statecode', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'billamt', 'm', 'billamt', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'status', 'm', 'status', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'sgst', 'm', 'sgst', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'cgst', 'm', 'cgst', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'igst', 'm', 'igst', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'staxamt', 'm', 'staxamt', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'discount', 'm', 'discount', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'advance', 'm', 'prevadv', '0'))
+            ->selectRaw($this->columnExpr('salesrm', 'counter', 'm', 'counter', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'ic', 'm', 'ic', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'smcode', 'm', 'smcode', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'billtype', 'm', 'billtype', "''"))
+            ->selectRaw($this->columnExpr('salesrm', 'loan', 'm', 'loan', "'N'"));
+
+        if ($salesrdExists) {
+            $q->selectRaw('(select coalesce(max(d.rate),0) from salesrd d where d.slno = m.slno) as maxrate');
+            $q->selectRaw($itemsExists && $this->hasCol('items', 'vatcode')
+                ? '(select coalesce(max(i.vatcode),"") from items i, salesrd d where i.code = d.code and d.slno = m.slno) as hsncode'
+                : '"" as hsncode');
+            $q->selectRaw($itemsExists
+                ? '(select coalesce(max(i.name),"") from items i, salesrd d where i.code = d.code and d.slno = m.slno) as itemname'
+                : '"" as itemname');
+            $q->selectRaw($this->hasCol('salesrd', 'qty')
+                ? '(select coalesce(sum(d.qty),0) from salesrd d where d.slno = m.slno) as qty'
+                : '0 as qty');
+            $q->selectRaw('(select coalesce(sum(d.weight),0) from salesrd d where d.slno = m.slno) as grosswgt');
+            $q->selectRaw($this->hasCol('salesrd', 'stonewgt')
+                ? '(select coalesce(sum(d.stonewgt),0) from salesrd d where d.slno = m.slno) as stonewgt'
+                : '0 as stonewgt');
+            $q->selectRaw($this->hasCol('salesrd', 'stonewgt')
+                ? '(select coalesce(sum(d.weight - d.stonewgt),0) from salesrd d where d.slno = m.slno) as totwgt'
+                : '(select coalesce(sum(d.weight),0) from salesrd d where d.slno = m.slno) as totwgt');
+            $q->selectRaw($this->hasCol('salesrd', 'mcharge')
+                ? '(select coalesce(sum(d.mcharge),0) from salesrd d where d.slno = m.slno) as va'
+                : '0 as va');
+            $q->selectRaw($this->hasCol('salesrd', 'stoneprice')
+                ? '(select coalesce(sum(d.stoneprice),0) from salesrd d where d.slno = m.slno) as stoneprice'
+                : '0 as stoneprice');
+            $q->selectRaw('(select coalesce(sum((d.weight - ' . ($this->hasCol('salesrd', 'stonewgt') ? 'd.stonewgt' : '0') . ') * d.rate),0) from salesrd d where d.slno = m.slno) as product_value');
+            $q->selectRaw($this->hasCol('salesrd', 'dmdwgt')
+                ? '(select coalesce(sum(d.dmdwgt),0) from salesrd d where d.slno = m.slno) as dmdwgt'
+                : '0 as dmdwgt');
+        } else {
+            $q->selectRaw('0 as maxrate, "" as hsncode, "" as itemname, 0 as qty, 0 as grosswgt, 0 as stonewgt, 0 as totwgt, 0 as va, 0 as stoneprice, 0 as product_value, 0 as dmdwgt');
+        }
+
+        $q->selectRaw('0 as dmdamt');
+
+        if ($clientsExists && $this->hasCol('salesrm', 'custcode') && $this->hasCol('clients', 'code')) {
+            $q->selectRaw($this->hasCol('clients', 'tin')
+                ? '(select c.tin from clients c where c.code = m.custcode limit 1) as ctin'
+                : '"" as ctin');
+        } else {
+            $q->selectRaw('"" as ctin');
+        }
+
+        $q->whereBetween('m.tdate', [$date1, $date2]);
+        if ($this->hasCol('salesrm', 'control')) {
+            $q->where('m.control', '<=', $rlevel);
+        }
+        if ($this->hasCol('salesrm', 'sr')) {
+            $q->where('m.sr', 'R');
+        }
+        if ($filters['ic'] !== '' && $this->hasCol('salesrm', 'ic')) {
+            $q->where('m.ic', $filters['ic']);
+        }
+        if ($filters['counter'] !== '' && $this->hasCol('salesrm', 'counter')) {
+            $q->where('m.counter', $filters['counter']);
+        }
+        if ($filters['smcode'] !== '' && $this->hasCol('salesrm', 'smcode')) {
+            $q->where('m.smcode', $filters['smcode']);
+        }
+        if ($filters['billtype'] !== '' && $this->hasCol('salesrm', 'billtype')) {
+            $q->where('m.billtype', $filters['billtype']);
+        }
+
+        return $q->orderBy('m.tdate')->orderBy('m.billno')->get()->map(function ($r) {
+            $row = (array) $r;
+            $this->applyTaxReportSplit($row);
+            $row['stone_total'] = (float) ($row['stoneprice'] ?? 0) + (float) ($row['dmdamt'] ?? 0);
+            $row['product_value'] = (float) ($row['product_value'] ?? 0);
+            if (abs($row['product_value']) < 0.0001) {
+                $row['product_value'] = (float) ($row['billamt'] ?? 0) - (float) ($row['va'] ?? 0) - (float) ($row['stone_total'] ?? 0);
+            }
+            $row['balance'] = 0.0;
+            return $row;
+        })->values()->all();
     }
 
     /* ── Register mode (item-level detail) ─────────────────────────── */
@@ -662,6 +794,7 @@ class SalesBookReportController extends Controller
             ->join('salesm as m', 'd.slno', '=', 'm.slno')
             ->join('items as i', 'd.code', '=', 'i.code')
             ->selectRaw('m.slno as m_slno, m.tdate, m.billno, m.custname')
+            ->selectRaw($this->columnExpr('salesm', 'orderno', 'm', 'orderno', "''"))
             ->selectRaw($this->columnExpr('salesm', 'status', 'm', 'status', '0'))
             ->selectRaw($this->columnExpr('salesm', 'billamt', 'm', 'billamt', '0'))
             ->selectRaw($this->columnExpr('salesm', 'eamt', 'm', 'eamt', '0'))
@@ -769,6 +902,8 @@ class SalesBookReportController extends Controller
             ->selectRaw('SUM(' . ($this->hasCol('salesm', 'netamt') ? 'm.netamt' : '0') . ') as total_netamt')
             ->selectRaw('SUM(' . ($this->hasCol('salesm', 'discount') ? 'm.discount' : '0') . ') as total_discount')
             ->selectRaw('SUM(' . ($this->hasCol('salesm', 'ramt') ? 'm.ramt' : '0') . ') as total_ramt')
+            ->selectRaw('SUM(' . ($this->hasCol('salesm', 'sgst') ? 'm.sgst' : '0') . ') as total_sgst')
+            ->selectRaw('SUM(' . ($this->hasCol('salesm', 'cgst') ? 'm.cgst' : '0') . ') as total_cgst')
             ->selectRaw('SUM(' . ($this->hasCol('salesm', 'staxamt') ? 'm.staxamt' : '0') . ') as total_tax');
 
         $q->whereBetween('m.tdate', [$date1, $date2]);
@@ -781,10 +916,16 @@ class SalesBookReportController extends Controller
                     ->orWhere('m.opbill', '<>', 1);
             });
         }
+        $this->applyTransferShadowDocFilter($q, 'm.billno');
 
         $rows = $q->groupBy('m.counter')->orderBy('m.counter')
             ->get()->map(function ($r) {
                 $row = (array) $r;
+                if (abs((float) ($row['total_sgst'] ?? 0)) < 0.0001 && abs((float) ($row['total_cgst'] ?? 0)) < 0.0001) {
+                    $row['total_sgst'] = round((float) ($row['total_billamt'] ?? 0) * 1.5 / 100, 2);
+                    $row['total_cgst'] = round((float) ($row['total_billamt'] ?? 0) * 1.5 / 100, 2);
+                    $row['total_tax'] = round((float) $row['total_sgst'] + (float) $row['total_cgst'], 2);
+                }
                 $row['total_balance'] = (float) ($row['total_netamt'] ?? 0) - (float) ($row['total_ramt'] ?? 0);
                 return $row;
             })->values()->all();
@@ -804,6 +945,7 @@ class SalesBookReportController extends Controller
 
         $q = DB::table('salesm as m')
             ->selectRaw('m.slno, m.billno, m.tdate, m.custname')
+            ->selectRaw($this->columnExpr('salesm', 'orderno', 'm', 'orderno', "''"))
             ->selectRaw($this->columnExpr('salesm', 'addr', 'm', 'addr', "''"))
             ->selectRaw($this->columnExpr('salesm', 'pan', 'm', 'pan', "''"))
             ->selectRaw($this->columnExpr('salesm', 'statecode', 'm', 'statecode', "''"))
@@ -826,13 +968,20 @@ class SalesBookReportController extends Controller
             $q->selectRaw('(select coalesce(max(sd.rate),0) from salesd sd where sd.slno = m.slno) as maxrate');
             $q->selectRaw('(select coalesce(max(it.vatcode),"") from items it, salesd sd where it.code = sd.code and sd.slno = m.slno) as hsncode');
             $q->selectRaw('(select coalesce(max(it.name),"") from items it, salesd sd where it.code = sd.code and sd.slno = m.slno) as itemname');
+            $q->selectRaw($this->hasCol('salesd', 'qty')
+                ? '(select coalesce(sum(sd.qty),0) from salesd sd where sd.slno = m.slno) as qty'
+                : '0 as qty');
             $q->selectRaw('(select coalesce(sum(sd.weight),0) from salesd sd where sd.slno = m.slno) as grosswgt');
             $q->selectRaw('(select coalesce(sum(sd.stonewgt),0) from salesd sd where sd.slno = m.slno) as stonewgt');
             $q->selectRaw('(select coalesce(sum(sd.weight - sd.stonewgt),0) from salesd sd where sd.slno = m.slno) as totwgt');
             $q->selectRaw('(select coalesce(sum(sd.mcharge),0) from salesd sd where sd.slno = m.slno) as va');
             $q->selectRaw('(select coalesce(sum(sd.stoneprice),0) from salesd sd where sd.slno = m.slno) as stoneprice');
+            $q->selectRaw('(select coalesce(sum((sd.weight - sd.stonewgt) * sd.rate),0) from salesd sd where sd.slno = m.slno) as product_value');
+            $q->selectRaw($this->hasCol('salesd', 'dmdwgt')
+                ? '(select coalesce(sum(sd.dmdwgt),0) from salesd sd where sd.slno = m.slno) as dmdwgt'
+                : '0 as dmdwgt');
         } else {
-            $q->selectRaw('0 as maxrate, "" as hsncode, "" as itemname, 0 as grosswgt, 0 as stonewgt, 0 as totwgt, 0 as va, 0 as stoneprice');
+            $q->selectRaw('0 as maxrate, "" as hsncode, "" as itemname, 0 as qty, 0 as grosswgt, 0 as stonewgt, 0 as totwgt, 0 as va, 0 as stoneprice, 0 as product_value, 0 as dmdwgt');
         }
 
         if ($this->hasTable('spdmddet') && $salesdExists) {
@@ -856,8 +1005,12 @@ class SalesBookReportController extends Controller
 
         $rows = $q->orderBy('m.tdate')->orderBy('m.billno')->get()->map(function ($r) {
             $row = (array) $r;
+            $this->applyTaxReportSplit($row);
             $row['stone_total'] = (float) ($row['stoneprice'] ?? 0) + (float) ($row['dmdamt'] ?? 0);
-            $row['totamt'] = (float) ($row['billamt'] ?? 0) - (float) ($row['discount'] ?? 0) + (float) ($row['staxamt'] ?? 0);
+            $row['product_value'] = (float) ($row['product_value'] ?? 0);
+            if (abs($row['product_value']) < 0.0001) {
+                $row['product_value'] = (float) ($row['billamt'] ?? 0) - (float) ($row['va'] ?? 0) - (float) ($row['stone_total'] ?? 0);
+            }
             $received = (float) ($row['ramt'] ?? 0);
             $balance = $row['totamt'] - $received;
             $saleType = $this->deriveSaleType($balance, $received, (string) ($row['loan'] ?? 'N'));
@@ -870,9 +1023,30 @@ class SalesBookReportController extends Controller
         return $this->filterBySaleStatus($rows, $filters);
     }
 
+    private function applyTaxReportSplit(array &$row): void
+    {
+        $taxable = (float) ($row['billamt'] ?? 0);
+        $sgst = round($taxable * 1.5 / 100, 2);
+        $cgst = round($taxable * 1.5 / 100, 2);
+        $taxAmount = round($sgst + $cgst, 2);
+
+        $row['sgst'] = $sgst;
+        $row['cgst'] = $cgst;
+        $row['igst'] = 0.0;
+        $row['staxamt'] = $taxAmount;
+        $row['taxable_value'] = round($taxable, 2);
+        $row['totamt'] = round($taxable + $taxAmount - (float) ($row['discount'] ?? 0), 2);
+    }
+
     /* ── Shared filter helper ──────────────────────────────────────── */
     private function applyFilters($q, string $table, string $alias, int $rlevel, array $filters): void
     {
+        if ($this->hasCol($table, 'billno')) {
+            $this->applyTransferShadowDocFilter($q, $alias . '.billno');
+        } elseif ($this->hasCol($table, 'docno')) {
+            $this->applyTransferShadowDocFilter($q, $alias . '.docno');
+        }
+
         if ($this->hasCol($table, 'control')) {
             $q->where($alias . '.control', '<=', $rlevel);
         }
@@ -901,9 +1075,9 @@ class SalesBookReportController extends Controller
     {
         $keys = [
             'billamt', 'eamt', 'sretamt', 'advance', 'discount', 'hmc', 'ttax', 'tnetamt', 'tramt', 'balance',
-            'netamt', 'staxamt', 'pamt', 'pamtafter', 'totamt', 'va', 'sgst', 'cgst', 'igst',
+            'netamt', 'staxamt', 'pamt', 'pamtafter', 'totamt', 'va', 'sgst', 'cgst', 'igst', 'taxable_value',
             'grosswgt', 'stonewgt', 'totwgt', 'stone_total', 'qty', 'weight', 'netwgt', 'amount', 'mcharge',
-            'total_billamt', 'total_netamt', 'total_discount', 'total_ramt', 'total_tax', 'total_balance', 'bill_count',
+            'total_billamt', 'total_netamt', 'total_discount', 'total_ramt', 'total_sgst', 'total_cgst', 'total_tax', 'total_balance', 'bill_count',
         ];
         $totals = [];
         foreach ($keys as $k) {
@@ -945,8 +1119,7 @@ class SalesBookReportController extends Controller
             $code = (string) (int) ($row['sale_type_code'] ?? 0);
             return match ($wanted) {
                 'CASH' => $code === '3',
-                '2', 'PARTIAL' => $code === '2',
-                '1', 'CREDIT' => $code === '1',
+                '2', 'PARTIAL', '1', 'CREDIT' => $code === '1',
                 default => true,
             };
         }));
@@ -964,10 +1137,6 @@ class SalesBookReportController extends Controller
 
         if (abs($balance) <= 0.009) {
             return ['code' => 3, 'label' => 'Cash Sale'];
-        }
-
-        if ($balance > 0 && abs($received) > 0.009) {
-            return ['code' => 2, 'label' => 'Partial Credit'];
         }
 
         return ['code' => 1, 'label' => 'Credit Sale'];
@@ -989,5 +1158,24 @@ class SalesBookReportController extends Controller
             return $alias . '.' . $column . ' as ' . $as;
         }
         return $fallback . ' as ' . $as;
+    }
+
+    private function partyGstExpr(string $table, string $alias, string $codeColumn, string $as, array $sourceColumns = []): string
+    {
+        $sources = [];
+        foreach ($sourceColumns as $column) {
+            if ($this->hasCol($table, $column)) {
+                $sources[] = "NULLIF(TRIM(COALESCE({$alias}.{$column}, \"\")), \"\")";
+            }
+        }
+        if ($this->hasTable('clients') && $this->hasCol($table, $codeColumn) && $this->hasCol('clients', 'code')) {
+            foreach (['tin', 'tinno'] as $column) {
+                if ($this->hasCol('clients', $column)) {
+                    $sources[] = "(select NULLIF(TRIM(COALESCE(c.{$column}, \"\")), \"\") from clients c where TRIM(COALESCE(c.code, \"\")) = TRIM(COALESCE({$alias}.{$codeColumn}, \"\")) limit 1)";
+                }
+            }
+        }
+
+        return ($sources ? 'COALESCE(' . implode(', ', $sources) . ', "")' : '""') . " as {$as}";
     }
 }

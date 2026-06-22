@@ -65,10 +65,16 @@
             </div>
         </aside>
         <main class="panel">
-            <section class="tab-panel active" id="tab-shopinfo"><div class="hero"><div><h3>Shop Info</h3><p>Shop name, address, phone, GSTIN and logo are managed here separately from the software INI settings.</p></div><div class="badge">General + Company.KGST</div></div><div class="grid">
+            <section class="tab-panel active" id="tab-shopinfo"><div class="hero"><div><h3>Shop Info</h3><p>Shop name, address, phone, GSTIN and logo are managed here separately from the software INI settings.</p></div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span id="shopLockBadge" style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:#fee2e2;color:#991b1b">Locked</span>
+                    <button type="button" id="shopUnlockBtn" onclick="unlockShopInfo()" style="height:32px;padding:0 14px;border:1px solid #d4af37;border-radius:8px;background:#fffbe8;color:#7a5a00;font-weight:700;cursor:pointer">Unlock to Edit</button>
+                    <div class="badge">General + Company.KGST</div>
+                </div>
+            </div><div class="grid" id="shopInfoGrid">
                 <div class="card span-4"><div class="card-head"><h4>Shop Logo</h4><div class="note">Stored in generals</div></div><div class="card-body">
-                    <div class="logo-zone" id="logoZone" onclick="document.getElementById('logoFile').click()">
-                        <div id="logoPreviewWrap" class="logo-preview-wrap" style="display:none"><img id="logoImg" class="logo-preview" src="" alt="Logo"><button class="logo-remove" type="button" onclick="removeLogo(event)">x</button></div>
+                    <div class="logo-zone" id="logoZone" onclick="if(!shopInfoLocked()) document.getElementById('logoFile').click()">
+                        <div id="logoPreviewWrap" class="logo-preview-wrap" style="display:none"><img id="logoImg" class="logo-preview" src="" alt="Logo"><button class="logo-remove" type="button" onclick="if(!shopInfoLocked()) removeLogo(event)">x</button></div>
                         <div id="logoPlaceholder" class="logo-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></div>
                         <div class="sub"><strong>Click to upload</strong> or drag and drop<br>PNG, JPG, SVG, WEBP up to 2 MB</div>
                         <input type="file" id="logoFile" accept="image/*" onchange="handleLogoFile(this)">
@@ -76,13 +82,18 @@
                 </div></div>
                 <div class="card span-8"><div class="card-head"><h4>Shop Details</h4><div class="note">Saved separately</div></div><div class="card-body">
                     <div class="field-grid">
-                        <div class="field"><label for="shop_name">Shop Name</label><input id="shop_name" type="text"></div>
-                        <div class="field"><label for="shop_phone">Phone Number</label><input id="shop_phone" type="text"></div>
+                        <div class="field"><label for="shop_name">Shop Name</label><input id="shop_name" type="text" readonly></div>
+                        <div class="field"><label for="shop_phone">Phone Number</label><input id="shop_phone" type="text" readonly></div>
                     </div>
-                    <div class="field"><label for="shop_address">Address</label><textarea id="shop_address"></textarea></div>
-                    <div class="field"><label for="shop_gstin">GSTIN</label><input id="shop_gstin" type="text"></div>
+                    <div class="field"><label for="shop_address">Address</label><textarea id="shop_address" readonly></textarea></div>
+                    <div class="field"><label for="shop_gstin">GSTIN</label><input id="shop_gstin" type="text" readonly></div>
                 </div></div>
-            </div></section>
+            </div>
+            <style>
+                #shopInfoGrid.locked input,#shopInfoGrid.locked textarea{background:#f3f4f6;color:#6b7280;cursor:not-allowed}
+                #shopInfoGrid.locked .logo-zone{opacity:.6;cursor:not-allowed;pointer-events:none}
+            </style>
+            </section>
             <section class="tab-panel" id="tab-application"><div class="hero"><div><h3>Application</h3><p>Company information, rates, printer values and application-level keys from the INI file.</p></div><div class="badge" id="badge-application">0 keys</div></div><div class="grid" id="grid-application"></div></section>
             <section class="tab-panel" id="tab-system"><div class="hero"><div><h3>System</h3><p>General software flags and operational settings from the INI file.</p></div><div class="badge" id="badge-system">0 keys</div></div>
                 <div class="grid" style="margin-bottom:14px">
@@ -248,6 +259,28 @@ function setLogo(url){
     if(url){img.src=url;wrap.style.display='inline-block';ph.style.display='none'}
     else{img.src='';wrap.style.display='none';ph.style.display='inline-flex'}
 }
+function shopInfoLocked(){return document.getElementById('shopInfoGrid')?.classList.contains('locked')!==false}
+function applyShopInfoLock(locked){
+    const grid=document.getElementById('shopInfoGrid');
+    if(!grid)return;
+    grid.classList.toggle('locked',locked);
+    ['shop_name','shop_phone','shop_address','shop_gstin'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){if(locked)el.setAttribute('readonly','readonly');else el.removeAttribute('readonly')}
+    });
+    const badge=document.getElementById('shopLockBadge');
+    const btn=document.getElementById('shopUnlockBtn');
+    if(badge){badge.textContent=locked?'Locked':'Unlocked';badge.style.background=locked?'#fee2e2':'#dcfce7';badge.style.color=locked?'#991b1b':'#166534'}
+    if(btn){btn.textContent=locked?'Unlock to Edit':'Lock';btn.style.background=locked?'#fffbe8':'#f0fdf4';btn.style.color=locked?'#7a5a00':'#166534';btn.style.borderColor=locked?'#d4af37':'#86efac'}
+}
+function unlockShopInfo(){
+    if(!shopInfoLocked()){applyShopInfoLock(true);return}
+    const pw=window.prompt('Enter admin password to edit Shop Info:');
+    if(pw===null)return;
+    if(pw==='PRO'){applyShopInfoLock(false);toast('Shop Info unlocked')}
+    else{toast('Invalid admin password','error')}
+}
+document.addEventListener('DOMContentLoaded',()=>applyShopInfoLock(true));
 async function loadSettings(){
     try{
         const r=await fetch('{{ url("/api/application-settings/load") }}');
@@ -280,15 +313,16 @@ async function saveSettings(){
         if(!allSettings.Software) allSettings.Software={};
         allSettings.Software.DashboardTheme=selectedTheme;
         body.append('json',JSON.stringify(allSettings));
-        body.append('shop_info',JSON.stringify(collectShopInfo()));
+        if(!shopInfoLocked()) body.append('shop_info',JSON.stringify(collectShopInfo()));
         body.append('clastno',document.getElementById('clastno').value||'0');
         body.append('slastno',document.getElementById('slastno').value||'0');
         body.append('sbpref',document.getElementById('sbpref').value||'');
         body.append('sblen',document.getElementById('sblen').value||'5');
         const r=await fetch('{{ url("/api/application-settings/save") }}',{method:'POST',headers:{'X-CSRF-TOKEN':csrfToken},body});
-        const d=await r.json();
+        const text=await r.text();
+        const d=text?JSON.parse(text):{ok:r.ok,msg:r.ok?'Application settings saved.':'Save failed'};
         if(!d.ok) throw new Error(d.msg||'Save failed');
-        toast('INI settings saved');
+        toast(d.msg||'Application settings saved.');
         loadedDashboardTheme=selectedTheme;
         syncDashboardTheme(selectedTheme);
         await loadSettings();

@@ -7,48 +7,48 @@
     <script src="{{ asset('js/goldapp-common.js') }}"></script>
     <title>Receipt</title>
     <style>
-        body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f3f6fb; color: #1f2937; }
-        .wrap { max-width: 1100px; margin: 12px auto; background: #fff; border: 1px solid #d7dfeb; border-radius: 10px; padding: 12px; }
-        h1 { margin: 0 0 10px; font-size: 22px; color: #1f3f66; display: flex; align-items: center; gap: 12px; }
-        h1 .vchno { font-size: 14px; color: #2a7a42; background: #e6f8ec; border: 1px solid #9fd5af; border-radius: 6px; padding: 2px 10px; }
-        .status { margin: 8px 0; padding: 8px 10px; border-radius: 7px; font-size: 12px; display: none; }
+        body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f3f6fb; color: #1f2937; font-size: 15px; }
+        .wrap { max-width: 1200px; margin: 10px auto; background: #fff; border: 1px solid #d7dfeb; border-radius: 10px; padding: 14px; }
+        h1 { margin: 0 0 10px; font-size: 26px; color: #1f3f66; display: flex; align-items: center; gap: 12px; }
+        h1 .vchno { font-size: 16px; color: #2a7a42; background: #e6f8ec; border: 1px solid #9fd5af; border-radius: 6px; padding: 3px 12px; }
+        .status { margin: 8px 0; padding: 10px 12px; border-radius: 7px; font-size: 15px; display: none; }
         .status.show { display: block; }
         .status.ok { border: 1px solid #9fd5af; background: #e6f6ec; color: #12522d; }
         .status.err { border: 1px solid #f2b1b1; background: #fdeaea; color: #8e1f1f; }
-        .sec { border: 1px solid #d8e2ef; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: #f8fbff; }
-        .sec h3 { margin: 0 0 8px; font-size: 14px; color: #2d4f74; }
-        .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        .field { display: flex; flex-direction: column; gap: 3px; }
+        .sec { border: 1px solid #d8e2ef; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #f8fbff; }
+        .sec h3 { margin: 0 0 8px; font-size: 17px; color: #2d4f74; }
+        .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .field { display: flex; flex-direction: column; gap: 4px; }
         .field.wide { grid-column: span 2; }
-        label { font-size: 11px; font-weight: 700; color: #375b84; }
-        input, select { height: 32px; border: 1px solid #bfd0e6; border-radius: 6px; padding: 0 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
+        label { font-size: 13px; font-weight: 700; color: #375b84; }
+        input, select { height: 38px; border: 1px solid #bfd0e6; border-radius: 6px; padding: 0 10px; font-size: 15px; width: 100%; box-sizing: border-box; }
         input:focus { outline: none; border-color: #4a90d9; background: #fff8e6; }
-        input[type="checkbox"] { width: 16px; height: 16px; }
-        .chk-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 4px 0; }
-        .chk-row label { display: flex; gap: 5px; align-items: center; font-weight: 600; font-size: 12px; color: #1f3f66; cursor: pointer; }
-        .toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 6px; }
-        button { height: 34px; border: 1px solid #2a6398; border-radius: 7px; background: #e8f2ff; color: #17456e; padding: 0 14px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        input[type="checkbox"] { width: 18px; height: 18px; }
+        .chk-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 6px 0; }
+        .chk-row label { display: flex; gap: 6px; align-items: center; font-weight: 600; font-size: 15px; color: #1f3f66; cursor: pointer; }
+        .toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+        button { height: 40px; border: 1px solid #2a6398; border-radius: 7px; background: #e8f2ff; color: #17456e; padding: 0 18px; font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         button.primary { border-color: #2a7a42; background: #e6f8ec; color: #1b5b31; }
         button.warn { border-color: #a23b3b; background: #fdeaea; color: #8e1f1f; }
         button.active { border-color: #2470b0; background: #dfefff; color: #0f3e67; }
         button:disabled { opacity: .5; cursor: default; }
-        .bal-box { display: inline-flex; align-items: center; gap: 6px; background: #edf4fc; border: 1px solid #c5d9ef; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+        .bal-box { display: inline-flex; align-items: center; gap: 8px; background: #edf4fc; border: 1px solid #c5d9ef; border-radius: 6px; padding: 5px 14px; font-size: 16px; font-weight: 700; }
         .bal-box .val { color: #1f3f66; }
-        .bal-box .lbl { font-size: 11px; color: #6b7f9a; }
-        .desc-line { font-size: 12px; color: #375b84; font-weight: 600; min-height: 20px; padding: 4px 0; }
-        .table-wrap { max-height: 300px; overflow: auto; border: 1px solid #d8e2ef; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border-bottom: 1px solid #e3eaf4; padding: 6px; text-align: left; }
-        th { position: sticky; top: 0; background: #edf4fc; z-index: 2; }
+        .bal-box .lbl { font-size: 13px; color: #6b7f9a; }
+        .desc-line { font-size: 15px; color: #375b84; font-weight: 600; min-height: 22px; padding: 4px 0; }
+        .table-wrap { max-height: 320px; overflow: auto; border: 1px solid #d8e2ef; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        th, td { border-bottom: 1px solid #e3eaf4; padding: 8px 10px; text-align: left; }
+        th { position: sticky; top: 0; background: #edf4fc; z-index: 2; font-size: 14px; font-weight: 700; }
         tbody tr { cursor: pointer; }
         tbody tr:hover { background: #f5faff; }
         tbody tr.active { background: #e9f3ff; }
         .nav-row { display: flex; gap: 6px; align-items: center; }
         .hidden { display: none !important; }
         @media (max-width: 900px) { .grid4 { grid-template-columns: repeat(2, 1fr); } .grid3 { grid-template-columns: repeat(2, 1fr); } .wrap { margin: 8px; } }
-        @media (max-width: 640px) { .grid4,.grid3,.grid2 { grid-template-columns: 1fr; } .field.wide { grid-column: span 1; } .wrap { margin: 4px; padding: 10px; border-radius: 8px; } h1 { font-size: 17px; flex-wrap: wrap; } .toolbar { flex-direction: column; } .toolbar button { width: 100%; } .table-wrap { max-height: none; } }
+        @media (max-width: 640px) { .grid4,.grid3,.grid2 { grid-template-columns: 1fr; } .field.wide { grid-column: span 1; } .wrap { margin: 4px; padding: 10px; border-radius: 8px; } h1 { font-size: 20px; flex-wrap: wrap; } .toolbar { flex-direction: column; } .toolbar button { width: 100%; } .table-wrap { max-height: none; } }
     </style>
 </head>
 <body>
@@ -58,6 +58,7 @@
         <span id="vchnoTag" class="vchno"></span>
         <span style="flex:1;"></span>
         <span class="nav-row">
+            <button id="btnBack" type="button" title="Back">Back</button>
             <button id="btnPrev" type="button" title="Previous">&lt;</button>
             <button id="btnNext" type="button" title="Next">&gt;</button>
         </span>
@@ -73,6 +74,14 @@
             <div class="field">
                 <label>Cash/Bank A/c</label>
                 <select id="cbcode"></select>
+                <div id="cbBalLine" style="font-size:20px;color:#0f4c81;margin-top:6px;line-height:1.2;font-weight:800;letter-spacing:.2px">
+                    <span style="font-size:14px;color:#6b7280;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Balance</span>
+                    <span id="cbBalVal" style="font-weight:800;color:#0f4c81;font-size:24px">—</span>
+                    <span id="cbBalLbl" style="font-size:16px;color:#6b7280;font-weight:700"></span>
+                    <span id="cbBalAfterWrap" style="display:none;margin-left:10px;color:#15803d;font-weight:800;font-size:20px">
+                        &rarr; <span id="cbBalAfterVal" style="font-size:24px"></span> <span id="cbBalAfterLbl" style="font-size:16px"></span>
+                    </span>
+                </div>
             </div>
             <div class="field">
                 <label>Salesman</label>
@@ -97,16 +106,16 @@
     <div class="sec">
         <div class="grid4">
             <div class="field">
-                <label>Particulars</label>
-                <input id="particular" maxlength="200" placeholder="Enter particulars...">
-            </div>
-            <div class="field">
                 <label>Account Code</label>
                 <div style="display:flex;gap:4px;">
                     <input id="accode" list="accodeList" maxlength="20" style="flex:1;">
                     <datalist id="accodeList"></datalist>
                     <button id="btnAcHelp" type="button" style="height:32px;padding:0 8px;">^</button>
                 </div>
+            </div>
+            <div class="field">
+                <label>Particulars</label>
+                <input id="particular" maxlength="200" placeholder="Enter particulars...">
             </div>
             <div class="field">
                 <label>Amount</label>
@@ -192,7 +201,7 @@
     <div class="sec" style="margin-top:10px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <h3 style="margin:0;flex:1;">Recent Receipts</h3>
-            <input id="listSearch" placeholder="Search voucher / particulars..." style="width:260px;">
+            <input id="listSearch" placeholder="Search voucher / particulars..." style="width:300px;font-size:15px;height:38px;">
         </div>
         <div class="table-wrap">
             <table>
@@ -205,15 +214,15 @@
 
 <!-- Account Help Modal -->
 <div id="acHelpModal" class="modal" style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9999;">
-    <div style="width:700px;background:#fff;border-radius:10px;border:1px solid #d7dfeb;padding:12px;">
+    <div style="width:760px;background:#fff;border-radius:10px;border:1px solid #d7dfeb;padding:12px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <strong style="flex:1;">Select Account</strong>
-            <input id="acHelpSearch" placeholder="Search..." style="width:220px;">
+            <input id="acHelpSearch" placeholder="Search code / name / mobile..." style="width:260px;">
             <button id="acHelpClose" type="button">Close</button>
         </div>
         <div class="table-wrap" style="max-height:360px;">
             <table>
-                <thead><tr><th style="width:120px;">Code</th><th>Name</th></tr></thead>
+                <thead><tr><th style="width:120px;">Code</th><th>Name</th><th style="width:130px;">Mobile</th></tr></thead>
                 <tbody id="acHelpRows"></tbody>
             </table>
         </div>
@@ -325,6 +334,7 @@
             await loadAccountCodes();
             await loadList('');
             setMode('A');
+            loadCashBankBalance();
         } catch (e) { showStatus('Init failed: ' + e.message, false); }
     }
 
@@ -407,11 +417,53 @@
         document.getElementById('secCheque').style.display = isBank ? '' : 'none';
     }
 
+    // ── Cash/Bank balance (current + projected after receipt) ──
+    let cbBalance = 0; // signed: >0 = Cr (your account has money / liability), <0 = Dr
+    async function loadCashBankBalance() {
+        const code = (document.getElementById('cbcode').value || '').toUpperCase().trim();
+        const valEl = document.getElementById('cbBalVal');
+        const lblEl = document.getElementById('cbBalLbl');
+        if (!code) { valEl.textContent = '—'; lblEl.textContent = ''; cbBalance = 0; updateCBAfter(); return; }
+        try {
+            const d = await api({ action: 'load_account', accode: code });
+            if (d && d.success) {
+                cbBalance = parseFloat(d.balance) || 0; // controller returns positive=Cr, negative=Dr
+                valEl.textContent = Math.abs(cbBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                lblEl.textContent = (d.balance_label || (cbBalance >= 0 ? 'Cr' : 'Dr'));
+            } else {
+                valEl.textContent = '—'; lblEl.textContent = '';
+                cbBalance = 0;
+            }
+            updateCBAfter();
+        } catch (e) { valEl.textContent = '—'; lblEl.textContent = ''; cbBalance = 0; updateCBAfter(); }
+    }
+
+    function updateCBAfter() {
+        // Receipt INCREASES the cash/bank account (money coming in) — that's a Dr on the asset side,
+        // which in this app's sign convention reduces a positive (Cr) balance and increases a Dr balance.
+        // For display we just show: current Cr balance + incoming amount → projected Cr balance.
+        const amt = parseFloat(document.getElementById('amount').value) || 0;
+        const wrap = document.getElementById('cbBalAfterWrap');
+        const valEl = document.getElementById('cbBalAfterVal');
+        const lblEl = document.getElementById('cbBalAfterLbl');
+        if (amt <= 0) { wrap.style.display = 'none'; return; }
+        // In the existing daybook sign: cash debit is stored as +amount on the cbcode side.
+        // Balance display uses positive = Cr; a cash account typically holds Dr (asset).
+        // To keep the math intuitive, project absolute "cash on hand" as |cbBalance| + amt
+        // when current balance is Dr (asset), or cbBalance - amt when Cr (overdraft etc).
+        const projected = (cbBalance <= 0) ? (cbBalance - amt) : (cbBalance - amt);
+        valEl.textContent = Math.abs(projected).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        lblEl.textContent = (projected >= 0 ? 'Cr' : 'Dr');
+        wrap.style.display = '';
+    }
+
     document.getElementById('cbcode').addEventListener('change', checkChequeVisibility);
     document.getElementById('cbcode').addEventListener('change', () => {
         checkChequeVisibility();
         if (mode === 'A') refreshVchno();
+        loadCashBankBalance();
     });
+    document.getElementById('amount').addEventListener('input', updateCBAfter);
 
     // ── Account code change ──
     async function loadAccountInfo() {
@@ -527,32 +579,42 @@
 
     // ── Account Help Modal ──
     let acHelpData = [];
+    let acHelpSearchTimer = null;
     document.getElementById('btnAcHelp').addEventListener('click', async () => {
-        const type = document.getElementById('actype').value;
-        try {
-            const d = await api({ action: 'account_list', type: type, search: '' });
-            acHelpData = d.data || [];
-            renderAcHelp('');
-        } catch (e) { return; }
         document.getElementById('acHelpModal').style.display = 'flex';
         document.getElementById('acHelpSearch').value = '';
         document.getElementById('acHelpSearch').focus();
+        await loadAcHelp('');
     });
 
-    function renderAcHelp(filter) {
+    async function loadAcHelp(search) {
+        const type = document.getElementById('actype').value;
+        try {
+            const d = await api({ action: 'account_list', type: type, search: search || '' });
+            acHelpData = d.data || [];
+            renderAcHelp(search || '', true);
+        } catch (e) {
+            acHelpData = [];
+            renderAcHelp('', true);
+        }
+    }
+
+    function renderAcHelp(filter, serverFiltered = false) {
         const body = document.getElementById('acHelpRows');
         body.innerHTML = '';
         const f = filter.toUpperCase();
-        acHelpData.filter(r => !f || (r.accode || '').toUpperCase().includes(f) || (r.name || '').toUpperCase().includes(f)).forEach(r => {
+        acHelpData.filter(r => serverFiltered || !f || (r.accode || '').toUpperCase().includes(f) || (r.name || '').toUpperCase().includes(f) || (r.mobile || '').toUpperCase().includes(f)).forEach(r => {
             const tr = document.createElement('tr');
             tr.dataset.code = r.accode || '';
-            tr.innerHTML = `<td>${esc(r.accode || '')}</td><td>${esc(r.name || '')}</td>`;
+            tr.innerHTML = `<td>${esc(r.accode || '')}</td><td>${esc(r.name || '')}</td><td>${esc(r.mobile || '')}</td>`;
             body.appendChild(tr);
         });
     }
 
     document.getElementById('acHelpSearch').addEventListener('input', () => {
-        renderAcHelp(document.getElementById('acHelpSearch').value.trim());
+        clearTimeout(acHelpSearchTimer);
+        const search = document.getElementById('acHelpSearch').value.trim();
+        acHelpSearchTimer = setTimeout(() => loadAcHelp(search), 180);
     });
 
     document.getElementById('acHelpRows').addEventListener('dblclick', (e) => {
@@ -745,11 +807,18 @@
     });
     document.getElementById('btnSave').addEventListener('click', doSave);
     document.getElementById('btnClear').addEventListener('click', () => { resetForm(); setMode(mode); });
-    document.getElementById('btnExit').addEventListener('click', () => {
+    function leaveReceipt() {
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({ type: 'goldapp:close-module-frame' }, '*');
-        } else { window.close(); }
-    });
+        } else if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '{{ url('/dashboard') }}';
+        }
+    }
+
+    document.getElementById('btnBack').addEventListener('click', leaveReceipt);
+    document.getElementById('btnExit').addEventListener('click', leaveReceipt);
 
     // ── Keyboard shortcuts ──
     document.addEventListener('keydown', (e) => {

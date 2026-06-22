@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApplySelectedDatabase
@@ -62,7 +63,7 @@ class ApplySelectedDatabase
 
         foreach ($candidates as $candidate) {
             $database = trim((string) $candidate);
-            if ($database !== '') {
+            if ($database !== '' && $this->databaseExists($database)) {
                 return $database;
             }
         }
@@ -86,5 +87,25 @@ class ApplySelectedDatabase
         parse_str((string) ($parts['query'] ?? ''), $query);
 
         return trim((string) ($query['company_db'] ?? ''));
+    }
+
+    private function databaseExists(string $database): bool
+    {
+        if ($database === '' || !preg_match('/^[A-Za-z0-9_]+$/', $database)) {
+            return false;
+        }
+
+        $currentDatabase = (string) Config::get('database.connections.mysql.database', '');
+        if (strcasecmp($database, $currentDatabase) === 0) {
+            return true;
+        }
+
+        try {
+            return DB::table('information_schema.SCHEMATA')
+                ->where('SCHEMA_NAME', $database)
+                ->exists();
+        } catch (Throwable $e) {
+            return false;
+        }
     }
 }

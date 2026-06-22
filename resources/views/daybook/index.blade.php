@@ -56,7 +56,9 @@
             .report-area { border: none; max-height: unset; overflow: visible; }
         }
     </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -86,6 +88,7 @@
         <option value="form2" {{ $formType === 'form2' ? 'selected' : '' }}>Form 2 - By Voucher</option>
         <option value="form3" {{ $formType === 'form3' ? 'selected' : '' }}>Form 3 - Detailed</option>
         <option value="form4" {{ $formType === 'form4' ? 'selected' : '' }}>Form 4 - Receipt/Payment</option>
+        <option value="form5" {{ $formType === 'form5' ? 'selected' : '' }}>Form 5 - Full Daily Report</option>
     </select>
 
     <button type="submit" name="show" value="1">Show</button>
@@ -335,6 +338,183 @@
     <div class="no-data">No data found for selected period.</div>
     @endforelse
 
+@elseif ($formType === 'form5')
+{{-- ═══ FORM 5 — Full Daily Report (all transactions combined) ═══ --}}
+@php
+    $f5 = $form5 ?: [];
+    $tot = $f5['totals'] ?? [];
+    $cashFlow = ($tot['receipts_amt'] ?? 0) - ($tot['payments_amt'] ?? 0);
+@endphp
+    <div class="company-header">{{ $companyName }}</div>
+    @if ($companyAddr)
+    <div class="company-addr">{{ $companyAddr }}</div>
+    @endif
+    <div class="report-header">
+        <h2>Full Daily Report</h2>
+        <div class="period">
+            @if ($dateFrom === $dateTo)
+                As On {{ dbDate($dateFrom) }}
+            @else
+                From {{ dbDate($dateFrom) }} To {{ dbDate($dateTo) }}
+            @endif
+        </div>
+    </div>
+
+    {{-- Summary tiles --}}
+    <table class="report-table" id="reportTable" style="margin-bottom:14px">
+        <thead>
+            <tr>
+                <th>Category</th><th>Count</th><th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Sales</td><td class="amt">{{ (int)($tot['sales_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['sales_amt'] ?? 0)) }}</td></tr>
+            <tr><td>Sales Returns</td><td class="amt">{{ (int)($tot['sret_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['sret_amt'] ?? 0)) }}</td></tr>
+            <tr><td>Purchases</td><td class="amt">{{ (int)($tot['purch_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['purch_amt'] ?? 0)) }}</td></tr>
+            <tr><td>Purchase Returns</td><td class="amt">{{ (int)($tot['pret_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['pret_amt'] ?? 0)) }}</td></tr>
+            <tr><td>Cash Receipts</td><td class="amt">{{ (int)($tot['receipts_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['receipts_amt'] ?? 0)) }}</td></tr>
+            <tr><td>Cash Payments</td><td class="amt">{{ (int)($tot['payments_count'] ?? 0) }}</td><td class="amt">{{ dbFmt((float)($tot['payments_amt'] ?? 0)) }}</td></tr>
+        </tbody>
+        <tfoot>
+            <tr class="balance-row"><td>Opening Cash Balance</td><td></td><td class="amt">{{ dbFmt($opbal) }}</td></tr>
+            <tr class="balance-row"><td>Net Cash Flow (Receipts - Payments)</td><td></td><td class="amt">{{ dbFmt($cashFlow) }}</td></tr>
+            <tr class="total-row"><td>Closing Cash Balance</td><td></td><td class="amt">{{ dbFmt($clbal) }}</td></tr>
+        </tfoot>
+    </table>
+
+    {{-- Sales --}}
+    @if (!empty($f5['sales']))
+    <div class="report-header"><strong>Sales Bills ({{ count($f5['sales']) }})</strong></div>
+    <table class="report-table" id="reportTable_sales" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Bill No</th><th>Customer</th><th>Bill Amt</th><th>Net Amt</th><th>Received</th></tr></thead>
+        <tbody>
+        @foreach ($f5['sales'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['billno'] }}</td>
+                <td>{{ trim(($r['custcode'] ?? '') . ' - ' . ($r['custname'] ?? ''), ' -') }}</td>
+                <td class="amt">{{ dbFmt((float)($r['billamt'] ?? 0)) }}</td>
+                <td class="amt">{{ dbFmt((float)($r['netamt'] ?? 0)) }}</td>
+                <td class="amt">{{ dbFmt((float)($r['ramt'] ?? 0)) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="3">Total</td>
+                <td class="amt">{{ dbFmt(array_sum(array_map(fn($r) => (float)($r['billamt'] ?? 0), $f5['sales']))) }}</td>
+                <td class="amt">{{ dbFmt((float)$tot['sales_amt']) }}</td>
+                <td class="amt">{{ dbFmt(array_sum(array_map(fn($r) => (float)($r['ramt'] ?? 0), $f5['sales']))) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    @endif
+
+    {{-- Sales Returns --}}
+    @if (!empty($f5['sales_returns']))
+    <div class="report-header"><strong>Sales Returns ({{ count($f5['sales_returns']) }})</strong></div>
+    <table class="report-table" id="reportTable_sret" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Return No</th><th>Customer</th><th>Bill Amt</th><th>Net Amt</th></tr></thead>
+        <tbody>
+        @foreach ($f5['sales_returns'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['billno'] }}</td>
+                <td>{{ trim(($r['custcode'] ?? '') . ' - ' . ($r['custname'] ?? ''), ' -') }}</td>
+                <td class="amt">{{ dbFmt((float)($r['billamt'] ?? 0)) }}</td>
+                <td class="amt">{{ dbFmt((float)($r['netamt'] ?? 0)) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot><tr class="total-row"><td colspan="4">Total</td><td class="amt">{{ dbFmt((float)$tot['sret_amt']) }}</td></tr></tfoot>
+    </table>
+    @endif
+
+    {{-- Purchases --}}
+    @if (!empty($f5['purchases']))
+    <div class="report-header"><strong>Purchases ({{ count($f5['purchases']) }})</strong></div>
+    <table class="report-table" id="reportTable_purch" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Doc No</th><th>Supplier Bill</th><th>Supplier</th><th>Bill Amt</th><th>Net Amt</th></tr></thead>
+        <tbody>
+        @foreach ($f5['purchases'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['docno'] }}</td>
+                <td>{{ $r['billno'] ?? '' }}</td>
+                <td>{{ trim(($r['suppcode'] ?? '') . ' - ' . ($r['name'] ?? ''), ' -') }}</td>
+                <td class="amt">{{ dbFmt((float)($r['billamt'] ?? 0)) }}</td>
+                <td class="amt">{{ dbFmt((float)($r['netamt'] ?? 0)) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot><tr class="total-row"><td colspan="5">Total</td><td class="amt">{{ dbFmt((float)$tot['purch_amt']) }}</td></tr></tfoot>
+    </table>
+    @endif
+
+    {{-- Purchase Returns --}}
+    @if (!empty($f5['purchase_returns']))
+    <div class="report-header"><strong>Purchase Returns ({{ count($f5['purchase_returns']) }})</strong></div>
+    <table class="report-table" id="reportTable_pret" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Doc No</th><th>Supplier</th><th>Bill Amt</th><th>Net Amt</th></tr></thead>
+        <tbody>
+        @foreach ($f5['purchase_returns'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['docno'] }}</td>
+                <td>{{ trim(($r['suppcode'] ?? '') . ' - ' . ($r['name'] ?? ''), ' -') }}</td>
+                <td class="amt">{{ dbFmt((float)($r['billamt'] ?? 0)) }}</td>
+                <td class="amt">{{ dbFmt((float)($r['netamt'] ?? 0)) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot><tr class="total-row"><td colspan="4">Total</td><td class="amt">{{ dbFmt((float)$tot['pret_amt']) }}</td></tr></tfoot>
+    </table>
+    @endif
+
+    {{-- Cash Receipts --}}
+    @if (!empty($f5['receipts']))
+    <div class="report-header"><strong>Cash Receipts ({{ count($f5['receipts']) }})</strong></div>
+    <table class="report-table" id="reportTable_rcpt" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Voucher</th><th>A/C</th><th>Particulars</th><th>Amount</th></tr></thead>
+        <tbody>
+        @foreach ($f5['receipts'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['vchno'] ?? '' }}</td>
+                <td>{{ $r['acname'] }}</td>
+                <td>{{ $r['particular'] ?? '' }}</td>
+                <td class="amt">{{ dbFmt((float)$r['amount']) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot><tr class="total-row"><td colspan="4">Total</td><td class="amt">{{ dbFmt((float)$tot['receipts_amt']) }}</td></tr></tfoot>
+    </table>
+    @endif
+
+    {{-- Cash Payments --}}
+    @if (!empty($f5['payments']))
+    <div class="report-header"><strong>Cash Payments ({{ count($f5['payments']) }})</strong></div>
+    <table class="report-table" id="reportTable_pymt" style="margin-bottom:14px">
+        <thead><tr><th>Date</th><th>Voucher</th><th>A/C</th><th>Particulars</th><th>Amount</th></tr></thead>
+        <tbody>
+        @foreach ($f5['payments'] as $r)
+            <tr>
+                <td>{{ dbDate($r['tdate']) }}</td>
+                <td>{{ $r['vchno'] ?? '' }}</td>
+                <td>{{ $r['acname'] }}</td>
+                <td>{{ $r['particular'] ?? '' }}</td>
+                <td class="amt">{{ dbFmt((float)$r['amount']) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+        <tfoot><tr class="total-row"><td colspan="4">Total</td><td class="amt">{{ dbFmt((float)$tot['payments_amt']) }}</td></tr></tfoot>
+    </table>
+    @endif
+
+    @if (empty($f5['sales']) && empty($f5['sales_returns']) && empty($f5['purchases']) && empty($f5['purchase_returns']) && empty($f5['receipts']) && empty($f5['payments']))
+    <div class="no-data">No transactions found for selected period.</div>
+    @endif
+
 @endif
 </div>
 
@@ -347,7 +527,7 @@ function onFormChange() {
 
 
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', '.report-table',
   'daybook_{{ $formType }}_{{ $dateFrom }}_{{ $dateTo }}');

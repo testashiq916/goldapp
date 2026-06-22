@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daybook Table - SQL Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        h1 { color: #c0392b; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 6px; }
+        .error-box { background: #fdecea; border-left: 5px solid #e74c3c; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .fix-box { background: #eafaf1; border-left: 5px solid #27ae60; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .info-box { background: #ebf5fb; border-left: 5px solid #3498db; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 14px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+        button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 5px; }
+        button:hover { background: #2980b9; }
+        button.green { background: #27ae60; }
+        button.green:hover { background: #219a52; }
+        textarea { width: 100%; height: 200px; font-family: monospace; font-size: 13px; padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        .copied { color: #27ae60; font-weight: bold; display: none; margin-left: 10px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th { background: #2c3e50; color: white; padding: 8px 12px; text-align: left; }
+        td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+        tr:nth-child(even) { background: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+<h1>Daybook Table — SQL Date Error Fix</h1>
+
+<div class="error-box">
+    <strong>Problem:</strong> The <code>daybook</code> table uses <code>DEFAULT curdate()</code> on the <code>tdate</code> column.<br>
+    This syntax is only supported in <strong>MySQL 8.0.13+</strong>. On older MySQL versions (common with XAMPP), this causes a syntax error.
+</div>
+
+<h2>1. Check Your MySQL Version</h2>
+<p>Run this query in phpMyAdmin or MySQL console:</p>
+<pre>SELECT VERSION();</pre>
+<p>If the result is <strong>below 8.0.13</strong>, you must use one of the fixes below.</p>
+
+<h2>2. Choose Your Fix</h2>
+
+<table>
+    <tr>
+        <th>Option</th>
+        <th>Method</th>
+        <th>Best For</th>
+    </tr>
+    <tr>
+        <td><strong>A</strong></td>
+        <td>Remove default, set date in PHP/Laravel</td>
+        <td>Recommended for Laravel apps</td>
+    </tr>
+    <tr>
+        <td><strong>B</strong></td>
+        <td>Use TIMESTAMP column with DEFAULT CURRENT_TIMESTAMP</td>
+        <td>Quick SQL-only fix</td>
+    </tr>
+    <tr>
+        <td><strong>C</strong></td>
+        <td>Use a TRIGGER to auto-set the date</td>
+        <td>Keep DATE type, auto-fill on insert</td>
+    </tr>
+</table>
+
+<h2>Option A — Recommended (Remove Default, Set in PHP)</h2>
+<div class="fix-box">
+    <strong>Fixed CREATE TABLE SQL</strong> — removes the problematic default:
+</div>
+<textarea id="sqlA" readonly>CREATE TABLE `daybook` (
+  `slno` decimal(10,0) NOT NULL,
+  `tdate` date DEFAULT NULL,
+  `accode` char(8) DEFAULT NULL,
+  `amount` decimal(11,2) DEFAULT 0.00,
+  `control` smallint(6) DEFAULT 1,
+  `sno` smallint(6) DEFAULT NULL,
+  `opaccode` varchar(10) DEFAULT NULL,
+  `note` varchar(30) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</textarea>
+<button onclick="copySQL('sqlA', 'copiedA')">Copy SQL</button>
+<span class="copied" id="copiedA">Copied!</span>
+
+<p>Then in your Laravel Model, set the date automatically:</p>
+<pre>// In your Daybook model or controller
+protected static function boot() {
+    parent::boot();
+    static::creating(function ($model) {
+        if (empty($model->tdate)) {
+            $model->tdate = now()->toDateString(); // sets today's date
+        }
+    });
+}</pre>
+
+<h2>Option B — TIMESTAMP Column (SQL-Only Fix)</h2>
+<div class="fix-box">
+    Change <code>tdate</code> to a TIMESTAMP/DATE handled via CURRENT_TIMESTAMP:
+</div>
+<textarea id="sqlB" readonly>CREATE TABLE `daybook` (
+  `slno` decimal(10,0) NOT NULL,
+  `tdate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `accode` char(8) DEFAULT NULL,
+  `amount` decimal(11,2) DEFAULT 0.00,
+  `control` smallint(6) DEFAULT 1,
+  `sno` smallint(6) DEFAULT NULL,
+  `opaccode` varchar(10) DEFAULT NULL,
+  `note` varchar(30) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</textarea>
+<button onclick="copySQL('sqlB', 'copiedB')">Copy SQL</button>
+<span class="copied" id="copiedB">Copied!</span>
+
+<h2>Option C — Use a TRIGGER</h2>
+<div class="fix-box">
+    Keep the DATE type and auto-fill via a BEFORE INSERT trigger:
+</div>
+<textarea id="sqlC" readonly>-- Step 1: Create table without default
+CREATE TABLE `daybook` (
+  `slno` decimal(10,0) NOT NULL,
+  `tdate` date DEFAULT NULL,
+  `accode` char(8) DEFAULT NULL,
+  `amount` decimal(11,2) DEFAULT 0.00,
+  `control` smallint(6) DEFAULT 1,
+  `sno` smallint(6) DEFAULT NULL,
+  `opaccode` varchar(10) DEFAULT NULL,
+  `note` varchar(30) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 2: Create trigger to auto-set today's date
+DELIMITER $$
+CREATE TRIGGER before_daybook_insert
+BEFORE INSERT ON `daybook`
+FOR EACH ROW
+BEGIN
+  IF NEW.tdate IS NULL THEN
+    SET NEW.tdate = CURDATE();
+  END IF;
+END$$
+DELIMITER ;</textarea>
+<button onclick="copySQL('sqlC', 'copiedC')">Copy SQL</button>
+<span class="copied" id="copiedC">Copied!</span>
+
+<h2>If Table Already Exists — ALTER Fix</h2>
+<div class="info-box">
+    If the <code>daybook</code> table is already created and you just need to fix the default, run:
+</div>
+<textarea id="sqlD" readonly>ALTER TABLE `daybook` ALTER COLUMN `tdate` DROP DEFAULT;
+-- Or set a static default:
+ALTER TABLE `daybook` MODIFY `tdate` date DEFAULT NULL;</textarea>
+<button onclick="copySQL('sqlD', 'copiedD')">Copy SQL</button>
+<span class="copied" id="copiedD">Copied!</span>
+
+<h2>Summary</h2>
+<div class="info-box">
+    <ul>
+        <li><code>DEFAULT curdate()</code> = MySQL 8.0.13+ only</li>
+        <li>On XAMPP with MySQL 5.7 or earlier → syntax error</li>
+        <li>Best fix for Laravel: set date in PHP, use <code>DEFAULT NULL</code> in SQL</li>
+        <li>Quick SQL fix: use <code>TIMESTAMP DEFAULT CURRENT_TIMESTAMP</code></li>
+    </ul>
+</div>
+
+<script>
+function copySQL(id, badgeId) {
+    const el = document.getElementById(id);
+    el.select();
+    document.execCommand('copy');
+    const badge = document.getElementById(badgeId);
+    badge.style.display = 'inline';
+    setTimeout(() => badge.style.display = 'none', 2000);
+}
+</script>
+
+</body>
+</html>

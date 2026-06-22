@@ -13,7 +13,9 @@ body{font-family:Arial,sans-serif;margin:0;background:#f3f1ea;color:#111;font-si
 .controls input{accent-color:#8f7d52}
 .page{max-width:1180px;margin:12px auto;background:#fff;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
 .title{text-align:center;margin-bottom:10px}
-.title h1{margin:0;font-size:20px}
+.title h1{margin:0;font-size:22px;line-height:1.15;letter-spacing:.35px;text-transform:uppercase;white-space:normal}
+.shop-line{font-size:12px;font-weight:700;line-height:1.35;text-transform:uppercase}
+.shop-meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
 .title .sub{margin-top:4px;font-size:17px;font-weight:700;letter-spacing:.2px}
 .title .sub2{margin-top:4px;font-size:13px;font-weight:700;letter-spacing:.2px}
 .info-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:12px;margin-bottom:12px}
@@ -50,9 +52,16 @@ th{background:#efe6c8}
   .sign{width:100%}
 }
 @media print{
+  @page{size:A4 landscape;margin:10mm}
   body{background:#fff}
   .toolbar{display:none}
-  .page{margin:0;box-shadow:none;max-width:none;padding:10px}
+  .page{margin:0;box-shadow:none;max-width:none;padding:0}
+  .title{break-inside:avoid;page-break-inside:avoid}
+  .title h1{font-size:22px;white-space:normal;overflow:visible}
+  .shop-line{font-size:12px;white-space:normal;overflow:visible}
+  table{break-inside:auto;page-break-inside:auto}
+  thead{display:table-header-group}
+  tr,.card,.summary,.foot,.sign{break-inside:avoid;page-break-inside:avoid}
 }
 </style>
 @include('partials.print-layout-head')
@@ -74,6 +83,21 @@ th{background:#efe6c8}
     <div id="shopInfo" data-print-app-header="goldsmith-shop">
       @if(!empty($company['SHOPNM']))
         <h1>{{ $company['SHOPNM'] }}</h1>
+      @endif
+      @if(!empty($company['SHOPADDR']))
+        <div class="shop-line">{{ $company['SHOPADDR'] }}</div>
+      @endif
+      @php
+        $shopPhone = trim((string) ($company['SHOPPHONE'] ?? ''));
+        $shopMobile = trim((string) ($company['Mobile'] ?? $company['MOBILE'] ?? ''));
+        $shopGstin = trim((string) ($company['GSTIN'] ?? $company['GSTNO'] ?? $company['KGST'] ?? ''));
+      @endphp
+      @if($shopPhone !== '' || $shopMobile !== '' || $shopGstin !== '')
+        <div class="shop-line shop-meta">
+          @if($shopPhone !== '')<span>Ph: {{ $shopPhone }}</span>@endif
+          @if($shopMobile !== '')<span>Mobile: {{ $shopMobile }}</span>@endif
+          @if($shopGstin !== '')<span>GSTIN: {{ $shopGstin }}</span>@endif
+        </div>
       @endif
     </div>
     <div class="sub" id="docTitle">{{ $docTitle }}</div>

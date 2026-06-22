@@ -22,16 +22,21 @@ class InjectResponsiveCss
             return $response;
         }
 
-        // Find only the FIRST </head> — JS templates inside the page may also
-        // contain the literal string "</head>" and a naive str_replace would
-        // corrupt those strings (introducing a newline inside a JS string
-        // literal causes a SyntaxError that breaks all subsequent JS).
-        $pos = stripos($content, '</head>');
+        // JS templates may contain literal "</head>" text. Inject only at a
+        // real head close tag, not while the parser is inside a script block.
+        $pos = $this->findHeadCloseOutsideScript($content);
         if ($pos === false) {
             return $response;
         }
 
-        $cssUrl  = asset('css/goldapp-responsive.css');
+        $cssPath = public_path('css/goldapp-responsive.css');
+        if (!is_file($cssPath)) {
+            return $response;
+        }
+
+        $cssVer  = @filemtime($cssPath) ?: time();
+        $baseUrl = rtrim($request->getBaseUrl(), '/');
+        $cssUrl  = $baseUrl . '/css/goldapp-responsive.css?v=' . $cssVer;
         $linkTag = "\n    <link rel=\"stylesheet\" href=\"{$cssUrl}\">";
 
         $content = substr($content, 0, $pos)
@@ -42,5 +47,23 @@ class InjectResponsiveCss
         $response->setContent($content);
 
         return $response;
+    }
+
+    private function findHeadCloseOutsideScript(string $content): int|false
+    {
+        $offset = 0;
+        while (($pos = stripos($content, '</head>', $offset)) !== false) {
+            $before = substr($content, 0, $pos);
+            $lastScriptOpen = strripos($before, '<script');
+            $lastScriptClose = strripos($before, '</script>');
+
+            if ($lastScriptOpen === false || ($lastScriptClose !== false && $lastScriptClose > $lastScriptOpen)) {
+                return $pos;
+            }
+
+            $offset = $pos + 7;
+        }
+
+        return false;
     }
 }

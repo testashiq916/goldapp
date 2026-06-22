@@ -48,19 +48,27 @@ tfoot td{position:sticky;bottom:0;background:#edf4fc;font-weight:700;color:#2448
 .hint{padding:20px;text-align:center;color:var(--muted);font-size:12px}
 .print-summary{display:none;margin-bottom:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:#f9fbff;font-size:12px;color:#355071}
 .print-summary strong{color:#1f3f66}
+
+/* Default Selection Mode — on-screen rules (must be OUTSIDE @media print). */
+.select-col{display:none;width:30px;text-align:center}
+body.default-active .select-col{display:table-cell}
+body.default-active tr.item:not(.selected-row){color:#94a3b8}
+body.default-active tr.item.selected-row{background:#f0fdf4}
+body.default-active tr.item.selected-row td{background:#f0fdf4}
+
 @media print{
-@page{size:A4 portrait;margin:3mm}
+@page{size:A4 portrait;margin:6mm}
 html,body{width:100%;height:auto}
 body{background:#fff !important;min-height:auto;margin:0;padding:0}
 .window{margin:0 !important;box-shadow:none !important;border-radius:0 !important;border:0 !important}
 .titlebar,.top,.btn,.checks span{display:none!important}
 .content{padding:0 !important}
-.print-summary{display:block;margin:0 0 2mm 0;padding:0 0 1.5mm 0;border:0;border-bottom:1px solid #cfd8e3;border-radius:0;background:transparent;font-size:10px;line-height:1.15}
+.print-summary{display:block;width:100%;margin:0 0 1.2mm 0;padding:0 0 1.2mm 0;border:0;border-bottom:2px solid #d71920;border-radius:0;background:transparent;font-size:13px;font-weight:900;line-height:1.15;color:#111}
 .tbl-wrap{max-height:none !important;overflow:visible !important;border:0 !important;border-radius:0 !important}
-table{width:100%;font-size:8.2px;table-layout:auto}
-th,td{padding:2px 3px;border-bottom:1px solid #dbe4ef;line-height:1.1}
-th{position:static;background:#e8eef8!important;color:#123!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:7.6px}
-tfoot td{position:static;background:#edf4fc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+table{width:100%!important;max-width:100%!important;font-size:13px;table-layout:fixed;border-collapse:collapse;border:2px solid #d71920}
+th,td{padding:.9mm 1.5mm;border:1px solid #d71920;line-height:1.12;font-weight:800;vertical-align:middle;color:#000}
+th{position:static;background:#fff1f1!important;color:#9b111e!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px;font-weight:900}
+tfoot td{position:static;background:#fff1f1!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:900;color:#000}
 tr:hover td{background:transparent}
 th:first-child,td:first-child{padding-left:1px}
 th:last-child,td:last-child{padding-right:1px}
@@ -68,10 +76,21 @@ th:last-child,td:last-child{padding-right:1px}
 tr,td,th{page-break-inside:avoid}
 tfoot{display:table-footer-group}
 .hide-print-col{display:none!important}
-th.cl-emph,td.cl-emph{font-size:11px!important;font-weight:700!important;background:#fff7e0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-th.cl-emph{font-size:9.5px!important}
+th.cl-emph,td.cl-emph{font-size:13px!important;font-weight:900!important;background:#fff6d8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+th.cl-emph{font-size:12px!important}
+th.cl-emph:nth-child(2),td.cl-emph:nth-child(2){width:24mm!important}
+th.cl-emph:nth-child(3),td.cl-emph:nth-child(3){width:74mm!important;white-space:normal}
+th.cl-emph:nth-last-child(2),td.cl-emph:nth-last-child(2){width:25mm!important;text-align:right}
+th.cl-emph:nth-last-child(1),td.cl-emph:nth-last-child(1){width:32mm!important;text-align:right}
+tbody tr.item td.cl-emph{border-top:1px solid #d71920;border-bottom:1px solid #d71920}
+
+/* When Default mode is active, hide unselected rows and the helper column on print. */
+body.default-active .select-col{display:none!important}
+body.default-active tr.item:not(.selected-row){display:none!important}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="window">
@@ -93,18 +112,26 @@ th.cl-emph{font-size:9.5px!important}
                     <input type="date" name="date_to" value="{{ $dateTo }}" required>
                 </div>
                 <div class="field">
-                    <label>Metal Type</label>
-                    <select name="metal_type">
-                        @foreach(['All','Gold','Silver','Platinum','Others'] as $opt)
-                        <option value="{{ $opt }}" {{ $metalType===$opt?'selected':'' }}>{{ $opt }}</option>
+                    <label>Item Type 1</label>
+                    <select name="type1">
+                        @foreach(['All','Gold','Silver','Others','Platinum','Diamond'] as $opt)
+                        <option value="{{ $opt }}" {{ $type1===$opt?'selected':'' }}>{{ $opt }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="field">
-                    <label>Ornament</label>
-                    <select name="orn_type">
+                    <label>Item Type 2</label>
+                    <select name="type2">
+                        @foreach(['All','Diamond','Platinum','Gold','Silver','Others','Color Stone','Watch'] as $opt)
+                        <option value="{{ $opt }}" {{ $type2===$opt?'selected':'' }}>{{ $opt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Item Type 3</label>
+                    <select name="type3">
                         @foreach(['All','Ornaments Only','Not Ornaments'] as $opt)
-                        <option value="{{ $opt }}" {{ $ornType===$opt?'selected':'' }}>{{ $opt }}</option>
+                        <option value="{{ $opt }}" {{ $type3===$opt?'selected':'' }}>{{ $opt }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -116,7 +143,6 @@ th.cl-emph{font-size:9.5px!important}
                         @endforeach
                     </select>
                 </div>
-                @if($rptType === '')
                 <div class="field">
                     <label>Group Code</label>
                     <select name="grp_code" style="min-width:90px">
@@ -135,12 +161,14 @@ th.cl-emph{font-size:9.5px!important}
                         @endforeach
                     </select>
                 </div>
-                @endif
                 <div style="display:flex;gap:6px;align-items:flex-end">
                     <button type="submit" name="show" value="1" class="btn btn-blue">&#128269; Show</button>
                     @if($showData && count($rows)>0)
                     <button type="button" class="btn btn-teal" onclick="window.print()">
                         &#128424; Print
+                    </button>
+                    <button type="button" id="btn-save-selection" class="btn btn-blue" style="display:none; background: #2d3d7b;">
+                        &#128190; Save Selection
                     </button>
                     <a class="btn btn-green"
                        href="{{ url('/stock/period-ledger/export?'.http_build_query(array_merge(request()->query(),['show'=>1]))) }}">
@@ -150,6 +178,7 @@ th.cl-emph{font-size:9.5px!important}
                 </div>
             </div>
             <div class="checks">
+                <label><input type="checkbox" id="chk-default-mode"> Default</label>
                 <label><input type="checkbox" name="sort_on_code"  value="1" {{ $sortOnCode ?'checked':'' }}> Sort on Code</label>
                 <label><input type="checkbox" name="clstk_only"    value="1" {{ $clstkOnly  ?'checked':'' }}> Closing Stock Only</label>
                 <label><input type="checkbox" name="net_wgt_model" value="1" {{ $netWgtModel?'checked':'' }}> Net Wgt Model</label>
@@ -185,6 +214,7 @@ th.cl-emph{font-size:9.5px!important}
         <table>
             <thead>
             <tr>
+                <th class="select-col"></th>
                 @if($rptType==='G')
                 <th style="width:100px">Group Code</th>
                 @elseif($rptType==='SG')
@@ -213,7 +243,7 @@ th.cl-emph{font-size:9.5px!important}
                 <th class="num dmdpcs" style="width:65px">Rcvd Dmd Pcs</th>
                 <th class="num dmdct"  style="width:80px">Rcvd Dmd Ct</th>
                 @endif
-                <th class="num" style="width:60px">Iss Qty</th>
+                <th class="num hide-print-col" style="width:60px">Iss Qty</th>
                 <th class="num" style="width:85px">Iss Wgt</th>
                 @if($withStone)
                 <th class="num stone" style="width:80px">Iss St.Wgt</th>
@@ -248,8 +278,10 @@ th.cl-emph{font-size:9.5px!important}
                 $tIQ+=$row['issuedqty'];$tIW+=$row['issuedwgt'];$tISW+=$row['issuedswgt'];
                 $tClQ+=$row['clqty'];   $tClW+=$row['clwgt'];   $tClSW+=$row['clswgt'];
                 $negCl = $row['clwgt']<0;
+                $rowKey = $row['code'] ?? $row['groupkey'] ?? '';
             @endphp
-            <tr>
+            <tr class="item" data-code="{{ $rowKey }}">
+                <td class="select-col"><input type="checkbox" class="row-sel" value="{{ $rowKey }}"></td>
                 @if($rptType==='G' || $rptType==='SG')
                 <td><strong>{{ $row['groupkey'] }}</strong></td>
                 @else
@@ -276,7 +308,7 @@ th.cl-emph{font-size:9.5px!important}
                 <td class="num" style="color:#6a3a8c">0</td>
                 <td class="num" style="color:#8c3a6a">{{ $row['rcvdswgt'] != 0 ? number_format($row['rcvdswgt'],3) : '' }}</td>
                 @endif
-                <td class="num">{{ $row['issuedqty'] ?: '' }}</td>
+                <td class="num hide-print-col">{{ $row['issuedqty'] ?: '' }}</td>
                 <td class="num">{{ $row['issuedwgt'] != 0 ? number_format($row['issuedwgt'],3) : '' }}</td>
                 @if($withStone)
                 <td class="num" style="color:#3a5c20">{{ $row['issuedswgt'] != 0 ? number_format($row['issuedswgt'],3) : '' }}</td>
@@ -305,6 +337,7 @@ th.cl-emph{font-size:9.5px!important}
             @foreach(['G'=>'Gold','S'=>'Silver','O'=>'Other','P'=>'Platinum'] as $tk=>$tl)
             @if($totals[$tk]['clqty']!=0 || $totals[$tk]['opwgt']!=0)
             <tr>
+                <td class="select-col"></td>
                 <td colspan="3" class="cl-emph">Total {{ $tl }}</td>
                 <td class="num hide-print-col">{{ $totals[$tk]['opqty'] }}</td>
                 <td class="num hide-print-col">{{ number_format($totals[$tk]['opwgt'],3) }}</td>
@@ -325,7 +358,7 @@ th.cl-emph{font-size:9.5px!important}
                 <td class="num">0</td>
                 <td class="num">{{ number_format($totals[$tk]['rcvdswgt'],3) }}</td>
                 @endif
-                <td class="num">{{ $totals[$tk]['issuedqty'] }}</td>
+                <td class="num hide-print-col">{{ $totals[$tk]['issuedqty'] }}</td>
                 <td class="num">{{ number_format($totals[$tk]['issuedwgt'],3) }}</td>
                 @if($withStone)
                 <td class="num">{{ number_format($totals[$tk]['issuedswgt'],3) }}</td>
@@ -348,7 +381,8 @@ th.cl-emph{font-size:9.5px!important}
             @endif
             @endforeach
             @endif
-            <tr style="background:#dde8f8">
+            <tr style="background:#dde8f8" class="footer-row">
+                <td class="select-col"></td>
                 @if($rptType==='')
                 <td colspan="3" class="cl-emph"><strong>Grand Total</strong></td>
                 @else
@@ -373,7 +407,7 @@ th.cl-emph{font-size:9.5px!important}
                 <td class="num"><strong>0</strong></td>
                 <td class="num"><strong>{{ number_format($tRSW,3) }}</strong></td>
                 @endif
-                <td class="num"><strong>{{ $tIQ }}</strong></td>
+                <td class="num hide-print-col"><strong>{{ $tIQ }}</strong></td>
                 <td class="num"><strong>{{ number_format($tIW,3) }}</strong></td>
                 @if($withStone)
                 <td class="num"><strong>{{ number_format($tISW,3) }}</strong></td>
@@ -407,6 +441,56 @@ th.cl-emph{font-size:9.5px!important}
         cbxStone.addEventListener('change', function() { if (this.checked) cbxDmd.checked = false; });
         cbxDmd.addEventListener('change',   function() { if (this.checked) cbxStone.checked = false; });
     }
+
+    // ── Default Print Selection ─────────────────────────────────────────────
+    // Workflow:
+    //   1. User ticks "Default" → row checkboxes appear; non-selected rows fade.
+    //   2. User ticks the rows they always want on the print.
+    //   3. User clicks "Save Selection" → codes saved to localStorage.
+    //   4. Next time the page loads, those rows auto-tick. When Default is on,
+    //      only the saved rows print (others hidden via the @media print rule).
+    const modeChk = document.getElementById('chk-default-mode');
+    const saveBtn = document.getElementById('btn-save-selection');
+    const STORAGE_KEY = 'stock_ledger_print_selection';
+
+    if (modeChk) {
+        modeChk.addEventListener('change', function() {
+            document.body.classList.toggle('default-active', this.checked);
+            if (saveBtn) saveBtn.style.display = this.checked ? 'inline-flex' : 'none';
+        });
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            const selected = Array.from(document.querySelectorAll('.row-sel:checked')).map(cb => cb.value);
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(selected));
+                alert('Saved ' + selected.length + ' rows as the default print selection.');
+            } catch (e) { alert('Could not save: ' + e.message); }
+        });
+    }
+
+    // Restore saved selection on page load
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (Array.isArray(saved) && saved.length > 0) {
+            document.querySelectorAll('.row-sel').forEach(cb => {
+                if (saved.indexOf(cb.value) !== -1) {
+                    cb.checked = true;
+                    const tr = cb.closest('tr');
+                    if (tr) tr.classList.add('selected-row');
+                }
+            });
+        }
+    } catch (e) {}
+
+    // Sync the .selected-row class as the user toggles each row
+    document.querySelectorAll('.row-sel').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const tr = this.closest('tr');
+            if (tr) tr.classList.toggle('selected-row', this.checked);
+        });
+    });
 })();
 </script>
 </body>

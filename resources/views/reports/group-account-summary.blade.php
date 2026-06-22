@@ -46,8 +46,18 @@
             .table-wrap { max-height: none; overflow: visible; border: 0; }
             th { position: static; }
         }
-    </style>
+    
+/* ── Font size overrides ── */
+body { font-size: 20px !important; }
+label { font-size: 17px !important; }
+input, select, button { font-size: 18px !important; height: 36px !important; }
+table { font-size: 18px !important; }
+th { font-size: 15px !important; }
+td { font-size: 18px !important; }
+.btn, button { font-size: 17px !important; height: 36px !important; }</style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="loading-mask" id="loadingMask" aria-hidden="true">

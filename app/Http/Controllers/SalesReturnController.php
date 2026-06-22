@@ -113,7 +113,6 @@ class SalesReturnController extends Controller
             ->when($tdate, fn ($query) => $query->whereDate('tdate', $tdate))
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit(50)
             ->get(['slno', 'billno', 'tdate', 'custname'])
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
@@ -136,6 +135,7 @@ class SalesReturnController extends Controller
         $billNo = strtoupper(trim((string) $request->input('doc_no', '')));
         $tdate = $this->parseDate((string) $request->input('tdate', ''));
         $action = strtolower(trim((string) $request->input('action', 'edit')));
+        $viewOnly = filter_var($request->input('view_only', false), FILTER_VALIDATE_BOOLEAN);
 
         if ($billNo === '') {
             return response()->json(['ok' => false, 'message' => 'Bill no is required.'], 422);
@@ -153,12 +153,15 @@ class SalesReturnController extends Controller
             return response()->json(['ok' => false, 'message' => 'This bill number does not exist...'], 404);
         }
 
+        $queryArgs = ['slno' => (int) ($row->slno ?? 0)];
+        if ($action === 'reprint' && !$viewOnly) {
+            $queryArgs['autoprint'] = '1';
+        }
+
         return response()->json([
             'ok' => true,
             'doc_no' => trim((string) ($row->billno ?? '')),
-            'url' => url('/sales-return/' . $action . '?' . http_build_query([
-                'slno' => (int) ($row->slno ?? 0),
-            ])),
+            'url' => url('/sales-return/' . $action . '?' . http_build_query($queryArgs)),
         ]);
     }
 
@@ -548,7 +551,6 @@ class SalesReturnController extends Controller
         }
 
         $q = trim((string) $request->query('q', ''));
-        $limit = max(5, min(50, (int) $request->query('limit', 20)));
 
         $rows = DB::table('salesm')
             ->select(['slno', 'billno', 'tdate', 'custname', 'netamt'])
@@ -560,7 +562,6 @@ class SalesReturnController extends Controller
             })
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit($limit)
             ->get();
 
         return response()->json(['success' => true, 'data' => $rows]);

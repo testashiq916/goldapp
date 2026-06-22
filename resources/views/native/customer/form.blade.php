@@ -13,12 +13,9 @@
     $currentBsHead = trim((string)($data['bshead'] ?? $currentGroup));
     if ($currentBsHead === '') $currentBsHead = $defaultGroup;
 
-    // Customer balances use business labels opposite to generic debit/credit wording:
-    // positive => shop has to give customer, negative => customer has to give shop.
+    // Positive customer opening balance is amount to receive from customer.
     $opBalRaw = (float)($data['opbalance'] ?? 0);
-    $balanceType = $isCustomerType
-        ? ($opBalRaw >= 0 ? 'debit' : 'credit')
-        : ($opBalRaw >= 0 ? 'credit' : 'debit');
+    $balanceType = $opBalRaw >= 0 ? 'credit' : 'debit';
     $opBalAbs = number_format(abs($opBalRaw), 2, '.', '');
 @endphp
 <!DOCTYPE html>
@@ -386,12 +383,12 @@
                 {{-- Row 3: Phone, Mobile --}}
                 <label for="fPhone">Phone</label>
                 <div>
-                    <input type="text" id="fPhone" name="telephone" maxlength="25" value="{{ $data['telephone'] ?? '' }}">
+                    <input type="text" id="fPhone" name="telephone" maxlength="25" value="{{ $data['telephone'] ?? '' }}" inputmode="tel">
                     <div id="phoneDup" class="dup-warn" style="display:none;"></div>
                 </div>
                 <label for="fMobile">Mobile</label>
                 <div>
-                    <input type="text" id="fMobile" name="mobile" maxlength="25" value="{{ $data['mobile'] ?? '' }}">
+                    <input type="text" id="fMobile" name="mobile" maxlength="25" value="{{ $data['mobile'] ?? '' }}" inputmode="tel" {{ $isCustomerType ? 'required' : '' }}>
                     <div id="mobileDup" class="dup-warn" style="display:none;"></div>
                 </div>
 
@@ -450,8 +447,8 @@
                 <div class="inline-group">
                     <input type="number" step="0.01" id="fOpbal" name="opbalance" value="{{ $opBalAbs }}">
                     <select name="balance_type">
-                        <option value="credit" {{ $balanceType === 'credit' ? 'selected' : '' }}>To Receive</option>
-                        <option value="debit" {{ $balanceType === 'debit' ? 'selected' : '' }}>To Give</option>
+                        <option value="debit" {{ $balanceType === 'debit' ? 'selected' : '' }}>To Receive</option>
+                        <option value="credit" {{ $balanceType === 'credit' ? 'selected' : '' }}>To Give</option>
                     </select>
                 </div>
 
@@ -617,9 +614,28 @@
     let lastLoadedCustomerCode = '';
     let customerCodeTouched = false;
 
-    // ── Auto-fetch next code for add mode (C/S only, not F) ──
+    function upperCaseValuePreserveCursor(input) {
+        if (!input || input.readOnly || input.disabled) return;
+        const raw = input.value || '';
+        const upper = raw.toUpperCase();
+        if (raw === upper) return;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.value = upper;
+        try {
+            input.setSelectionRange(start, end);
+        } catch (_) {}
+    }
+
+    document.querySelectorAll('#customerForm input[type="text"], #customerForm textarea').forEach((el) => {
+        if (['fEmail', 'fPospwd'].includes(el.id)) return;
+        el.addEventListener('input', () => upperCaseValuePreserveCursor(el));
+        upperCaseValuePreserveCursor(el);
+    });
+
+    // Auto-fetch next code for add mode.
     function canAutoLoadLatestCode() {
-        return !isEdit && (type === 'C' || type === 'S' || type === 'D');
+        return !isEdit && ['C', 'S', 'F', 'D'].includes(type);
     }
 
     function loadLatestCustomerCode(force = false) {
@@ -777,6 +793,13 @@
 
     // ── Save ──
     document.getElementById('btnSave').addEventListener('click', async () => {
+        const phone = (document.getElementById('fPhone')?.value || '').trim();
+        const mobile = (document.getElementById('fMobile')?.value || '').trim();
+        if ((type === 'C' || type === 'D') && phone === '' && mobile === '') {
+            showMsg('Phone or mobile number is required.', false);
+            document.getElementById('fMobile').focus();
+            return;
+        }
         const formData = new FormData(document.getElementById('customerForm'));
         const codeEl = document.getElementById('fCode');
         const currentCode = (codeEl?.value || '').trim();

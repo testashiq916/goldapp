@@ -11,11 +11,89 @@ class Permission
         $path = trim($request->path(), '/');
         $normalizedPath = preg_replace('#^api/#i', '', $path) ?: $path;
 
-        if (preg_match('#^customer(?:/.*)?$#i', $path) === 1 || preg_match('#^customer(?:/.*)?$#i', $normalizedPath) === 1) {
-            $type = strtoupper(trim((string) $request->query('type', 'C')));
-            if ($type === 'F') {
-                return 'MDI_STAFF_MASTER';
+        if (
+            (preg_match('#^customer(?:/.*)?$#i', $path) === 1 || preg_match('#^customer(?:/.*)?$#i', $normalizedPath) === 1)
+            && preg_match('#^customer/popup(?:/.*)?$#i', $normalizedPath) !== 1
+        ) {
+            $type = strtoupper(trim((string) $request->input('type', $request->query('type', 'C'))));
+            $customerTypePermissions = [
+                'C' => 'MDI_CUSTOMER',
+                'S' => 'MDI_SUPPLIER_MASTER',
+                'G' => 'MDI_GOLDSMITH_MASTER',
+                'R' => 'MDI_REFINER_MASTER',
+                'J' => 'MDI_JEWELLERY_MASTER',
+                'D' => 'MDI_DEPOSITOR_MASTER',
+                'F' => 'MDI_STAFF_MASTER',
+            ];
+
+            return $customerTypePermissions[$type] ?? 'MDI_CUSTOMER';
+        }
+
+        if (preg_match('#^sales-bill(?:/.*)?$#i', $normalizedPath) === 1) {
+            $module = strtolower(trim((string) $request->input('module', $request->query('module', ''))));
+            $isQuotation = $request->boolean('qtn') || str_contains($module, 'quotation');
+
+            if (preg_match('#^sales-bill/print(?:/.*)?$#i', $normalizedPath) === 1 || str_contains($normalizedPath, 'reprint-picker')) {
+                return 'MDI_SALES_BILL_PRINT';
             }
+
+            if (str_contains($normalizedPath, 'edit-picker')) {
+                return $isQuotation ? 'MDI_SALES_QUOTATION_EDIT' : 'MDI_SALES_BILL_EDIT';
+            }
+
+            if (str_contains($normalizedPath, 'cancel-picker')) {
+                return $isQuotation ? 'MDI_SALES_QUOTATION_CANCEL' : 'MDI_SALES_BILL_CANCEL';
+            }
+
+            return $isQuotation ? 'MDI_SALES_QUOTATION' : 'MDI_SALES_BILL_NEW';
+        }
+
+        if (
+            preg_match('#^goldsmith-transactions(?:/.*)?$#i', $normalizedPath) === 1
+            || preg_match('#^goldsmith-transactions-picker(?:/.*)?$#i', $normalizedPath) === 1
+        ) {
+            $module = strtolower(trim((string) $request->input('module', $request->query('module', ''))));
+            $type = strtoupper(trim((string) $request->input('type', $request->query('type', ''))));
+
+            if (str_starts_with($module, 'jewellery-bill') || $type === 'J') {
+                return 'MDI_JEWELLERY_TRANSACTIONS';
+            }
+
+            if (str_starts_with($module, 'party-wgt-deposit-bill') || $type === 'C') {
+                return 'MDI_PARTY_WGT_DEPOSIT';
+            }
+
+            if (
+                str_starts_with($module, 'repair-slip-return-customer')
+                || str_starts_with($module, 'remake-issue-memo-to-smith')
+                || str_starts_with($module, 'remake-rcpt-memo-from-smith')
+                || $type === 'R'
+            ) {
+                return 'MDI_REPAIR_SMITH_MEMO';
+            }
+
+            return 'MDI_GOLDSMITH_TRANSACTIONS';
+        }
+
+        if (
+            preg_match('#^(smith-ageing-report|smith-trans-summary|smith-wa-analysis|smith-wa-summary)(?:/.*)?$#i', $normalizedPath) === 1
+        ) {
+            $ctype = strtoupper(trim((string) $request->input('ctype', $request->query('ctype', 'G'))));
+            return $ctype === 'J' ? 'MDI_JEWELLERY_ANALYTICS' : 'MDI_GOLDSMITH_ANALYTICS';
+        }
+
+        if (preg_match('#^ac-summary(?:/.*)?$#i', $normalizedPath) === 1) {
+            $module = strtolower(trim((string) $request->input('module', $request->query('module', ''))));
+            if (str_contains($module, 'supplier')) {
+                return 'MDI_SUPPLIER_ANALYTICS';
+            }
+            if (str_contains($module, 'customer')) {
+                return 'MDI_CUSTOMER_ANALYTICS';
+            }
+            if (str_contains($module, 'jewellery')) {
+                return 'MDI_JEWELLERY_ANALYTICS';
+            }
+            return 'MDI_FINANCIAL_REPORTS';
         }
 
         return self::matchPermissionForPath($path);
@@ -90,12 +168,14 @@ class Permission
                 'MDI_DASHBOARD',
                 'MDI_APPLICATION_SETTINGS',
                 'MDI_ADMINISTRATION',
+                'MDI_COMPANY_SELECT',
                 'MDI_CUSTOMER_CAMPAIGN',
                 'MDI_USER_ACCESS',
                 'MDI_ADMIN_USERS',
                 'MDI_STATES_ADDING',
                 'MDI_AI_INSIGHTS',
                 'MDI_PHONE_BOOK',
+                'MDI_TASK_REMINDERS',
                 'MDI_BACKUP',
                 'MDI_YEAR_END_ACCOUNT_CLOSE',
             ],
@@ -112,6 +192,7 @@ class Permission
                 'MDI_ACCOUNTS_PAYMENT_CONFIRMATION',
                 'MDI_ACCOUNTS_DENOMINATION_ENTRY',
                 'MDI_ACCOUNTS_EXPENSE_VOUCHER_ENTRY',
+                'MDI_ACCOUNTS_PARTY_CODE_MERGE',
                 'MDI_ACCOUNTS_MASTER',
                 'MDI_ACCOUNTS_RECEIPT',
                 'MDI_ACCOUNTS_PAYMENT',
@@ -124,11 +205,18 @@ class Permission
             ],
             'MDI Sales' => [
                 'MDI_SALES_BILL',
+                'MDI_SALES_BILL_NEW',
+                'MDI_SALES_BILL_EDIT',
+                'MDI_SALES_BILL_CANCEL',
                 'MDI_SALES_BILL_PRINT',
+                'MDI_SALES_QUOTATION',
+                'MDI_SALES_QUOTATION_EDIT',
+                'MDI_SALES_QUOTATION_CANCEL',
                 'MDI_SALES_BILL_CONFIRMATION',
                 'MDI_SALES_BOOK_REPORT',
                 'MDI_MONTHLY_SALES_REPORT',
                 'MDI_SALES_REGISTER',
+                'MDI_SALESMAN_CATEGORY_REPORT',
                 'MDI_SALES_CHECK_LIST',
                 'MDI_SALES_RETURN',
                 'MDI_SALES_RETURN_REGISTER',
@@ -172,10 +260,13 @@ class Permission
                 'MDI_ORDER_UPDATE',
                 'MDI_ORDER_BLOCK',
                 'MDI_ORDER_SALE',
+                'MDI_ORDER_ADVANCE_AFTER',
                 'MDI_ORDER_RATE_FIX',
                 'MDI_ORDER_REPRINT',
                 'MDI_ORDER_CANCEL',
                 'MDI_GOLDSMITH_TRANSACTIONS',
+                'MDI_JEWELLERY_TRANSACTIONS',
+                'MDI_PARTY_WGT_DEPOSIT',
                 'MDI_GOLD_RATE_STORY',
                 'MDI_WGT_RCPT_PMNT',
                 'MDI_PARTY_OP_WEIGHT',
@@ -185,6 +276,7 @@ class Permission
                 'MDI_REFINERY_BILL',
                 'MDI_RUFF_WORK',
                 'MDI_OTHER_ITEM_TRANS',
+                'MDI_EINVOICE_REGISTER',
                 'MDI_SCHEME_COLLECTION',
                 'MDI_SCHEME_CLOSE',
                 'MDI_SCHEME_INTEREST',
@@ -193,7 +285,13 @@ class Permission
             ],
             'MDI Customers & Masters' => [
                 'MDI_CUSTOMER',
+                'MDI_SUPPLIER_MASTER',
+                'MDI_GOLDSMITH_MASTER',
+                'MDI_REFINER_MASTER',
+                'MDI_JEWELLERY_MASTER',
+                'MDI_DEPOSITOR_MASTER',
                 'MDI_STAFF_MASTER',
+                'MDI_SALESMAN_MASTER',
                 'MDI_CUSTOMER_POPUP',
                 'MDI_SEARCH_ITEMS',
                 'MDI_GROUPS',
@@ -220,6 +318,10 @@ class Permission
                 'MDI_RATE_HISTORY',
                 'MDI_KURI_DETAILS',
                 'MDI_KURI_TYPE_MASTER',
+                'MDI_ALLOYS',
+                'MDI_FASHION',
+                'MDI_AREA',
+                'MDI_ROUTE',
             ],
             'MDI Reports & Books' => [
                 'MDI_DAYBOOK',
@@ -250,6 +352,17 @@ class Permission
                 'MDI_REFINERY_ANALYTICS',
                 'MDI_REPAIR_ANALYTICS',
             ],
+            'MDI New Modules' => [
+                'MDI_WHATSAPP_GATEWAY',
+                'MDI_GSTR_REPORTS',
+                'MDI_GOLD_LOAN',
+                'MDI_CATALOGUE',
+                'MDI_TALLY_EXPORT',
+                'MDI_HALLMARK',
+                'MDI_STAFF_PAYROLL',
+                'MDI_BRANCH_MANAGEMENT',
+                'MDI_SCALE_SETTINGS',
+            ],
             'MDI Staff & Repair' => [
                 'MDI_STAFF_TRANSACTION',
                 'MDI_STAFF_LOG_UPDATE',
@@ -257,6 +370,8 @@ class Permission
                 'MDI_STAFF_WGT_TRANSACTION',
                 'MDI_REPAIR_COMPLAINTS',
                 'MDI_REPAIR_RECEIPT_MEMO_PARTY',
+                'MDI_REPAIR_SMITH_MEMO',
+                'MDI_REPAIR_ISSUE_MEMO_PARTY',
                 'MDI_REPAIR_RETURN',
             ],
             'Barcode Management' => [
@@ -340,12 +455,14 @@ class Permission
             'MDI_DASHBOARD' => 'Dashboard (/dashboard)',
             'MDI_APPLICATION_SETTINGS' => 'Application Settings (/application-settings)',
             'MDI_ADMINISTRATION' => 'Administration (/administration)',
+            'MDI_COMPANY_SELECT' => 'Company Select (/company-select)',
             'MDI_CUSTOMER_CAMPAIGN' => 'Customer Campaign (/customer-campaign)',
             'MDI_USER_ACCESS' => 'User Access (/user-access)',
             'MDI_ADMIN_USERS' => 'Admin Users (/admin/users)',
             'MDI_STATES_ADDING' => 'States Adding (/states-adding)',
             'MDI_AI_INSIGHTS' => 'AI Analytics (/ai-insights)',
             'MDI_PHONE_BOOK' => 'Contact Directory (/phone-book)',
+            'MDI_TASK_REMINDERS' => 'Task Reminders (/reminders)',
             'MDI_BACKUP' => 'Data Backup & Restore (/backup)',
             'MDI_YEAR_END_ACCOUNT_CLOSE' => 'Financial Year Closing (/year-end-account-close)',
             'MDI_ACCOUNTS_AC_LEDGER' => 'A/c Ledger (/accounts/ac-ledger)',
@@ -360,6 +477,7 @@ class Permission
             'MDI_ACCOUNTS_PAYMENT_CONFIRMATION' => 'Payment Confirmation (/accounts/payment-confirmation)',
             'MDI_ACCOUNTS_DENOMINATION_ENTRY' => 'Denomination Entry (/accounts/denomination-entry)',
             'MDI_ACCOUNTS_EXPENSE_VOUCHER_ENTRY' => 'Expense Voucher Entry (/accounts/expense-voucher-entry)',
+            'MDI_ACCOUNTS_PARTY_CODE_MERGE' => 'Multi Bill To One Account (/accounts/party-code-merge)',
             'MDI_ACCOUNTS_MASTER' => 'Account Master (/accounts/master/account)',
             'MDI_ACCOUNTS_RECEIPT' => 'Receipt (/accounts/receipt)',
             'MDI_ACCOUNTS_PAYMENT' => 'Payment (/accounts/payment)',
@@ -370,11 +488,18 @@ class Permission
             'MDI_ACCOUNTS_PDC_COLLECTION' => 'PDC Collection (/accounts/pdc-collection)',
             'MDI_ACCOUNTS_DAILY_STATEMENT' => 'Daily Statement (/accounts/daily-statement)',
             'MDI_SALES_BILL' => 'Sales Bill (/sales-bill)',
+            'MDI_SALES_BILL_NEW' => 'Sales Invoice - New (/sales-bill/bill)',
+            'MDI_SALES_BILL_EDIT' => 'Sales Invoice - Edit (/sales-bill/edit-picker)',
+            'MDI_SALES_BILL_CANCEL' => 'Sales Invoice - Cancel (/sales-bill/cancel-picker)',
             'MDI_SALES_BILL_PRINT' => 'Sales Bill Print (/sales-bill-print)',
+            'MDI_SALES_QUOTATION' => 'Sales Quotation (/sales-bill/bill?qtn=1)',
+            'MDI_SALES_QUOTATION_EDIT' => 'Sales Quotation - Edit (/sales-bill/edit-picker?qtn=1)',
+            'MDI_SALES_QUOTATION_CANCEL' => 'Sales Quotation - Cancel (/sales-bill/cancel-picker?qtn=1)',
             'MDI_SALES_BILL_CONFIRMATION' => 'Sales Bill Confirmation (/sales-bill-confirmation)',
             'MDI_SALES_BOOK_REPORT' => 'Sales Book Report (/sales-book-report)',
             'MDI_MONTHLY_SALES_REPORT' => 'Monthly Sales Report (/monthly-sales-report)',
             'MDI_SALES_REGISTER' => 'Sales Register (/sales-register)',
+            'MDI_SALESMAN_CATEGORY_REPORT' => 'Salesman Category Report (/salesman-category-report)',
             'MDI_SALES_CHECK_LIST' => 'Sales Check List (/sales-check-list)',
             'MDI_SALES_RETURN' => 'Sales Return (/sales-return)',
             'MDI_SALES_RETURN_REGISTER' => 'Sales Return Register (/sales-return-register)',
@@ -412,10 +537,13 @@ class Permission
             'MDI_ORDER_UPDATE' => 'Order Update (/order-update)',
             'MDI_ORDER_BLOCK' => 'Order Block (/order-block)',
             'MDI_ORDER_SALE' => 'Order Sale (/order-sale)',
+            'MDI_ORDER_ADVANCE_AFTER' => 'Order Advance After (/order-advance-after)',
             'MDI_ORDER_RATE_FIX' => 'Order Rate Fix (/order-rate-fix)',
             'MDI_ORDER_REPRINT' => 'Order Reprint (/order-reprint)',
             'MDI_ORDER_CANCEL' => 'Order Cancel (/order-cancel)',
             'MDI_GOLDSMITH_TRANSACTIONS' => 'Goldsmith Transactions (/goldsmith-transactions)',
+            'MDI_JEWELLERY_TRANSACTIONS' => 'Jewellery Processing (/goldsmith-transactions?type=J)',
+            'MDI_PARTY_WGT_DEPOSIT' => 'Customer Weight Deposit (/goldsmith-transactions?type=C)',
             'MDI_GOLD_RATE_STORY' => 'Gold Rate Story (/gold-rate-story)',
             'MDI_WGT_RCPT_PMNT' => 'Weight Receipt / Payment (/wgt-rcpt-pmnt)',
             'MDI_PARTY_OP_WEIGHT' => 'Party Opening Weight (/party-op-weight)',
@@ -424,8 +552,15 @@ class Permission
             'MDI_PURITY_CERTIFICATE' => 'Purity Certificate (/purity-certificate)',
             'MDI_RUFF_WORK' => 'Ruff Work (/ruff-work)',
             'MDI_OTHER_ITEM_TRANS' => 'Other Item Transaction (/other-item-trans)',
+            'MDI_EINVOICE_REGISTER' => 'E-Invoice Register (/e-invoice-register)',
             'MDI_CUSTOMER' => 'Customer (/customer)',
+            'MDI_SUPPLIER_MASTER' => 'Supplier Master (/customer?type=S)',
+            'MDI_GOLDSMITH_MASTER' => 'Goldsmith Master (/customer?type=G)',
+            'MDI_REFINER_MASTER' => 'Refiner Master (/customer?type=R)',
+            'MDI_JEWELLERY_MASTER' => 'Jewellery Master (/customer?type=J)',
+            'MDI_DEPOSITOR_MASTER' => 'Depositor Weight (/customer?type=D)',
             'MDI_STAFF_MASTER' => 'Staff Master (/customer?type=F)',
+            'MDI_SALESMAN_MASTER' => 'Salesman Master (/accounts/master/sales-man)',
             'MDI_CUSTOMER_POPUP' => 'Customer Popup Routes (/customer/popup/routes)',
             'MDI_SEARCH_ITEMS' => 'Search Items (/search-items)',
             'MDI_GROUPS' => 'Groups (/groups)',
@@ -452,6 +587,10 @@ class Permission
             'MDI_RATE_HISTORY' => 'Rate History (/rate/history)',
             'MDI_KURI_DETAILS' => 'Kuri Details (/kuri-details)',
             'MDI_KURI_TYPE_MASTER' => 'Kuri Type Master (/kuri-type-master)',
+            'MDI_ALLOYS' => 'Alloys (/master/alloys)',
+            'MDI_FASHION' => 'Fashion (/master/fashion)',
+            'MDI_AREA' => 'Area (/master/area)',
+            'MDI_ROUTE' => 'Route (/master/route)',
             'MDI_SCHEME_COLLECTION' => 'Scheme / Kuri Collection (/kuri-collection)',
             'MDI_SCHEME_CLOSE' => 'Close Scheme / Kuri (/kuri-finish/close-scheme)',
             'MDI_SCHEME_INTEREST' => 'Scheme / Kuri Interest Posting (/kuri-int-post)',
@@ -490,8 +629,21 @@ class Permission
             'MDI_STAFF_WGT_TRANSACTION' => 'Staff Weight Transaction (/staff-wgt-transaction)',
             'MDI_REPAIR_COMPLAINTS' => 'Repair Complaints (/repair-complaints)',
             'MDI_REPAIR_RECEIPT_MEMO_PARTY' => 'Repair Receipt Memo To Party (/remake-rcpt-memo-to-party)',
+            'MDI_REPAIR_SMITH_MEMO' => 'Repair / Remake Smith Memo (/goldsmith-transactions?type=R)',
+            'MDI_REPAIR_ISSUE_MEMO_PARTY' => 'Repair Issue Memo To Party (/remake-issue-memo-party)',
             'MDI_REPAIR_RETURN' => 'Repair Return (/repair-return)',
             'MDI_REFINERY_BILL' => 'Refinery Bill & Return (/refinery-bill, /refinery-return)',
+
+            // ── New Modules ──────────────────────────────────────────────
+            'MDI_WHATSAPP_GATEWAY' => 'WhatsApp / SMS Gateway (/whatsapp-gateway)',
+            'MDI_GSTR_REPORTS'     => 'GST Reports - GSTR-1 / GSTR-3B / HSN (/gstr-reports)',
+            'MDI_GOLD_LOAN'        => 'Gold Loan (/gold-loan)',
+            'MDI_CATALOGUE'        => 'Product Image Catalogue (/catalogue)',
+            'MDI_TALLY_EXPORT'     => 'Tally Export (/tally-export)',
+            'MDI_HALLMARK'         => 'Hallmarking Records - BIS (/hallmark)',
+            'MDI_STAFF_PAYROLL'    => 'Staff Payroll (/staff-payroll)',
+            'MDI_BRANCH_MANAGEMENT'=> 'Branch Management (/branch-master, /branch-transfer)',
+            'MDI_SCALE_SETTINGS'   => 'Digital Weighing Scale Settings (/scale-settings)',
         ];
     }
 
@@ -504,7 +656,9 @@ class Permission
     {
         return [
             'dashboard' => 'MDI_DASHBOARD',
+            'company-select*' => 'MDI_COMPANY_SELECT',
             'application-settings*' => 'MDI_APPLICATION_SETTINGS',
+            'country-currency*' => 'MDI_APPLICATION_SETTINGS',
             'administration*' => 'MDI_ADMINISTRATION',
             'customer-campaign*' => 'MDI_CUSTOMER_CAMPAIGN',
             'user-access*' => 'MDI_USER_ACCESS',
@@ -526,6 +680,8 @@ class Permission
             'accounts/payment-confirmation*' => 'MDI_ACCOUNTS_PAYMENT_CONFIRMATION',
             'accounts/denomination-entry*' => 'MDI_ACCOUNTS_DENOMINATION_ENTRY',
             'accounts/expense-voucher-entry*' => 'MDI_ACCOUNTS_EXPENSE_VOUCHER_ENTRY',
+            'accounts/party-code-merge*' => 'MDI_ACCOUNTS_PARTY_CODE_MERGE',
+            'accounts/master/sales-man*' => 'MDI_SALESMAN_MASTER',
             'accounts/master/*' => 'MDI_ACCOUNTS_MASTER',
             'accounts/receipt*' => 'MDI_ACCOUNTS_RECEIPT',
             'accounts/payment*' => 'MDI_ACCOUNTS_PAYMENT',
@@ -545,17 +701,24 @@ class Permission
             'accounts/non-transactional-days-report*' => 'MDI_FINANCIAL_REPORTS',
             'accounts/ac-receivable-payable-summary*' => 'MDI_FINANCIAL_REPORTS',
             'accounts/group-ac-summary*' => 'MDI_FINANCIAL_REPORTS',
+            'accounts/group-ledger*' => 'MDI_FINANCIAL_REPORTS',
             'accounts/groupwise-expanded-list*' => 'MDI_FINANCIAL_REPORTS',
             'accounts/rcpt-pmnt-report*' => 'MDI_FINANCIAL_REPORTS',
+            'accounts/suspense-ac-ledger*' => 'MDI_FINANCIAL_REPORTS',
             'reports/avg-rate-profit*' => 'MDI_FINANCIAL_REPORTS',
             'cash-balance*' => 'MDI_FINANCIAL_REPORTS',
             'cash-flow-report*' => 'MDI_FINANCIAL_REPORTS',
             'integrity-checking*' => 'MDI_FINANCIAL_REPORTS',
+            'ac-summary*' => 'MDI_FINANCIAL_REPORTS',
             'sales-bill-confirmation*' => 'MDI_SALES_BILL_CONFIRMATION',
             'sales-bill-print*' => 'MDI_SALES_BILL_PRINT',
+            'sales-bill/reprint-picker*' => 'MDI_SALES_BILL_PRINT',
+            'sales-bill/edit-picker*' => 'MDI_SALES_BILL_EDIT',
+            'sales-bill/cancel-picker*' => 'MDI_SALES_BILL_CANCEL',
             'sales-bill*' => 'MDI_SALES_BILL',
             'sales-book-report*' => 'MDI_SALES_BOOK_REPORT',
             'monthly-sales-report*' => 'MDI_MONTHLY_SALES_REPORT',
+            'salesman-category-report*' => 'MDI_SALESMAN_CATEGORY_REPORT',
             'sales-register*' => 'MDI_SALES_REGISTER',
             'sales-check-list*' => 'MDI_SALES_CHECK_LIST',
             'sales-return-register*' => 'MDI_SALES_RETURN_REGISTER',
@@ -572,8 +735,10 @@ class Permission
             'purchase-register*' => 'MDI_PURCHASE_REGISTER',
             'diamond-purchase-bill*' => 'MDI_DIAMOND_PURCHASE_BILL',
             'diamond-purchase-return*' => 'MDI_DIAMOND_PURCHASE_RETURN',
+            'diamond-purchase*' => 'MDI_DIAMOND_PURCHASE_BILL',
             'stock/opening-stock*' => 'MDI_STOCK_OPENING_STOCK',
             'stock/ledger*' => 'MDI_STOCK_LEDGER',
+            'stock/list*' => 'MDI_STOCK_REGISTER',
             'stock/period-ledger*' => 'MDI_STOCK_PERIOD_LEDGER',
             'stock/item-history*' => 'MDI_STOCK_ITEM_HISTORY',
             'stock-register*' => 'MDI_STOCK_REGISTER',
@@ -601,10 +766,13 @@ class Permission
             'order-update*' => 'MDI_ORDER_UPDATE',
             'order-block*' => 'MDI_ORDER_BLOCK',
             'order-sale*' => 'MDI_ORDER_SALE',
+            'order-advance-after*' => 'MDI_ORDER_ADVANCE_AFTER',
+            'order-advance-after-receipt*' => 'MDI_ORDER_ADVANCE_AFTER',
             'order-rate-fix*' => 'MDI_ORDER_RATE_FIX',
             'order-reprint*' => 'MDI_ORDER_REPRINT',
             'order-cancel*' => 'MDI_ORDER_CANCEL',
             'goldsmith-transactions*' => 'MDI_GOLDSMITH_TRANSACTIONS',
+            'goldsmith-transactions-picker*' => 'MDI_GOLDSMITH_TRANSACTIONS',
             'goldsmith-transactions-report*' => 'MDI_GOLDSMITH_TRANSACTIONS',
             'gold-rate-story*' => 'MDI_GOLD_RATE_STORY',
             'wgt-rcpt-pmnt*' => 'MDI_WGT_RCPT_PMNT',
@@ -616,6 +784,7 @@ class Permission
             'refinery-return*' => 'MDI_REFINERY_BILL',
             'ruff-work*' => 'MDI_RUFF_WORK',
             'other-item-trans*' => 'MDI_OTHER_ITEM_TRANS',
+            'e-invoice*' => 'MDI_EINVOICE_REGISTER',
             'customer/popup/*' => 'MDI_CUSTOMER_POPUP',
             'customer*' => 'MDI_CUSTOMER',
             'search-items*' => 'MDI_SEARCH_ITEMS',
@@ -646,8 +815,10 @@ class Permission
             'kuri-collection*' => 'MDI_SCHEME_COLLECTION',
             'kuri-int-post*' => 'MDI_SCHEME_INTEREST',
             'kuri-finish/close-scheme*' => 'MDI_SCHEME_CLOSE',
+            'kuri-finish/draw*' => 'MDI_SCHEME_CLOSE',
             'kuri-finish/refund*' => 'MDI_SCHEME_REFUND',
             'passbook-print*' => 'MDI_SCHEME_PASSBOOK',
+            'reminders*' => 'MDI_TASK_REMINDERS',
             'daybook*' => 'MDI_DAYBOOK',
             'day-summary*' => 'MDI_DAY_SUMMARY',
             'customers/credit-bill-details*' => 'MDI_CUSTOMER_ANALYTICS',
@@ -688,6 +859,7 @@ class Permission
             'order-pending-details*' => 'MDI_ORDER_ANALYTICS',
             'order-returns*' => 'MDI_ORDER_ANALYTICS',
             'order-advance-report*' => 'MDI_ORDER_ANALYTICS',
+            'order-advance-after-report*' => 'MDI_ORDER_ANALYTICS',
             'order-profit-analysis*' => 'MDI_ORDER_ANALYTICS',
             'order-sample-stock*' => 'MDI_ORDER_ANALYTICS',
             'order-nos-list*' => 'MDI_ORDER_ANALYTICS',
@@ -698,13 +870,53 @@ class Permission
             'remake-reports/*' => 'MDI_REPAIR_ANALYTICS',
             'staff-reports*' => 'MDI_STAFF_ANALYTICS',
             'term-summary*' => 'MDI_STAFF_ANALYTICS',
+            'smith-ageing-report*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-fixunfix-report*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-list*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-lot-report*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-trans-summary*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-wa-analysis*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'smith-wa-summary*' => 'MDI_GOLDSMITH_ANALYTICS',
+            'extra-amt-report*' => 'MDI_JEWELLERY_ANALYTICS',
+            'jewel-summary*' => 'MDI_JEWELLERY_ANALYTICS',
+            'jewl-profit-report*' => 'MDI_JEWELLERY_ANALYTICS',
+            'jewl-rep-email*' => 'MDI_JEWELLERY_ANALYTICS',
+            'tds-report*' => 'MDI_JEWELLERY_ANALYTICS',
+            'item-add-less-report*' => 'MDI_INVENTORY_REPORTS',
+            'item-adjustment-report*' => 'MDI_INVENTORY_REPORTS',
             'staff-transaction*' => 'MDI_STAFF_TRANSACTION',
             'staff-log-update*' => 'MDI_STAFF_LOG_UPDATE',
             'staff-leave-entry*' => 'MDI_STAFF_LEAVE_ENTRY',
             'staff-wgt-transaction*' => 'MDI_STAFF_WGT_TRANSACTION',
             'repair-complaints*' => 'MDI_REPAIR_COMPLAINTS',
             'remake-rcpt-memo-to-party*' => 'MDI_REPAIR_RECEIPT_MEMO_PARTY',
+            'remake-issue-memo-party*' => 'MDI_REPAIR_ISSUE_MEMO_PARTY',
             'repair-return*' => 'MDI_REPAIR_RETURN',
+            'master/alloys*' => 'MDI_ALLOYS',
+            'master/fashion*' => 'MDI_FASHION',
+            'master/area*' => 'MDI_AREA',
+            'master/route*' => 'MDI_ROUTE',
+
+            // ── New Modules ──────────────────────────────────────────────
+            'whatsapp-gateway*'      => 'MDI_WHATSAPP_GATEWAY',
+            'api/whatsapp*'          => 'MDI_WHATSAPP_GATEWAY',
+            'gstr-reports*'          => 'MDI_GSTR_REPORTS',
+            'api/gstr*'              => 'MDI_GSTR_REPORTS',
+            'gold-loan*'             => 'MDI_GOLD_LOAN',
+            'api/gold-loan*'         => 'MDI_GOLD_LOAN',
+            'catalogue*'             => 'MDI_CATALOGUE',
+            'api/catalogue*'         => 'MDI_CATALOGUE',
+            'tally-export*'          => 'MDI_TALLY_EXPORT',
+            'api/tally-export*'      => 'MDI_TALLY_EXPORT',
+            'hallmark*'              => 'MDI_HALLMARK',
+            'api/hallmark*'          => 'MDI_HALLMARK',
+            'staff-payroll*'         => 'MDI_STAFF_PAYROLL',
+            'api/payroll*'           => 'MDI_STAFF_PAYROLL',
+            'branch-master*'         => 'MDI_BRANCH_MANAGEMENT',
+            'branch-transfer*'       => 'MDI_BRANCH_MANAGEMENT',
+            'api/branch*'            => 'MDI_BRANCH_MANAGEMENT',
+            'scale-settings*'        => 'MDI_SCALE_SETTINGS',
+            'api/scale*'             => 'MDI_SCALE_SETTINGS',
         ];
     }
 }

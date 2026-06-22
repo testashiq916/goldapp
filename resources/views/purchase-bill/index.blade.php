@@ -43,27 +43,29 @@ function applyDefaultCashBank(){
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:12px;color:#1a202c;overflow:hidden;height:100vh;
+html,body{width:100%}
+body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;font-size:13px;color:#1a202c;overflow:auto;min-height:100vh;
   background:radial-gradient(circle at 10% -10%,#eef3ff 0%,#f4f7fb 40%,#edf2f8 100%)}
 input,select,button{transition:all .15s ease}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:#f7fafc}
-::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#eef1f5}
+::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#8fa0b5}
 
 /* ── Main window ── */
 .main-window{background:#fff;border:1px solid #d6dcea;border-radius:12px;
-  box-shadow:0 10px 30px rgba(33,52,89,.10);margin:8px;overflow:hidden;position:relative}
+  box-shadow:0 10px 30px rgba(33,52,89,.10);margin:8px;overflow:hidden;position:relative;min-width:1000px}
 
 .title-bar{background:linear-gradient(135deg,#1a3a5f,#2c6282);color:#fff;
-  padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
+  padding:10px 14px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
 .title-bar .icon{width:16px;height:16px;background:#f6ad55;border-radius:4px;flex-shrink:0}
 
 /* ── Top section ── */
 .top-section{background:#f9fbff;padding:10px;display:grid;
   grid-template-columns:1.2fr 1fr 1.1fr;gap:4px 14px;border-bottom:1px solid #d6dcea}
 .top-section .row{display:flex;align-items:center;gap:4px;padding:1px 0;min-height:26px}
-.top-section label{font-weight:600;font-size:11px;min-width:72px;color:#6b7280}
-.top-section input,.top-section select{font-size:11px;padding:2px 6px;border:1px solid #d6dcea;
+.top-section label{font-weight:600;font-size:12px;min-width:72px;color:#6b7280}
+.top-section input,.top-section select{font-size:12px;padding:2px 6px;border:1px solid #d6dcea;
   background:#fff;height:26px;border-radius:7px;color:#2d3748;
   box-shadow:inset 0 1px 2px rgba(17,24,39,.03)}
 .top-section input:focus,.top-section select:focus{border-color:#a9b7ff;
@@ -74,37 +76,42 @@ input,select,button{transition:all .15s ease}
 .top-section .row.sup-row{position:relative}
 #supDrop{position:absolute;top:28px;left:72px;width:380px;max-height:200px;overflow-y:auto;
   background:#111827;border:1px solid #374151;border-radius:6px;
-  box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:500;display:none;font-size:11px;color:#f9fafb}
+  box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:500;display:none;font-size:12px;color:#f9fafb}
 #supDrop .s-row{padding:5px 8px;cursor:pointer;border-bottom:1px solid #374151}
 #supDrop .s-row:hover{background:#1f2937}
 #supDrop .s-row .s-code{font-weight:600;color:#93c5fd;margin-right:5px}
-.sup-btns button{font-size:10px;padding:1px 7px;border:1px solid #d6dcea;border-radius:6px;
+.sup-btns button{font-size:11px;padding:1px 7px;border:1px solid #d6dcea;border-radius:6px;
   cursor:pointer;background:#fff;height:26px;color:#374151}
 .sup-btns button:hover{background:#eef3ff}
 
 /* ── Items table ── */
 .table-container{margin:0 8px;border:1px solid #d6dcea;border-radius:10px;
-  background:#fff;overflow:hidden;box-shadow:0 3px 10px rgba(32,55,92,.05)}
-table.items{width:100%;border-collapse:collapse;font-size:11px}
+  background:#fff;overflow-x:auto;overflow-y:hidden;box-shadow:0 3px 10px rgba(32,55,92,.05);
+  -webkit-overflow-scrolling:touch}
+.table-container::-webkit-scrollbar{height:8px}
+.table-container::-webkit-scrollbar-track{background:#f0f3f7}
+.table-container::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:4px}
+.table-container::-webkit-scrollbar-thumb:hover{background:#8fa0b5}
+table.items{width:100%;min-width:900px;border-collapse:collapse;font-size:12px}
 table.items thead th{background:linear-gradient(180deg,#364891,#2d3d7b);color:#f7f9ff;
-  padding:5px 5px;border:1px solid #42529e;font-weight:600;font-size:10px;
+  padding:5px 5px;border:1px solid #42529e;font-weight:600;font-size:11px;
   text-align:center;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
 table.items tbody td{border:1px solid #edf1f7;padding:1px 2px;text-align:center;height:22px}
 table.items tbody tr:nth-child(odd){background:#fff}
 table.items tbody tr:nth-child(even){background:#f7faff}
 table.items tbody tr:hover{background:#edf3ff}
 table.items tbody tr.sel td{background:#dbeafe}
-table.items tbody input{font-size:11px;border:none;background:transparent;
+table.items tbody input{font-size:12px;border:none;background:transparent;
   text-align:center;width:100%;height:100%}
 table.items tbody input:focus{background:#fffff0;outline:2px solid #4299e1;border-radius:2px}
 table.items tbody input.num{text-align:right}
 
 /* ── Table footer ── */
 .table-footer{display:flex;align-items:center;background:#f9fbff;
-  padding:5px 10px;gap:8px;font-size:11px;font-weight:600;
+  padding:5px 10px;gap:8px;font-size:12px;font-weight:600;
   color:#2d3748;border-top:1px solid #d6dcea}
 .table-footer button{background:#fff;border:1px solid #d0d9ea;border-radius:8px;
-  padding:2px 12px;font-size:11px;cursor:pointer;font-weight:600;color:#3f4a5b}
+  padding:2px 12px;font-size:12px;cursor:pointer;font-weight:600;color:#3f4a5b}
 .table-footer button:hover{background:#eef3ff;border-color:#bfcaf0}
 .table-footer button:active{transform:translateY(1px)}
 .tf-label{color:#744210;font-weight:700}
@@ -113,31 +120,31 @@ table.items tbody input.num{text-align:right}
 /* ── Bottom section (PB compact model) ── */
 .bottom-section{background:#f9fbff;padding:5px 8px 6px;
   display:flex;align-items:flex-start;gap:8px;
-  border-top:1px solid #d6dcea;font-size:11px}
+  border-top:1px solid #d6dcea;font-size:12px}
 .foot-rows{flex:1;display:flex;flex-direction:column;gap:0}
 .frow{display:flex;align-items:center;gap:3px;min-height:24px;white-space:nowrap;flex-wrap:nowrap}
-.fl{font-weight:600;font-size:11px;color:#4a5568;padding:0 2px 0 4px;white-space:nowrap;flex-shrink:0}
-input.fv,select.fv{font-size:11px;padding:1px 4px;border:1px solid #c8d3e8;
+.fl{font-weight:600;font-size:12px;color:#4a5568;padding:0 2px 0 4px;white-space:nowrap;flex-shrink:0}
+input.fv,select.fv{font-size:12px;padding:1px 4px;border:1px solid #c8d3e8;
   background:#fff;height:22px;border-radius:5px;color:#2d3748;flex-shrink:0;
   box-shadow:inset 0 1px 2px rgba(17,24,39,.03)}
 input.fv:focus,select.fv:focus{border-color:#a9b7ff;box-shadow:0 0 0 2px rgba(91,109,238,.14);outline:none}
 .fw36{width:38px}.fw46{width:48px}.fw70{width:72px}.fw84{width:86px}.fw94{width:96px}.fwx{flex:1;min-width:60px}
 .fsep{display:inline-block;width:6px;flex-shrink:0}
-.flbl{font-size:11px;color:#4a5568;padding-right:4px;flex-shrink:0}
+.flbl{font-size:12px;color:#4a5568;padding-right:4px;flex-shrink:0}
 .fchk{display:inline-flex;align-items:center;gap:2px;flex-shrink:0}
 .fchk input[type=checkbox]{width:13px;height:13px;margin:0;cursor:pointer}
 /* Foot buttons column */
 .foot-btns{display:flex;flex-direction:column;gap:3px;min-width:108px;flex-shrink:0;padding-left:4px}
 .fbtn{background:linear-gradient(180deg,#f5f5f5,#e8e8e8);border:1px solid #adadad;
-  border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;font-weight:600;
+  border-radius:4px;padding:2px 6px;font-size:12px;cursor:pointer;font-weight:600;
   color:#111;height:26px;font-family:inherit;text-align:center;white-space:nowrap}
 .fbtn:hover{background:linear-gradient(180deg,#fff,#f0f0f0)}
 .fbtn:active{background:#e0e0e0;transform:translateY(1px)}
 .fbtn.fb-save{background:linear-gradient(180deg,#e8f0ff,#d6e4ff);border-color:#7097d6;color:#1a3a7f}
 .fbtn.fb-save:hover{background:linear-gradient(180deg,#f0f5ff,#e0ecff)}
-.foot-chk{display:flex;align-items:center;gap:3px;font-size:11px;color:#374151;padding:1px 0}
+.foot-chk{display:flex;align-items:center;gap:3px;font-size:12px;color:#374151;padding:1px 0}
 .foot-chk input[type=checkbox]{width:13px;height:13px;margin:0;cursor:pointer}
-.inline-chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#4a5568}
+.inline-chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4a5568}
 .secondary-sync-inline{justify-content:center;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-weight:600}
 
 /* 3-panel aligned bottom layout */
@@ -145,26 +152,26 @@ input.fv:focus,select.fv:focus{border-color:#a9b7ff;box-shadow:0 0 0 2px rgba(91
 .fp1,.fp2{flex-shrink:0}
 .fp3{flex:1;min-width:0}
 .fp1 .fr,.fp2 .fr,.fp3 .fr{display:flex;align-items:center;gap:3px;height:22px;white-space:nowrap}
-.fl1{font-weight:600;font-size:11px;color:#4a5568;min-width:62px;flex-shrink:0;white-space:nowrap;padding-right:3px}
-.fl2{font-weight:600;font-size:11px;color:#4a5568;min-width:56px;flex-shrink:0;white-space:nowrap;padding-right:3px}
+.fl1{font-weight:600;font-size:12px;color:#4a5568;min-width:62px;flex-shrink:0;white-space:nowrap;padding-right:3px}
+.fl2{font-weight:600;font-size:12px;color:#4a5568;min-width:56px;flex-shrink:0;white-space:nowrap;padding-right:3px}
 
 /* ── Exchange section ── */
 .exch-bar{display:flex;align-items:center;background:#fffbeb;
-  padding:4px 10px;gap:10px;font-size:11px;font-weight:600;
+  padding:4px 10px;gap:10px;font-size:12px;font-weight:600;
   color:#744210;border-top:1px solid #fde68a}
 .exch-bar button{background:#fff;border:1px solid #f6ad55;border-radius:8px;
-  padding:2px 10px;font-size:11px;cursor:pointer;font-weight:600;color:#b45309}
+  padding:2px 10px;font-size:12px;cursor:pointer;font-weight:600;color:#b45309}
 .exch-bar button:hover{background:#fef3c7}
 #exchSection{border-top:1px solid #fde68a;background:#fffdf5}
-table.exch{width:100%;border-collapse:collapse;font-size:11px}
+table.exch{width:100%;border-collapse:collapse;font-size:12px}
 table.exch thead th{background:linear-gradient(180deg,#92400e,#78350f);color:#fef3c7;
-  padding:4px 5px;border:1px solid #92400e;font-weight:600;font-size:10px;
+  padding:4px 5px;border:1px solid #92400e;font-weight:600;font-size:11px;
   text-align:center;white-space:nowrap;letter-spacing:.4px}
 table.exch tbody td{border:1px solid #fde68a;padding:1px 2px;text-align:center;height:22px}
 table.exch tbody tr:nth-child(odd){background:#fffdf5}
 table.exch tbody tr:nth-child(even){background:#fef9e7}
 table.exch tbody tr:hover{background:#fef3c7}
-table.exch tbody input{font-size:11px;border:none;background:transparent;
+table.exch tbody input{font-size:12px;border:none;background:transparent;
   text-align:center;width:100%;height:100%}
 table.exch tbody input:focus{background:#fffff0;outline:2px solid #f59e0b;border-radius:2px}
 table.exch tbody input.num{text-align:right}
@@ -176,16 +183,16 @@ table.exch tbody input.num{text-align:right}
 .modal-box{background:#fff;border:1px solid #d6dcea;border-radius:10px;
   min-width:380px;max-width:580px;box-shadow:0 8px 32px rgba(0,0,0,.15);overflow:hidden}
 .modal-head{background:linear-gradient(135deg,#1a3a5f,#2c6282);color:#fff;
-  padding:8px 12px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+  padding:8px 12px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .modal-head .cls{background:rgba(255,255,255,.15);border:none;color:#fff;width:22px;height:20px;
   font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:4px}
 .modal-head .cls:hover{background:#fc8181}
 .modal-body{padding:10px 12px}
 .modal-footer{padding:6px 12px;border-top:1px solid #e2e8f0;display:flex;gap:6px;justify-content:flex-end}
-.mbtn{padding:4px 18px;font-size:11px;font-weight:600;border:1px solid #d0d9ea;
+.mbtn{padding:4px 18px;font-size:12px;font-weight:600;border:1px solid #d0d9ea;
   border-radius:8px;background:#fff;cursor:pointer;color:#2d3748}
 .mbtn:hover{background:#eef3ff}
-.srch-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.srch-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .srch-tbl th{background:linear-gradient(180deg,#364891,#2d3d7b);color:#f7f9ff;
   padding:4px 8px;text-align:left;font-weight:600}
 .srch-tbl td{padding:3px 8px;border-bottom:1px solid #edf1f7;cursor:pointer}
@@ -208,7 +215,32 @@ table.exch tbody input.num{text-align:right}
   .title-bar{font-size:11px;padding:5px 8px}
   .frow{flex-wrap:wrap}
 }
+body{font-size:15px}
+.title-bar{font-size:16px}
+.top-section .row{min-height:30px}
+.top-section label{font-size:14px}
+.top-section input,.top-section select{font-size:14px;height:28px}
+.sup-btns button{font-size:13px;height:28px}
+table.items{font-size:14px}
+table.items thead th{font-size:13px;padding:6px 5px}
+table.items tbody td{height:28px}
+table.items tbody input{font-size:14px}
+table.exch{font-size:14px}
+table.exch thead th{font-size:13px}
+table.exch tbody td{height:28px}
+table.exch tbody input{font-size:14px}
+.table-footer{font-size:14px}
+.table-footer button{font-size:14px;padding:3px 12px}
+.exch-bar{font-size:14px}
+.exch-bar button{font-size:13px}
+.bottom-section{font-size:14px}
+.fl,.fl1,.fl2,.flbl{font-size:14px}
+input.fv,select.fv{font-size:14px;height:26px}
+.fbtn{font-size:14px}
+.foot-chk{font-size:13px}
+.inline-chk{font-size:13px}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="main-window">
@@ -643,6 +675,23 @@ const sv = (id, v) => {
   if (el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA') el.value = el.type === 'date' ? normDateVal(v) : v;
   else el.textContent = v;
 };
+function setSalesManValue(code, name=''){
+  const sel = $('fSalesMan');
+  if (!sel) return;
+  const raw = String(code || '').trim();
+  const label = String(name || '').trim();
+  if (!raw) { sel.value = ''; return; }
+  const upper = raw.toUpperCase();
+  let opt = Array.from(sel.options).find(o => String(o.value || '').trim().toUpperCase() === upper);
+  if (!opt) {
+    opt = Array.from(sel.options).find(o => String(o.textContent || '').trim().toUpperCase() === upper);
+  }
+  if (!opt) {
+    opt = new Option(label || raw, raw);
+    sel.appendChild(opt);
+  }
+  sel.value = opt.value;
+}
 const gf   = (id, d=0) => parseFloat(gv(id)) || d;
 const r2   = n => Math.round(n*100)/100;
 const r3   = n => Math.round(n*1000)/1000;
@@ -910,7 +959,7 @@ function doRecalc() {
     tcs_perc:      gf('fTcsPerc'),
     others:        gf('fOthers'),
     paid_amt:      gf('fPaidAmt'),
-    auto_paid:     paidAmtDirty ? 0 : 1,
+    auto_paid:     (PB_CONFIG.mode === 'bill' && currentSlno === 0 && !paidAmtDirty) ? 1 : 0,
     ob:            gf('fOB'),
     interstate:    $('fInterstate').checked?1:0,
     external:      $('fExternal').checked?1:0,
@@ -939,7 +988,7 @@ function doRecalc() {
 }
 function onPaidChange() {
   paidAmtDirty = true;
-  sv('fBalance', fmt2(gf('fNetTotal') - gf('fPaidAmt')));
+  sv('fBalance', fmt2(gf('fNetTotal') + gf('fOthers') - gf('fPaidAmt')));
   triggerRecalc();
 }
 function onPaidCommit() {
@@ -1064,7 +1113,12 @@ function itemLookup(i){
   const rate=items[i].rate||PB_CONFIG.rates.gold;
   fetch(`${url('/api/purchase-bill/item-lookup')}?code=${encodeURIComponent(code)}&gold_rate=${rate}`)
     .then(r=>r.json()).then(d=>{
-      if(d.error||!d.code) return;
+      if(d.error||!d.code){
+        // Typed code isn't in the items master — open the search popup
+        // pre-filtered by what they typed so they can pick the right one.
+        openItemSearch(i);
+        return;
+      }
       items[i].name    = d.name    || '';
       items[i].purity  = d.purity  || '';
       items[i].touch   = parseFloat(d.touch)  || 0;
@@ -1184,12 +1238,30 @@ function itemSrchKey(e) {
 function saveBill(){
   if(!gv('fSupCode').trim()){ alert('Please enter a supplier.'); return; }
   if(!gv('fSalesMan').trim()){ alert('Please select a salesman.'); return; }
+  // Reject rows that have data (name/qty/weight/amount) but no item code.
+  const missingCode = items.findIndex(r =>
+    !((r.code||'').toString().trim()) &&
+    (((r.name||'').toString().trim()!=='') || (+r.qty>0) || (+r.weight>0) || (+r.amount>0))
+  );
+  if(missingCode >= 0){
+    alert('Item code is required for row '+(missingCode+1)+' ('+((items[missingCode].name||'').toString().trim()||'no name')+').');
+    return;
+  }
+  const missingExchCode = exchItems.findIndex(r =>
+    !((r.code||'').toString().trim()) &&
+    (((r.name||'').toString().trim()!=='') || (+r.qty>0) || (+r.weight>0) || (+r.amount>0))
+  );
+  if(missingExchCode >= 0){
+    alert('Item code is required for exchange row '+(missingExchCode+1)+' ('+((exchItems[missingExchCode].name||'').toString().trim()||'no name')+').');
+    return;
+  }
   if(!items.filter(r=>r.code).length){ alert('Please add at least one item.'); return; }
   $('btnSave').disabled=true;
   const payload={
     mode: PB_CONFIG.mode||'bill',
     slno: currentSlno,
     doc_no:   gv('fDocNo'),
+    manual_bill_no: $('fManual').checked ? 1 : 0,
     supp_bill_no: gv('fBillNo'),   // supplier's own bill number
     bill_date:gv('fDate'),
     order_no: gv('fOrderNo'),
@@ -1226,14 +1298,19 @@ function saveBill(){
       const qs = new URLSearchParams({doc_no:d.doc_no});
       openPurchasePrintPopup(url('/purchase-bill-print?')+qs.toString());
     }
-    resetForm(); loadNextBillNo();
+    const savedSalesMan = gv('fSalesMan');
+    resetForm();
+    sv('fSalesMan', savedSalesMan);
+    loadNextBillNo();
   }).catch(e=>{ $('btnSave').disabled=false; alert('Save failed: '+e); });
 }
 
 // ── Load bill ────────────────────────────────────────────────────────────────
-function loadBill(billNo){
-  if(!billNo) return;
-  const qs = new URLSearchParams({ bill_no: billNo, action: PB_CONFIG.mode || 'bill' });
+function loadBill(billNo, slno=0){
+  if(!billNo && !slno) return;
+  const qs = new URLSearchParams({ action: PB_CONFIG.mode || 'bill' });
+  if (billNo) qs.set('bill_no', billNo);
+  if (slno) qs.set('slno', slno);
   fetch(url('/api/purchase-bill/get?') + qs.toString())
     .then(r=>r.json()).then(d=>{ if(d.error||!d.doc_no){ alert(d.error||'Not found'); return; } applyBill(d); })
     .catch(()=>{});
@@ -1246,7 +1323,7 @@ function applyBill(d){
   sv('fDate',d.date||''); sv('fOrderNo',d.order_no||'');
   sv('fSupCode',d.sup_code||''); sv('fSupName',d.sup_name||'');
   sv('fAddress',d.address||''); sv('fPan',d.pan||''); sv('fMobile',d.mobile||'');
-  sv('fOB',fmt2(d.ob||0)); sv('fSalesMan',d.salesman||'');
+  sv('fOB',fmt2(d.ob||0)); setSalesManValue(d.salesman||'', d.salesman_name||'');
   sv('fBillTotal',fmt2(d.bill_total||0)); sv('fDiscPerc',d.disc_perc||0);
   sv('fDiscount',fmt2(d.discount||0)); sv('fRound',fmt2(d.round||0)); sv('fTaxPerc',d.tax_perc||0);
   sv('fTaxAmt',fmt2(d.tax_amt||0)); sv('fCess',fmt2(d.cess||0));
@@ -1499,9 +1576,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(PB_CONFIG.mode==='cancel'||PB_CONFIG.mode==='reprint') $('btnSave').style.display='none';
   const qs = new URLSearchParams(window.location.search);
   const urlDocNo = qs.get('doc_no');
+  const urlSlno = Number(qs.get('slno') || 0);
   const autoPrint = qs.get('autoprint') === '1';
-  if (urlDocNo) {
-    loadBill(urlDocNo);
+  if (urlDocNo || urlSlno) {
+    loadBill(urlDocNo, urlSlno);
     if (autoPrint && PB_CONFIG.mode === 'reprint') {
       setTimeout(() => openPrintView(true,true), 400);
     }

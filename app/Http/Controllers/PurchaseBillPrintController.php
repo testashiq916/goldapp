@@ -172,31 +172,27 @@ class PurchaseBillPrintController extends Controller
     {
         $info = [
             'name' => (string) ($settings['Company']['Name'] ?? config('app.name', '')),
-            'address' => (string) ($settings['Company']['Addr'] ?? ''),
+            'address' => (string) ($settings['Company']['Addr'] ?? ($settings['Company']['Addr1'] ?? '')),
             'address2' => (string) ($settings['Company']['Addr2'] ?? ''),
             'phone' => (string) ($settings['Company']['Phone'] ?? ''),
-            'gstin' => (string) ($settings['Company']['KGST'] ?? ''),
+            'gstin' => (string) ($settings['Company']['GSTIN'] ?? ($settings['Company']['KGST'] ?? '')),
         ];
 
         if ($this->hasTable('generals')) {
             try {
                 $generalRows = DB::table('generals')
-                    ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE'])
+                    ->whereIn('code', ['SHOPNM', 'SHOPADDR', 'SHOPPHONE', 'SHOPGSTIN', 'GSTIN'])
                     ->get(['code', 'cvalue']);
 
                 foreach ($generalRows as $row) {
                     $code = trim((string) ($row->code ?? ''));
                     $value = trim((string) ($row->cvalue ?? ''));
+                    if ($value === '') continue;
 
-                    if ($code === 'SHOPNM' && $value !== '') {
-                        $info['name'] = $value;
-                    }
-                    if ($code === 'SHOPADDR' && $value !== '') {
-                        $info['address'] = $value;
-                    }
-                    if ($code === 'SHOPPHONE' && $value !== '') {
-                        $info['phone'] = $value;
-                    }
+                    if ($code === 'SHOPNM')   $info['name'] = $value;
+                    if ($code === 'SHOPADDR') $info['address'] = $value;
+                    if ($code === 'SHOPPHONE')$info['phone'] = $value;
+                    if ($code === 'SHOPGSTIN' || $code === 'GSTIN') $info['gstin'] = $value;
                 }
             } catch (\Throwable) {
             }

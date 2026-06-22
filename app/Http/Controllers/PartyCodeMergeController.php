@@ -117,6 +117,156 @@ class PartyCodeMergeController extends Controller
         }
     }
 
+    public function saleBillsPreview(Request $request): JsonResponse
+    {
+        if (!$request->session()->has('user_code')) {
+            return response()->json(['ok' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        [$error, $payload] = $this->validateSaleBillPayload($request);
+        if ($error !== null) {
+            return response()->json(['ok' => false, 'message' => $error], 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'preview' => $this->buildSaleBillPreview($payload['billnos'], $payload['target']),
+        ]);
+    }
+
+    public function saleBillsLink(Request $request): JsonResponse
+    {
+        if (!$request->session()->has('user_code')) {
+            return response()->json(['ok' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        [$error, $payload] = $this->validateSaleBillPayload($request);
+        if ($error !== null) {
+            return response()->json(['ok' => false, 'message' => $error], 422);
+        }
+
+        $preview = $this->buildSaleBillPreview($payload['billnos'], $payload['target']);
+        $slnos = collect($preview['bill_rows'] ?? [])
+            ->pluck('slno')
+            ->map(fn ($slno) => (int) $slno)
+            ->filter(fn ($slno) => $slno > 0)
+            ->values()
+            ->all();
+
+        if ($slnos === []) {
+            return response()->json(['ok' => false, 'message' => 'No matching sale bills found.'], 422);
+        }
+
+        $target = $payload['target'];
+        $targetName = (string) $preview['target']['name'];
+
+        // Capture the old custcode per slno BEFORE updating salesm so we can
+        // remap the matching daybook rows too (otherwise the A/c Ledger of the
+        // target code won't reflect the link).
+        $originalCodes = [];
+        if ($this->hasTable('salesm') && in_array('custcode', $this->columnList('salesm'), true)) {
+            $originalCodes = DB::table('salesm')
+                ->whereIn('slno', $slnos)
+                ->pluck('custcode', 'slno')
+                ->toArray();
+        }
+
+        $update = ['custcode' => $target];
+        if ($this->hasTable('salesm') && in_array('custname', $this->columnList('salesm'), true)) {
+            $update['custname'] = $targetName;
+        }
+
+        DB::table('salesm')->whereIn('slno', $slnos)->update($update);
+
+        $ledgerUpdated = $this->remapSaleBillLedger($slnos, $originalCodes, $target, $targetName);
+
+        return response()->json([
+            'ok' => true,
+            'message' => count($slnos) . ' sale bill(s) linked to customer ' . $target . '.'
+                . ($ledgerUpdated > 0 ? ' A/c Ledger rows updated: ' . $ledgerUpdated . '.' : ''),
+            'summary' => [
+                'updated' => count($slnos),
+                'target' => $target,
+                'ledger_rows_updated' => $ledgerUpdated,
+            ],
+            'preview' => $preview,
+        ]);
+    }
+
+    private function remapSaleBillLedger(array $slnos, array $originalCodes, string $target, string $targetName): int
+    {
+        if (!$this->hasTable('daybook')) {
+            return 0;
+        }
+
+        $touched = 0;
+        $target = strtoupper(trim($target));
+        $oldNameCache = [];
+
+        foreach ($slnos as $slno) {
+            $slno = (int) $slno;
+            $oldCode = strtoupper(trim((string) ($originalCodes[$slno] ?? '')));
+            if ($oldCode === '' || $oldCode === $target) {
+                continue;
+            }
+
+            $touched += DB::table('daybook')
+                ->where('slno', $slno)
+                ->whereRaw('UPPER(TRIM(accode)) = ?', [$oldCode])
+                ->update(['accode' => $target]);
+
+            if (in_array('opaccode', $this->columnList('daybook'), true)) {
+                $touched += DB::table('daybook')
+                    ->where('slno', $slno)
+                    ->whereRaw('UPPER(TRIM(opaccode)) = ?', [$oldCode])
+                    ->update(['opaccode' => $target]);
+            }
+
+            if ($targetName !== '' && $this->hasTable('daybookpart') && in_array('particular', $this->columnList('daybookpart'), true)) {
+                if (!array_key_exists($oldCode, $oldNameCache)) {
+                    $oldNameCache[$oldCode] = $this->lookupPartyName($oldCode);
+                }
+                $oldName = $oldNameCache[$oldCode];
+                if ($oldName !== '' && $oldName !== $targetName) {
+                    DB::table('daybookpart')
+                        ->where('slno', $slno)
+                        ->update([
+                            'particular' => DB::raw('REPLACE(particular, ' . $this->quoteSqlString($oldName) . ', ' . $this->quoteSqlString($targetName) . ')'),
+                        ]);
+                }
+            }
+        }
+
+        return $touched;
+    }
+
+    private function lookupPartyName(string $code): string
+    {
+        $code = strtoupper(trim($code));
+        if ($code === '') {
+            return '';
+        }
+        foreach (['clients', 'accountm'] as $table) {
+            if (!$this->hasTable($table) || !in_array('name', $this->columnList($table), true)) {
+                continue;
+            }
+            $codeCol = $table === 'accountm' ? 'accode' : 'code';
+            $name = DB::table($table)
+                ->whereRaw('UPPER(TRIM(' . $codeCol . ')) = ?', [$code])
+                ->value('name');
+            $name = trim((string) $name);
+            if ($name !== '') {
+                return $name;
+            }
+        }
+        return '';
+    }
+
+    private function quoteSqlString(string $value): string
+    {
+        return "'" . str_replace("'", "''", $value) . "'";
+    }
+
     private function loadCodeHints(): array
     {
         $rows = collect();
@@ -218,6 +368,86 @@ class PartyCodeMergeController extends Controller
             $codes[$code] = $code;
         }
         return array_values($codes);
+    }
+
+    private function validateSaleBillPayload(Request $request): array
+    {
+        if (!$this->hasTable('salesm') || !in_array('billno', $this->columnList('salesm'), true) || !in_array('custcode', $this->columnList('salesm'), true)) {
+            return ['Sales bill table or required columns are not available.', null];
+        }
+
+        $billnos = $this->parseBillNos((string) $request->input('billnos', ''));
+        $target = strtoupper(trim((string) $request->input('target_code', '')));
+
+        if ($billnos === []) {
+            return ['Enter at least one sale bill number.', null];
+        }
+        if ($target === '') {
+            return ['Customer code is required.', null];
+        }
+
+        $targetMeta = $this->loadCodeMeta($target);
+        if (!$targetMeta['has_client']) {
+            return ['Customer code not found: ' . $target, null];
+        }
+
+        return [null, ['billnos' => $billnos, 'target' => $target]];
+    }
+
+    private function parseBillNos(string $raw): array
+    {
+        $parts = preg_split('/[\r\n,;]+/', strtoupper(trim($raw))) ?: [];
+        $billnos = [];
+        foreach ($parts as $part) {
+            $billno = trim($part);
+            if ($billno === '') {
+                continue;
+            }
+            $billnos[$billno] = $billno;
+        }
+        return array_values($billnos);
+    }
+
+    private function buildSaleBillPreview(array $billnos, string $target): array
+    {
+        $placeholders = implode(',', array_fill(0, count($billnos), '?'));
+        $select = ['slno', 'billno'];
+        foreach (['tdate', 'custcode', 'custname', 'netamt', 'billamt'] as $column) {
+            if (in_array($column, $this->columnList('salesm'), true)) {
+                $select[] = $column;
+            }
+        }
+
+        $query = DB::table('salesm')
+            ->select($select)
+            ->whereRaw('TRIM(billno) IN (' . $placeholders . ')', $billnos);
+
+        if (in_array('tdate', $this->columnList('salesm'), true)) {
+            $query->orderBy('tdate');
+        }
+
+        $rows = $query->orderBy('billno')
+            ->get()
+            ->map(fn ($row) => [
+                'slno' => (int) ($row->slno ?? 0),
+                'billno' => trim((string) ($row->billno ?? '')),
+                'tdate' => (string) ($row->tdate ?? ''),
+                'custcode' => trim((string) ($row->custcode ?? '')),
+                'custname' => trim((string) ($row->custname ?? '')),
+                'billamt' => (float) ($row->netamt ?? $row->billamt ?? 0),
+            ])
+            ->values()
+            ->all();
+
+        $found = collect($rows)->pluck('billno')->map(fn ($billno) => strtoupper(trim((string) $billno)))->all();
+        $missing = array_values(array_diff($billnos, $found));
+
+        return [
+            'target' => array_merge(['code' => $target], $this->loadCodeMeta($target)),
+            'bill_rows' => $rows,
+            'missing_billnos' => $missing,
+            'total_bills' => count($rows),
+        ];
     }
 
     private function buildPreview(array $sources, string $target): array

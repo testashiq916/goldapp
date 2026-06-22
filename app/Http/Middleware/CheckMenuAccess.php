@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckMenuAccess
@@ -22,8 +23,18 @@ class CheckMenuAccess
         if ($userCode === '') {
             return $next($request);
         }
+
+        // Superusers always have full access bypass.
+        if (in_array($userCode, ['ADMIN', 'MGR', 'DEVELOPER'], true)) {
+            return $next($request);
+        }
+
         if (!$request->session()->has('userd_exists')) {
-            $request->session()->put('userd_exists', Schema::hasTable('userd'));
+            try {
+                $request->session()->put('userd_exists', Schema::hasTable('userd'));
+            } catch (Throwable $e) {
+                $request->session()->put('userd_exists', false);
+            }
         }
         if (!$request->session()->get('userd_exists')) {
             return $next($request);
@@ -34,34 +45,47 @@ class CheckMenuAccess
             return $next($request);
         }
 
-        $userPermissions = DB::table('userd')
-            ->whereRaw('UPPER(TRIM(code)) = ?', [$userCode])
-            ->pluck('menuitem')
-            ->map(fn ($item) => strtoupper(trim((string) $item)))
-            ->values()
-            ->all();
-
-        $hasAnyMdiPermission = collect($userPermissions)->contains(
-            fn (string $permission) => str_starts_with($permission, 'MDI_')
-        );
-
-        // Legacy users without MDI_* rows keep current unrestricted behavior.
-        if (!$hasAnyMdiPermission) {
+        try {
+            $userPermissions = DB::table('userd')
+                ->whereRaw('UPPER(TRIM(code)) = ?', [$userCode])
+                ->pluck('menuitem')
+                ->map(fn ($item) => strtoupper(trim((string) $item)))
+                ->values()
+                ->all();
+        } catch (Throwable $e) {
             return $next($request);
         }
 
-        // Dashboard is the post-login shell. If a user has any MDI_* access,
-        // allow opening dashboard even when the explicit MDI_DASHBOARD row is
-        // missing or out of sync.
-        if ($path === 'dashboard') {
+        if ($this->hasPermission($requiredPermission, $userPermissions)) {
             return $next($request);
         }
 
-        if (in_array($requiredPermission, $userPermissions, true)) {
+        if ($request->is('/') || $request->is('dashboard') || $request->is('dashboard/*')) {
+            // Dashboard shell is always allowed so the user can navigate to other modules.
+            // NativeDashboardController blocks the internal content if access is denied.
             return $next($request);
         }
 
         abort(403, 'Access Denied');
+    }
+
+    private function hasPermission(string $requiredPermission, array $userPermissions): bool
+    {
+        if (in_array($requiredPermission, $userPermissions, true)) {
+            return true;
+        }
+
+        $aliases = [
+            'MDI_COMPANY_SELECT' => ['COMPANYSELECT', 'COMPANY_SELECT', 'MDI_COMPANYSELECT'],
+        ];
+
+        foreach ($aliases[$requiredPermission] ?? [] as $alias) {
+            if (in_array($alias, $userPermissions, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isPublicPath(string $path): bool

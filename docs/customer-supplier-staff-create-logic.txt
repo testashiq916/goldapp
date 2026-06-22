@@ -1,0 +1,125 @@
+Customer, Supplier, Staff Create Logic
+======================================
+
+Main pages
+----------
+Customer add:
+/customer/add?type=C
+
+Supplier add:
+/customer/add?type=S
+
+Staff add:
+/customer/add?type=F
+
+List pages:
+/customer?type=C&list=1
+/customer?type=S&list=1
+/customer?type=F&list=1
+
+
+Main API routes
+---------------
+Get next code:
+GET /api/customer/next-code?type=C
+GET /api/customer/next-code?type=S
+GET /api/customer/next-code?type=F
+
+Save:
+POST /api/customer/save
+
+Edit/load:
+GET /api/customer/get?code=CODE
+
+Delete:
+POST /api/customer/delete
+
+
+Storage tables
+--------------
+All three records are saved in the clients table.
+
+Customer:
+clients.ctype = C
+
+Supplier:
+clients.ctype = S
+
+Staff:
+clients.ctype = F
+
+The account row is also created or updated in accountm using the same code:
+accountm.accode = clients.code
+
+
+Create flow
+-----------
+1. Open /customer/add with type C, S, or F.
+2. The form calls /api/customer/next-code for a suggested code.
+3. If the user does not change the suggested code, the form sends an empty code on save.
+4. The server reserves the final latest code inside save logic to avoid duplicate numbers.
+5. The server validates required fields.
+6. The server builds the clients row.
+7. The server inserts or updates clients.
+8. The server inserts or updates accountm.
+9. The response returns the saved code and data.
+10. The browser redirects to /customer/edit?type=TYPE&code=CODE.
+
+
+Code generation
+---------------
+Customer:
+Uses CPREFIX from generals when available.
+Uses CLASTNO from generali.
+Fallback prefix is C.
+
+Supplier:
+Uses SPREFIX from generals when available.
+Uses SLASTNO from generali.
+Fallback prefix is S.
+
+Staff:
+Does not use CPREFIX or SPREFIX.
+Uses the staff type fallback prefix F.
+Uses the shared non-customer counter path.
+Manual staff codes also update the counter to reduce future duplicate codes.
+
+
+Important controller methods
+----------------------------
+File:
+app/Http/Controllers/NativeCustomerController.php
+
+Methods:
+add()
+nextCode()
+save()
+getNextAutoCode()
+reserveNextCode()
+syncCodeCounter()
+resolvePartyCodePrefix()
+buildClientRow()
+upsertAccountM()
+
+
+Important view
+--------------
+File:
+resources/views/native/customer/form.blade.php
+
+Important JavaScript:
+canAutoLoadLatestCode()
+loadLatestCustomerCode()
+btnSave click handler
+
+Current supported auto-code add types:
+C, S, F, D
+
+
+Notes
+-----
+Secondary database sync is only for customers and suppliers.
+Staff is not included in secondary sync.
+
+Customer and depositor require phone or mobile.
+Supplier and staff do not require phone or mobile.

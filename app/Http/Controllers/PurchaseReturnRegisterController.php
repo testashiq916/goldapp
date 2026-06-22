@@ -52,6 +52,12 @@ class PurchaseReturnRegisterController extends Controller
                 'd.rate', 'd.qty', 'd.weight', 'd.lesswgt',
                 'd.stwgt', 'd.stprice', 'd.amount', 'd.stktype'
             );
+        $q->selectRaw($this->partyGstExpr('purchaserm', 'm', 'suppcode', 'gstno', ['tin', 'tinno']));
+        if (Schema::hasColumn('purchaserm', 'billno')) {
+            $q->addSelect('m.billno');
+        } else {
+            $q->selectRaw("'' as billno");
+        }
 
         // Optional columns
         if (Schema::hasColumn('purchaserd', 'name')) {
@@ -66,11 +72,14 @@ class PurchaseReturnRegisterController extends Controller
         if ($suppcode !== '') {
             $q->where('m.suppcode', $suppcode);
         }
+        $this->applyTransferShadowDocFilter($q, 'm.docno');
 
         $q->orderBy('i.name')->orderBy('m.tdate')->orderBy('m.docno');
 
         $rows = $q->get()->map(function ($r) {
             $row = (array) $r;
+            $billNo = trim((string) ($row['billno'] ?? ''));
+            $row['billno'] = $billNo !== '' ? $billNo : trim((string) ($row['docno'] ?? ''));
             $row['qty']     = (int) ($row['qty'] ?? 0);
             $row['rate']    = (float) ($row['rate'] ?? 0);
             $row['weight']  = (float) ($row['weight'] ?? 0);
@@ -125,5 +134,24 @@ class PurchaseReturnRegisterController extends Controller
         return ['count' => 0, 'qty' => 0, 'weight' => 0, 'lesswgt' => 0,
                 'stwgt' => 0, 'stprice' => 0, 'netwgt' => 0, 'amount' => 0,
                 'goldwgt' => 0, 'silverwgt' => 0, 'otherwgt' => 0];
+    }
+
+    private function partyGstExpr(string $table, string $alias, string $codeColumn, string $as, array $sourceColumns = []): string
+    {
+        $sources = [];
+        foreach ($sourceColumns as $column) {
+            if (Schema::hasColumn($table, $column)) {
+                $sources[] = "NULLIF(TRIM(COALESCE({$alias}.{$column}, \"\")), \"\")";
+            }
+        }
+        if ($this->hasTable('clients') && Schema::hasColumn($table, $codeColumn) && Schema::hasColumn('clients', 'code')) {
+            foreach (['tin', 'tinno'] as $column) {
+                if (Schema::hasColumn('clients', $column)) {
+                    $sources[] = "(select NULLIF(TRIM(COALESCE(c.{$column}, \"\")), \"\") from clients c where TRIM(COALESCE(c.code, \"\")) = TRIM(COALESCE({$alias}.{$codeColumn}, \"\")) limit 1)";
+                }
+            }
+        }
+
+        return ($sources ? 'COALESCE(' . implode(', ', $sources) . ', "")' : '""') . " as {$as}";
     }
 }

@@ -127,6 +127,13 @@ class SalesBillController extends Controller
             return $row;
         }
 
+        $columns = array_fill_keys(array_map('strtolower', Schema::getColumnListing($table)), true);
+        $row = array_filter(
+            $row,
+            fn ($column) => isset($columns[strtolower((string) $column)]),
+            ARRAY_FILTER_USE_KEY
+        );
+
         $preserve = array_map('strtolower', $preserve);
 
         foreach ($row as $column => $value) {
@@ -252,12 +259,27 @@ class SalesBillController extends Controller
             $rates[$c] = $settingRate > 0 ? $settingRate : $dbRate;
         }
 
-        // Load items for exchange dropdown (code, name, itype)
+        $itemGroups = [];
+        if ($this->hasTable('itemgrp')) {
+            $itemGroups = DB::table('itemgrp')
+                ->whereNotNull('code')
+                ->where('code', '!=', '')
+                ->orderBy('code')
+                ->get(['code', 'name'])
+                ->map(fn ($r) => [
+                    'code' => strtoupper(trim((string) ($r->code ?? ''))),
+                    'name' => trim((string) ($r->name ?? '')),
+                ])
+                ->values()
+                ->all();
+        }
+
+        // Load items for exchange dropdown and sales item group filtering (code, name, itype)
         $exchItems = [];
         if ($this->hasTable('items')) {
             $itemCols = $this->getColumns('items');
             $select = ['code', 'name', 'itype'];
-            foreach (['touch', 'cost', 'disabled', 'defstktype', 'defquality', 'stkinnos', 'ornament'] as $col) {
+            foreach (['touch', 'cost', 'disabled', 'defstktype', 'defquality', 'stkinnos', 'ornament', 'grpcode', 'display'] as $col) {
                 if (in_array($col, $itemCols, true)) {
                     $select[] = $col;
                 }
@@ -278,6 +300,11 @@ class SalesBillController extends Controller
                     'defquality' => trim((string) ($r->defquality ?? '')),
                     'stkinnos' => strtoupper(trim((string) ($r->stkinnos ?? 'N'))),
                     'ornament' => strtoupper(trim((string) ($r->ornament ?? 'N'))),
+                    'grpcode' => strtoupper(trim((string) ($r->grpcode ?? ''))),
+                    'display_category' => strtoupper(trim((string) ($r->display ?? ''))),
+                    'is_diamond' => str_contains(strtoupper(trim((string) ($r->display ?? ''))), 'DIAM')
+                        || str_contains(strtoupper(trim((string) ($r->name ?? ''))), 'DIAM')
+                        || strtoupper(trim((string) ($r->grpcode ?? ''))) === 'DD',
                 ])
                 ->values()
                 ->all();
@@ -444,6 +471,7 @@ class SalesBillController extends Controller
             'quotationMode' => $quotationMode,
             'rates' => $rates,
             'exchItems' => $exchItems,
+            'itemGroups' => $itemGroups,
             'counters' => $counters,
             'salesmen' => $salesmen,
             'agents' => $agents,
@@ -496,6 +524,7 @@ class SalesBillController extends Controller
                 'SalesEntryEditNo' => $sw($software, 'SalesEntryEditNo', 'N'),
                 'AskEInvoiceAboveAmount' => $sw($software, 'AskEInvoiceAboveAmount', 'Y'),
                 'EInvoiceThresholdAmount' => $sw($software, 'EInvoiceThresholdAmount', '1000000'),
+                'EWayBillThresholdAmount' => $sw($software, 'EWayBillThresholdAmount', '1000000'),
                 'DefStateCode' => (string) ($company['DefStateCode'] ?? ''),
             ],
             'access' => [
@@ -508,10 +537,7 @@ class SalesBillController extends Controller
     {
         $q = trim((string) $request->query('q', ''));
         $date = $this->parseDate((string) $request->query('tdate', ''), true);
-        $limit = (int) $request->query('limit', 30);
         $quotationMode = $request->boolean('quotation') || $request->boolean('qtn');
-        if ($limit <= 0) $limit = 30;
-        if ($limit > 30) $limit = 30;
 
         if (!$this->hasTable('salesm')) {
             return response()->json(['ok' => true, 'rows' => []]);
@@ -531,23 +557,55 @@ class SalesBillController extends Controller
         if ($quotationMode) {
             $query->whereRaw('COALESCE(control, 1) <> 1');
         } else {
-            $query->whereRaw('COALESCE(control, 1) = 1');
+            $query->whereRaw('COALESCE(control, 1) = 1')
+                ->where(function ($orderBill) {
+                    $orderBill->whereNull('orderno')
+                        ->orWhereRaw('LENGTH(TRIM(orderno)) = 0');
+                });
         }
 
         if ($date) {
             $query->whereDate('tdate', $date);
         }
 
-        $rows = $query
+        $rawRows = $query
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit($limit)
-            ->get()
+            ->get();
+
+        $slnos = $rawRows
+            ->pluck('slno')
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->values()
+            ->all();
+
+        $salesWeights = collect();
+        if ($slnos !== [] && $this->hasTable('salesd') && Schema::hasColumn('salesd', 'weight')) {
+            $salesWeights = DB::table('salesd')
+                ->select('slno', DB::raw('SUM(COALESCE(weight, 0)) as total_weight'))
+                ->whereIn('slno', $slnos)
+                ->groupBy('slno')
+                ->pluck('total_weight', 'slno');
+        }
+
+        $exchangeWeights = collect();
+        if ($slnos !== [] && $this->hasTable('purchased') && Schema::hasColumn('purchased', 'weight')) {
+            $exchangeWeights = DB::table('purchased')
+                ->select('slno', DB::raw('SUM(COALESCE(weight, 0)) as total_weight'))
+                ->whereIn('slno', $slnos)
+                ->groupBy('slno')
+                ->pluck('total_weight', 'slno');
+        }
+
+        $rows = $rawRows
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
                 'billno' => trim((string) ($r->billno ?? '')),
                 'tdate' => $r->tdate ? Carbon::parse($r->tdate)->format('d/m/Y') : '',
                 'custname' => trim((string) ($r->custname ?? '')),
+                'sales_weight' => round($this->toNum($salesWeights[(int) ($r->slno ?? 0)] ?? 0), 3),
+                'exchange_weight' => round($this->toNum($exchangeWeights[(int) ($r->slno ?? 0)] ?? 0), 3),
                 'status' => ((int) $this->toNum($r->status ?? 1)) === 0 ? 'cancelled' : 'saved',
             ])
             ->values();
@@ -584,6 +642,10 @@ class SalesBillController extends Controller
             return response()->json(['ok' => false, 'message' => $quotationMode ? 'This quotation number does not exist...' : 'This bill number does not exist...'], 404);
         }
 
+        if (!$quotationMode && trim((string) ($row->orderno ?? '')) !== '') {
+            return response()->json(['ok' => false, 'message' => 'This is an order sale bill. Please use Order Sale > Edit Sale.'], 404);
+        }
+
         return response()->json([
             'ok' => true,
             'bill_no' => trim((string) ($row->billno ?? '')),
@@ -616,7 +678,7 @@ class SalesBillController extends Controller
         }
 
         $row = DB::table('salesm')
-            ->select(['slno', 'billno', 'tdate', 'status', 'control'])
+            ->select(['slno', 'billno', 'tdate', 'status', 'control', 'orderno'])
             ->whereRaw('UPPER(TRIM(billno)) = ?', [$billNo])
             ->whereDate('tdate', $date)
             ->first();
@@ -628,6 +690,10 @@ class SalesBillController extends Controller
         $isQuotation = (int) $this->toNum($row->control ?? 1) !== 1;
         if ($quotationMode !== $isQuotation) {
             return response()->json(['ok' => false, 'message' => $quotationMode ? 'This quotation number does not exist...' : 'This bill number does not exist...'], 404);
+        }
+
+        if (!$quotationMode && trim((string) ($row->orderno ?? '')) !== '') {
+            return response()->json(['ok' => false, 'message' => 'This is an order sale bill. Please use Order Sale > Edit Sale.'], 404);
         }
 
         if ((int) ($row->status ?? 1) === 0 && $action !== 'cancel') {
@@ -712,9 +778,25 @@ class SalesBillController extends Controller
             return response()->json(['ok' => false, 'message' => 'Bill number required.'], 422);
         }
 
+        // Quotation numbers are bare integers and can collide with sales bill numbers,
+        // so when a quotation/sales context is given, load the matching record.
+        $hasQtnParam = $request->has('qtn') || $request->has('quotation');
+        $quotationMode = $request->boolean('qtn') || $request->boolean('quotation');
+
         if ($this->hasSalesBillsTable()) {
-            $bill = SalesBill::query()->where('bill_no', $billNo)->first();
-            if ($bill) {
+            $bills = SalesBill::query()->where('bill_no', $billNo)->get();
+            if ($bills->count() > 0) {
+                $bill = $bills->first();
+                if ($hasQtnParam && $bills->count() > 1) {
+                    $match = $bills->first(function ($b) use ($quotationMode) {
+                        $extra = $this->toArray($b->extra_json);
+                        return !empty($extra['is_quotation']) === $quotationMode;
+                    });
+                    if ($match) {
+                        $bill = $match;
+                    }
+                }
+
                 return response()->json([
                     'ok' => true,
                     'data' => $this->mapBill($bill),
@@ -724,7 +806,17 @@ class SalesBillController extends Controller
 
         if ($this->hasTable('salesm')) {
             // Legacy PB fallback: load from salesm/salesd when sales_bills row is missing.
-            $legacy = DB::table('salesm')->where('billno', $billNo)->first();
+            $legacyQuery = DB::table('salesm')->where('billno', $billNo);
+            if ($hasQtnParam) {
+                if ($quotationMode) {
+                    $legacyQuery->where('control', '!=', 1);
+                } else {
+                    $legacyQuery->where(function ($w) {
+                        $w->where('control', 1)->orWhereNull('control');
+                    });
+                }
+            }
+            $legacy = $legacyQuery->first();
             if ($legacy) {
                 return response()->json([
                     'ok' => true,
@@ -850,6 +942,7 @@ class SalesBillController extends Controller
 
         $cols = $this->getColumns('clients');
         $cocode = trim((string) ($client->cocode ?? ''));
+        $openingBalance = $this->customerOpeningBalance($code, $client, $cols);
 
         // Optional PB enrichment by clients_kuridet.custlinkac.
         if ($cocode === '' && $this->hasTable('clients_kuridet')) {
@@ -870,7 +963,7 @@ class SalesBillController extends Controller
                 'addr1' => trim((string) ($client->addr1 ?? '')),
                 'addr2' => trim((string) ($client->addr2 ?? '')),
                 'mobile' => $this->pickClientMobile($client, $cols),
-                'opbalance' => in_array('opbalance', $cols, true) ? round((float) ($client->opbalance ?? 0), 2) : 0,
+                'opbalance' => $openingBalance,
                 'panadhar' => in_array('panadhar', $cols, true) ? trim((string) ($client->panadhar ?? '')) : '',
                 'tin' => in_array('tin', $cols, true) ? trim((string) ($client->tin ?? '')) : '',
                 'state' => in_array('state', $cols, true) ? trim((string) ($client->state ?? '')) : '',
@@ -879,6 +972,40 @@ class SalesBillController extends Controller
                 'ctype' => in_array('ctype', $cols, true) ? trim((string) ($client->ctype ?? '')) : '',
             ],
         ]);
+    }
+
+    private function customerOpeningBalance(string $code, object $client, array $clientCols): float
+    {
+        $code = strtoupper(trim($code));
+        $clientOb = in_array('opbalance', $clientCols, true)
+            ? round($this->toNum($client->opbalance ?? 0), 2)
+            : 0.0;
+        $accountOb = 0.0;
+        $daybookBalance = 0.0;
+
+        if ($code !== '' && $this->hasTable('accountm')) {
+            $account = DB::table('accountm')
+                ->whereRaw('UPPER(TRIM(accode)) = ?', [$code])
+                ->first();
+            if ($account) {
+                $accountOb = round($this->toNum($account->opbal ?? 0), 2);
+            }
+        }
+
+        if ($code !== '' && $this->hasTable('daybook')) {
+            $daybookBalance = round((float) DB::table('daybook')
+                ->whereRaw('UPPER(TRIM(accode)) = ?', [$code])
+                ->sum('amount'), 2);
+        }
+
+        if ($clientOb != 0.0) {
+            return $clientOb;
+        }
+        if ($accountOb != 0.0) {
+            return $accountOb;
+        }
+
+        return $daybookBalance;
     }
 
     public function customerByMobile(Request $request): JsonResponse
@@ -1215,8 +1342,8 @@ class SalesBillController extends Controller
             'bill_type' => 'nullable|string|max:30',
             'is_quotation' => 'nullable|boolean',
             'source_quotation_bill_no' => 'nullable|string|max:40',
-            'customer_name' => 'nullable|string|max:120',
-            'customer_code' => 'nullable|string|max:20',
+            'customer_name' => 'required|string|max:120',
+            'customer_code' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
             'mobile' => 'nullable|string|max:30',
             'gst_no' => 'nullable|string|max:40',
@@ -1238,11 +1365,23 @@ class SalesBillController extends Controller
             'items' => 'nullable|array',
             'exchange' => 'nullable|array',
             'sales_return' => 'nullable|array',
+            'sr_tax_perc' => 'nullable|numeric',
             'sr_tax_amt' => 'nullable|numeric',
+            'sr_cess_perc' => 'nullable|numeric',
             'sr_cess_amt' => 'nullable|numeric',
+            'sr_discount_amt' => 'nullable|numeric',
             'extra' => 'nullable|array',
             'secondary_sync' => 'nullable|boolean',
         ]);
+
+        $custCode = trim((string) ($payload['customer_code'] ?? ''));
+        $custName = trim((string) ($payload['customer_name'] ?? ''));
+        if ($custCode === '' || $custName === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Customer code and customer name are required.',
+            ], 422);
+        }
 
         $shouldSecondarySync = (bool) ($payload['secondary_sync'] ?? false);
         if (!empty($payload['is_quotation'])) {
@@ -1261,11 +1400,19 @@ class SalesBillController extends Controller
             $stoneWgt = $this->toNum($row['stone_wgt'] ?? 0);
             $stonePrice = $this->toNum($row['stone_price'] ?? 0);
             $mc = $this->toNum($row['making_charge'] ?? 0);
+            $vaDiscPerc = $this->toNum($row['va_disc_perc'] ?? 0);
+            $vaDiscAmt = $this->toNum($row['va_disc_amt'] ?? 0);
             $rate = $this->toNum($row['rate'] ?? 0);
+            $vaDiscBase = max($weight - $stoneWgt, 0) * $rate;
+            if ($vaDiscAmt == 0.0 && $vaDiscPerc > 0 && $vaDiscBase > 0) {
+                $vaDiscAmt = round(($vaDiscBase * $vaDiscPerc) / 100, 2);
+            } elseif ($vaDiscPerc == 0.0 && $vaDiscAmt > 0 && $vaDiscBase > 0) {
+                $vaDiscPerc = round(($vaDiscAmt * 100) / $vaDiscBase, 3);
+            }
             $amount = $this->toNum($row['amount'] ?? 0);
             if ($amount == 0.0) {
                 $netWgt = max($weight - $stoneWgt, 0);
-                $amount = ($netWgt * $rate) + $stonePrice + $mc;
+                $amount = (($netWgt * $rate) + $stonePrice + $mc) - $vaDiscAmt;
             }
 
             $row['qty'] = $qty;
@@ -1274,6 +1421,8 @@ class SalesBillController extends Controller
             $row['net_wgt'] = max($weight - $stoneWgt, 0);
             $row['stone_price'] = $stonePrice;
             $row['making_charge'] = $mc;
+            $row['va_disc_perc'] = $vaDiscPerc;
+            $row['va_disc_amt'] = round($vaDiscAmt, 2);
             $row['rate'] = $rate;
             $row['amount'] = round($amount, 2);
             return $row;
@@ -1293,7 +1442,22 @@ class SalesBillController extends Controller
             ->map(function ($row) {
             $row['amount'] = round($this->toNum($row['amount'] ?? 0), 2);
             return $row;
-        })->values()->all();
+        })
+            ->unique(function ($row) {
+                $bcode = trim((string) ($row['bcode'] ?? ''));
+                if ($bcode !== '' && $bcode !== '0') {
+                    return 'B:' . $bcode;
+                }
+                return implode(':', [
+                    'I',
+                    strtoupper(trim((string) ($row['item_code'] ?? ''))),
+                    strtoupper(trim((string) ($row['model'] ?? ''))),
+                    number_format($this->toNum($row['weight'] ?? 0), 3, '.', ''),
+                    number_format($this->toNum($row['amount'] ?? 0), 2, '.', ''),
+                ]);
+            })
+            ->values()
+            ->all();
 
         $payload['items'] = $items;
         $payload['exchange'] = $exchange;
@@ -1329,6 +1493,19 @@ class SalesBillController extends Controller
             }
         }
 
+        // Manual bill numbers must stay unique. Automatic bill numbers are reserved below on the server
+        // so a stale preview from another terminal can move to the next number instead of failing here.
+        if ($isAddMode && $manualBillNo && $billNo !== '' && $this->hasTable('salesm')) {
+            $existingForBillNo = DB::table('salesm')->where('billno', $billNo)->first(['slno']);
+            if ($existingForBillNo) {
+                return response()->json([
+                    'ok' => false,
+                    'code' => 'BILLNO_TAKEN',
+                    'message' => "Bill number $billNo was just used by another user. Click New / Refresh to get the next number, then save again.",
+                ], 409);
+            }
+        }
+
         if ($items === [] && $exchange === [] && $salesReturn === []) {
             return response()->json(['ok' => false, 'message' => "There is no entries. You can't proceed..."], 422);
         }
@@ -1350,6 +1527,73 @@ class SalesBillController extends Controller
                 $payload['salesman_code'] = trim((string) ($smRow->code ?? $salesmanCode));
                 if (trim((string) ($payload['salesman_name'] ?? '')) === '') {
                     $payload['salesman_name'] = trim((string) ($smRow->name ?? ''));
+                }
+            }
+        }
+
+        $isEditForValidation = !$isAddMode;
+        if ($items !== [] && !$this->hasTable('items')) {
+            return response()->json(['ok' => false, 'message' => 'Item master table not found. You can\'t save this bill.'], 422);
+        }
+
+        if ($this->hasTable('items')) {
+            $itemRows = DB::table('items')
+                ->whereIn('code', collect($items)->pluck('item_code')->filter()->all())
+                ->get()
+                ->keyBy(fn ($row) => strtoupper(trim((string) ($row->code ?? ''))));
+            foreach ($items as $idx => $it) {
+                $code = trim((string) ($it['item_code'] ?? ''));
+                $weight = $this->toNum($it['weight'] ?? 0);
+                $rate = $this->toNum($it['rate'] ?? 0);
+                $qty = $this->toNum($it['qty'] ?? 0);
+                $stoneWgt = $this->toNum($it['stone_wgt'] ?? 0);
+                $stonePrice = $this->toNum($it['stone_price'] ?? 0);
+                $stkinnos = strtoupper(trim((string) ($it['stkinnos'] ?? 'N')));
+                $stktype = trim((string) ($it['stktype'] ?? ''));
+                $groupCode = strtoupper(trim((string) ($it['group_code'] ?? '')));
+                $bcode = (int) $this->toNum($it['bcode'] ?? 0);
+                $dbItem = $itemRows->get(strtoupper($code));
+                if (!$dbItem) {
+                    return response()->json(['ok' => false, 'message' => "Invalid Item Code ({$code}). You can't save..."], 422);
+                }
+                $dbGroupCode = strtoupper(trim((string) ($dbItem->grpcode ?? '')));
+                if ($groupCode !== '' && $dbGroupCode !== '' && strcasecmp($groupCode, $dbGroupCode) !== 0) {
+                    return response()->json(['ok' => false, 'message' => "Check the item group ({$code}). You can't proceed..."], 422);
+                }
+
+                $stkinnos = strtoupper(trim((string) ($dbItem->stkinnos ?? $stkinnos)));
+                $items[$idx]['stkinnos'] = $stkinnos;
+
+                if ($weight <= 0 && $stkinnos !== 'Y') {
+                    return response()->json(['ok' => false, 'message' => "Check Weight ({$code}). You can't proceed..."], 422);
+                }
+                if ($rate <= 0) {
+                    return response()->json(['ok' => false, 'message' => "Check Rate ({$code}). You can't proceed..."], 422);
+                }
+                if ($stktypeStrict && $stktype === '') {
+                    return response()->json(['ok' => false, 'message' => "Check Stock Type ({$code}). You can't save..."], 422);
+                }
+                if ($qty <= 0 && $strictCheck) {
+                    return response()->json(['ok' => false, 'message' => "Check Qty ({$code}). You can't proceed..."], 422);
+                }
+                if ($stoneWgt > 0 && $stonePrice <= 0 && $strictCheck) {
+                    return response()->json(['ok' => false, 'message' => "Check Stone Price ({$code})."], 422);
+                }
+
+                $bcComp = strtoupper(trim((string) ($dbItem->bccompulsory ?? 'N')));
+                if ($bcode <= 0 && $bcComp === 'Y') {
+                    return response()->json(['ok' => false, 'message' => "Barcode Compulsory for item {$code}. You can't continue..."], 422);
+                }
+                $stoneMust = strtoupper(trim((string) ($dbItem->stonemust ?? 'N')));
+                if ($stoneWgt <= 0 && $stoneMust === 'Y') {
+                    return response()->json(['ok' => false, 'message' => "Stone Compulsory for item {$code}. You can't continue..."], 422);
+                }
+                if ($billControl === 1 && !$allowInsufficientStockSales && !$isEditForValidation) {
+                    $stockQty = $this->toNum($dbItem->qty ?? 0);
+                    $stockWgt = $this->toNum($dbItem->weight ?? 0);
+                    if ($qty > $stockQty || $weight > $stockWgt) {
+                        return response()->json(['ok' => false, 'message' => "Insufficient stock for item {$code}. You can't continue..."], 422);
+                    }
                 }
             }
         }
@@ -1380,119 +1624,76 @@ class SalesBillController extends Controller
             $isEdit = $bill->exists;
         }
 
-        if ($this->hasTable('items')) {
-            $itemRows = DB::table('items')->whereIn('code', collect($items)->pluck('item_code')->filter()->all())->get()->keyBy('code');
-            foreach ($items as $idx => $it) {
-                $rowNo = $idx + 1;
-                $code = trim((string) ($it['item_code'] ?? ''));
-                $weight = $this->toNum($it['weight'] ?? 0);
-                $rate = $this->toNum($it['rate'] ?? 0);
-                $qty = $this->toNum($it['qty'] ?? 0);
-                $stoneWgt = $this->toNum($it['stone_wgt'] ?? 0);
-                $stonePrice = $this->toNum($it['stone_price'] ?? 0);
-                $stkinnos = strtoupper(trim((string) ($it['stkinnos'] ?? 'N')));
-                $stktype = trim((string) ($it['stktype'] ?? ''));
-                $bcode = (int) $this->toNum($it['bcode'] ?? 0);
-                $dbItem = $itemRows->get($code);
-
-                if ($weight <= 0 && $stkinnos !== 'Y') {
-                    return response()->json(['ok' => false, 'message' => "Check Weight ({$code}). You can't proceed..."], 422);
-                }
-                if ($rate <= 0) {
-                    return response()->json(['ok' => false, 'message' => "Check Rate ({$code}). You can't proceed..."], 422);
-                }
-                if ($stktypeStrict && $stktype === '') {
-                    return response()->json(['ok' => false, 'message' => "Check Stock Type ({$code}). You can't save..."], 422);
-                }
-                if ($qty <= 0 && $strictCheck) {
-                    return response()->json(['ok' => false, 'message' => "Check Qty ({$code}). You can't proceed..."], 422);
-                }
-                if ($stoneWgt > 0 && $stonePrice <= 0 && $strictCheck) {
-                    return response()->json(['ok' => false, 'message' => "Check Stone Price ({$code})."], 422);
-                }
-                if ($dbItem) {
-                    $bcComp = strtoupper(trim((string) ($dbItem->bccompulsory ?? 'N')));
-                    if ($bcode <= 0 && $bcComp === 'Y') {
-                        return response()->json(['ok' => false, 'message' => "Barcode Compulsory for item {$code}. You can't continue..."], 422);
-                    }
-                    $stoneMust = strtoupper(trim((string) ($dbItem->stonemust ?? 'N')));
-                    if ($stoneWgt <= 0 && $stoneMust === 'Y') {
-                        return response()->json(['ok' => false, 'message' => "Stone Compulsory for item {$code}. You can't continue..."], 422);
-                    }
-                    if ($billControl === 1 && !$allowInsufficientStockSales && !$isEdit) {
-                        $stockQty = $this->toNum($dbItem->qty ?? 0);
-                        $stockWgt = $this->toNum($dbItem->weight ?? 0);
-                        if ($qty > $stockQty || $weight > $stockWgt) {
-                            return response()->json(['ok' => false, 'message' => "Insufficient stock for item {$code}. You can't continue..."], 422);
-                        }
-                    }
+        try {
+            if ($bill) {
+                $bill->fill([
+                    'bill_date' => $billDate,
+                    'bill_time' => trim((string) ($payload['bill_time'] ?? '')) ?: now()->format('h:i A'),
+                    'bill_type' => trim((string) ($payload['bill_type'] ?? 'Gold')) ?: 'Gold',
+                    'customer_name' => trim((string) ($payload['customer_name'] ?? '')),
+                    'customer_code' => trim((string) ($payload['customer_code'] ?? '')) ?: null,
+                    'address' => trim((string) ($payload['address'] ?? '')) ?: null,
+                    'mobile' => trim((string) ($payload['mobile'] ?? '')) ?: null,
+                    'gst_no' => trim((string) ($payload['gst_no'] ?? '')) ?: null,
+                    'pan_no' => trim((string) ($payload['pan_no'] ?? '')) ?: null,
+                    'state_code' => trim((string) ($payload['state_code'] ?? '')) ?: null,
+                    'rate_per_gm' => round($this->toNum($payload['rate_per_gm'] ?? 0), 2),
+                    'counter_name' => trim((string) ($payload['counter_name'] ?? '')),
+                    'counter_code' => trim((string) ($payload['counter_code'] ?? '')) ?: null,
+                    'salesman_name' => trim((string) ($payload['salesman_name'] ?? '')),
+                    'salesman_code' => trim((string) ($payload['salesman_code'] ?? '')) ?: null,
+                    'agent_code' => trim((string) ($payload['agent_code'] ?? '')) ?: null,
+                    'approved_by' => trim((string) ($payload['approved_by'] ?? '')) ?: null,
+                    'cashbank_code' => trim((string) ($payload['cashbank_code'] ?? '')) ?: null,
+                    'bill_total' => $calc['bill_total'],
+                    'exchange_amount' => $calc['exchange_amount'],
+                    'return_amount' => $calc['return_amount'],
+                    'net_total' => $calc['net_total'],
+                    'status' => $bill->status ?: 'saved',
+                    'items_json' => json_encode($items),
+                    'exchange_json' => json_encode($exchange),
+                    'return_json' => json_encode($salesReturn),
+                    'extra_json' => json_encode(array_merge($calc['extra'], [
+                        'is_quotation' => $billControl !== 1,
+                        'source_quotation_bill_no' => trim((string) ($payload['source_quotation_bill_no'] ?? '')),
+                    ])),
+                ]);
+                $isNew = !$bill->exists;
+                $bill->save();
+                if ($isNew || $bill->wasRecentlyCreated) {
+                    $this->syncBillNoCounter((string) $bill->bill_no);
                 }
             }
-        }
+            $legacySlno = $this->syncLegacySalesTables($payload, $calc, $items, $billDate, $billControl);
 
-        if ($bill) {
-            $bill->fill([
-                'bill_date' => $billDate,
-                'bill_time' => trim((string) ($payload['bill_time'] ?? '')) ?: now()->format('h:i A'),
-                'bill_type' => trim((string) ($payload['bill_type'] ?? 'Gold')) ?: 'Gold',
-                'customer_name' => trim((string) ($payload['customer_name'] ?? '')),
-                'customer_code' => trim((string) ($payload['customer_code'] ?? '')) ?: null,
-                'address' => trim((string) ($payload['address'] ?? '')) ?: null,
-                'mobile' => trim((string) ($payload['mobile'] ?? '')) ?: null,
-                'gst_no' => trim((string) ($payload['gst_no'] ?? '')) ?: null,
-                'pan_no' => trim((string) ($payload['pan_no'] ?? '')) ?: null,
-                'state_code' => trim((string) ($payload['state_code'] ?? '')) ?: null,
-                'rate_per_gm' => round($this->toNum($payload['rate_per_gm'] ?? 0), 2),
-                'counter_name' => trim((string) ($payload['counter_name'] ?? '')),
-                'counter_code' => trim((string) ($payload['counter_code'] ?? '')) ?: null,
-                'salesman_name' => trim((string) ($payload['salesman_name'] ?? '')),
-                'salesman_code' => trim((string) ($payload['salesman_code'] ?? '')) ?: null,
-                'agent_code' => trim((string) ($payload['agent_code'] ?? '')) ?: null,
-                'approved_by' => trim((string) ($payload['approved_by'] ?? '')) ?: null,
-                'cashbank_code' => trim((string) ($payload['cashbank_code'] ?? '')) ?: null,
-                'bill_total' => $calc['bill_total'],
-                'exchange_amount' => $calc['exchange_amount'],
-                'return_amount' => $calc['return_amount'],
-                'net_total' => $calc['net_total'],
-                'status' => $bill->status ?: 'saved',
-                'items_json' => json_encode($items),
-                'exchange_json' => json_encode($exchange),
-                'return_json' => json_encode($salesReturn),
-                'extra_json' => json_encode(array_merge($calc['extra'], [
-                    'is_quotation' => $billControl !== 1,
-                    'source_quotation_bill_no' => trim((string) ($payload['source_quotation_bill_no'] ?? '')),
-                ])),
-            ]);
-            $isNew = !$bill->exists;
-            $bill->save();
-            if ($isNew || $bill->wasRecentlyCreated) {
-                $this->syncBillNoCounter((string) $bill->bill_no);
+            // Sync bill number counter for legacy-only path (when sales_bills table doesn't exist).
+            if (!$bill) {
+                $this->syncBillNoCounter(trim((string) ($payload['bill_no'] ?? '')));
             }
-        }
-        $legacySlno = $this->syncLegacySalesTables($payload, $calc, $items, $billDate, $billControl);
 
-        // Sync bill number counter for legacy-only path (when sales_bills table doesn't exist).
-        if (!$bill) {
-            $this->syncBillNoCounter(trim((string) ($payload['bill_no'] ?? '')));
-        }
+            $sourceQuotationBillNo = trim((string) ($payload['source_quotation_bill_no'] ?? ''));
+            if ($billControl === 1 && $sourceQuotationBillNo !== '' && strcasecmp($sourceQuotationBillNo, trim((string) ($payload['bill_no'] ?? ''))) !== 0) {
+                DB::transaction(function () use ($sourceQuotationBillNo) {
+                    $sourceLegacy = $this->hasTable('salesm')
+                        ? DB::table('salesm')->where('billno', $sourceQuotationBillNo)->first(['slno', 'control'])
+                        : null;
 
-        $sourceQuotationBillNo = trim((string) ($payload['source_quotation_bill_no'] ?? ''));
-        if ($billControl === 1 && $sourceQuotationBillNo !== '' && strcasecmp($sourceQuotationBillNo, trim((string) ($payload['bill_no'] ?? ''))) !== 0) {
-            DB::transaction(function () use ($sourceQuotationBillNo) {
-                $sourceLegacy = $this->hasTable('salesm')
-                    ? DB::table('salesm')->where('billno', $sourceQuotationBillNo)->first(['slno', 'control'])
-                    : null;
+                    if ($sourceLegacy && (int) ($sourceLegacy->control ?? 1) === 2) {
+                        $this->deleteLegacySalesBundle((int) ($sourceLegacy->slno ?? 0));
+                    }
 
-                if ($sourceLegacy && (int) ($sourceLegacy->control ?? 1) === 2) {
-                    $this->deleteLegacySalesBundle((int) ($sourceLegacy->slno ?? 0));
-                }
-
-                if ($this->hasSalesBillsTable()) {
-                    SalesBill::query()
-                        ->where('bill_no', $sourceQuotationBillNo)
-                        ->delete();
-                }
-            });
+                    if ($this->hasSalesBillsTable()) {
+                        SalesBill::query()
+                            ->where('bill_no', $sourceQuotationBillNo)
+                            ->delete();
+                    }
+                });
+            }
+        } catch (\Throwable $e) {
+            if ($isAddMode && !$manualBillNo) {
+                $this->rewindBillNoCounterToSavedMax(trim((string) ($payload['bill_no'] ?? '')));
+            }
+            throw $e;
         }
 
         $responseData = null;
@@ -1753,6 +1954,7 @@ class SalesBillController extends Controller
         $taxPerc = $this->toNum($payload['extra']['tax_perc'] ?? $payload['extra']['taxperc'] ?? 0);
         $isCredit = $this->toBool($extra['credit'] ?? false);
         $isCst = $this->toBool($payload['extra']['is_cst'] ?? false);
+        $taxSplit = $this->salesTaxSplitFromAmount(round($this->toNum($extra['tax'] ?? 0), 2), $isCst);
         $addBc = $this->toBool($extra['add_bank_charge'] ?? false);
         $sqlTime = $this->toSqlTime((string) ($payload['bill_time'] ?? ''));
         $cbcode = trim((string) ($payload['cashbank_code'] ?? ''));
@@ -1770,7 +1972,10 @@ class SalesBillController extends Controller
             'eamt' => round($this->toNum($calc['exchange_amount'] ?? 0), 2),
             'sretamt' => round($this->toNum($calc['return_amount'] ?? 0), 2),
             'staxperc' => round($taxPerc, 3),
-            'staxamt' => round($this->toNum($extra['tax'] ?? 0), 2),
+            'staxamt' => $taxSplit['total'],
+            'sgst' => $taxSplit['sgst'],
+            'cgst' => $taxSplit['cgst'],
+            'igst' => $taxSplit['igst'],
             'discount' => round($this->toNum($extra['discount'] ?? 0), 2),
             'discperc' => round($this->toNum($extra['discount_perc'] ?? 0), 3),
             'ramt' => round($this->toNum($extra['received'] ?? 0), 2),
@@ -1839,12 +2044,13 @@ class SalesBillController extends Controller
 
             $insRows = [];
             $sno = 1;
+            $salesdCols = $this->getColumns('salesd');
             foreach ($items as $it) {
                 $code = trim((string) ($it['item_code'] ?? ''));
                 if ($code === '') {
                     continue;
                 }
-                $insRows[] = [
+                $salesdRow = [
                     'slno' => $slno,
                     'sno' => $sno++,
                     'code' => $code,
@@ -1866,6 +2072,19 @@ class SalesBillController extends Controller
                     'vaperc' => $this->toNum($it['vaperc'] ?? 0),
                     'bcode' => (int) $this->toNum($it['bcode'] ?? 0),
                 ];
+                if (in_array('va_disc_perc', $salesdCols, true)) {
+                    $salesdRow['va_disc_perc'] = $this->toNum($it['va_disc_perc'] ?? 0);
+                }
+                if (in_array('va_disc_amt', $salesdCols, true)) {
+                    $salesdRow['va_disc_amt'] = $this->toNum($it['va_disc_amt'] ?? 0);
+                }
+                if (in_array('vadiscperc', $salesdCols, true)) {
+                    $salesdRow['vadiscperc'] = $this->toNum($it['va_disc_perc'] ?? 0);
+                }
+                if (in_array('vadiscamt', $salesdCols, true)) {
+                    $salesdRow['vadiscamt'] = $this->toNum($it['va_disc_amt'] ?? 0);
+                }
+                $insRows[] = $salesdRow;
             }
             if (!empty($insRows)) {
                 DB::table('salesd')->insert($insRows);
@@ -1907,6 +2126,12 @@ class SalesBillController extends Controller
             $netTotal = $this->toNum($calc['net_total'] ?? 0);
             $exAmt = $this->toNum($calc['exchange_amount'] ?? 0);
             $retAmt = $this->toNum($calc['return_amount'] ?? 0);
+            $srTaxPerc = $this->toNum($calc['extra']['sr_tax_perc'] ?? $payload['sr_tax_perc'] ?? 0);
+            $srTaxAmt = $this->toNum($calc['extra']['sr_tax_amt'] ?? $payload['sr_tax_amt'] ?? 0);
+            $srCessPerc = $this->toNum($calc['extra']['sr_cess_perc'] ?? $payload['sr_cess_perc'] ?? 0);
+            $srCessAmt = $this->toNum($calc['extra']['sr_cess_amt'] ?? $payload['sr_cess_amt'] ?? 0);
+            $srDiscountAmt = $this->toNum($calc['extra']['sr_discount_amt'] ?? $payload['sr_discount_amt'] ?? 0);
+            $srBillAmt = round($retAmt + $srDiscountAmt - $srTaxAmt - $srCessAmt, 2);
             $rcvd = $this->toNum($extra['received'] ?? 0);
             $isCst = $this->toBool($payload['extra']['is_cst'] ?? false) ? 'Y' : 'N';
             $control = $billControl;
@@ -1987,14 +2212,14 @@ class SalesBillController extends Controller
 
             // salesrm + salesrd (sales return)
             if ($retAmt > 0 && $this->hasTable('salesrm')) {
-                DB::table('salesrm')->insert([
+                $salesReturnMasterRow = [
                     'slno' => $slno,
                     'billno' => $billNo,
                     'tdate' => $billDateSql,
                     'ttime' => $billTime,
                     'custcode' => $custCode,
                     'custname' => $custName,
-                    'billamt' => round($retAmt, 2),
+                    'billamt' => $srBillAmt,
                     'pamt' => round($retAmt, 2),
                     'grate' => $rate,
                     'status' => 1,
@@ -2002,12 +2227,15 @@ class SalesBillController extends Controller
                     'control' => $control,
                     'smcode' => $smCode,
                     'netamt' => round($retAmt, 2),
-                    'staxperc' => $taxPerc,
-                    'staxamt' => 0,
-                    'astamt' => 0,
+                    'discount' => round($srDiscountAmt, 2),
+                    'staxperc' => round($srTaxPerc, 3),
+                    'staxamt' => round($srTaxAmt, 2),
+                    'astperc' => round($srCessPerc, 3),
+                    'astamt' => round($srCessAmt, 2),
                     'billtype' => $billType,
                     'cst' => $isCst,
-                ]);
+                ];
+                DB::table('salesrm')->insert($this->fitLegacyRowToSchema('salesrm', $salesReturnMasterRow, ['billno']));
             }
             if ($salesReturn->isNotEmpty() && $this->hasTable('salesrd')) {
                 $sno = 1;
@@ -2437,8 +2665,19 @@ class SalesBillController extends Controller
         $billAmt = round($this->toNum($calc['bill_total'] ?? 0), 2);
         $exAmt = round($this->toNum($calc['exchange_amount'] ?? 0), 2);
         $retAmt = round($this->toNum($calc['return_amount'] ?? 0), 2);
+        $srTaxAmt = round($this->toNum($extra['sr_tax_amt'] ?? 0), 2);
+        $srCessAmt = round($this->toNum($extra['sr_cess_amt'] ?? 0), 2);
         $disc = round($this->toNum($extra['discount'] ?? 0), 2);
         $taxAmt = round($this->toNum($extra['tax'] ?? 0), 2);
+        $sgstAmt = round($this->toNum($extra['sgst'] ?? 0), 2);
+        $cgstAmt = round($this->toNum($extra['cgst'] ?? 0), 2);
+        $igstAmt = round($this->toNum($extra['igst'] ?? 0), 2);
+        if ($taxAmt != 0.0 && $sgstAmt == 0.0 && $cgstAmt == 0.0 && $igstAmt == 0.0) {
+            $fallbackSplit = $this->salesTaxSplitFromAmount($taxAmt, $this->toBool($payload['extra']['is_cst'] ?? false));
+            $sgstAmt = $fallbackSplit['sgst'];
+            $cgstAmt = $fallbackSplit['cgst'];
+            $igstAmt = $fallbackSplit['igst'];
+        }
         $astAmt = round($this->toNum($extra['ast'] ?? 0), 2);
         $tcsAmt = round($this->toNum($extra['tcs_amt'] ?? 0), 2);
         $rcAmt = round($this->toNum($extra['repair_charge'] ?? 0), 2);
@@ -2452,10 +2691,10 @@ class SalesBillController extends Controller
         $hmcAmt = round($this->toNum($extra['hallmark_charge'] ?? 0), 2);
         $netAmt = round($this->toNum($calc['net_total'] ?? 0), 2);
         $rcvd = round($this->toNum($extra['received'] ?? 0), 2);
-        $isCst = $flagY($payload['extra']['is_cst'] ?? 'N');
+        $isCst = $this->toBool($payload['extra']['is_cst'] ?? false);
         $taxSystem = strtoupper(trim($sw($software, 'TaxSystem', 'GST')));
         $vaSepAc = $flagY($sw($software, 'VASepAc', 'N'));
-        $addBc = $flagY($extra['add_bank_charge'] ?? false, 'N');
+        $addBc = $this->toBool($extra['add_bank_charge'] ?? false);
 
         $ccAmt = round($this->toNum($extra['cc_amt'] ?? $extra['ccamt'] ?? 0), 2);
         $chqAmt = round($this->toNum($extra['chq_amt'] ?? $extra['cheque_amt'] ?? 0), 2);
@@ -2493,11 +2732,11 @@ class SalesBillController extends Controller
             }
 
             if ($ccAmt > 0) {
-                $saccode = $flagY($extra['cc_pdc'] ?? 'N') ? 'CNC' : $cbcode;
+                $saccode = $this->toBool($extra['cc_pdc'] ?? false) ? 'CNC' : $cbcode;
                 $add($entries, $saccode, -$ccAmt, $opAcCode);
             }
             if ($chqAmt > 0) {
-                $saccode = $flagY($extra['chq_pdc'] ?? 'N') ? 'CNC' : $chqBank;
+                $saccode = $this->toBool($extra['chq_pdc'] ?? false) ? 'CNC' : $chqBank;
                 $add($entries, $saccode, -$chqAmt, $opAcCode);
             }
 
@@ -2526,8 +2765,8 @@ class SalesBillController extends Controller
             $chqNo = trim((string) ($extra['chq_no'] ?? $extra['cheque_no'] ?? $billNo));
             $chqDateRaw = trim((string) ($extra['chq_date'] ?? $extra['cheque_date'] ?? ''));
             $chqDate = $this->parseDate($chqDateRaw) ?: $billDateSql;
-            $isChqPdc = $flagY($extra['chq_pdc'] ?? $extra['pdc'] ?? 'N');
-            $isCcPdc = $flagY($extra['cc_pdc'] ?? $extra['ccpdc'] ?? 'N');
+            $isChqPdc = $this->toBool($extra['chq_pdc'] ?? $extra['pdc'] ?? false);
+            $isCcPdc = $this->toBool($extra['cc_pdc'] ?? $extra['ccpdc'] ?? false);
             $particular = mb_substr('By Sales (' . $billNo . ')', 0, 100);
 
             if ($isChqPdc && $chqAmt > 0) {
@@ -2631,14 +2870,29 @@ class SalesBillController extends Controller
                 $add($entries, $staxAc, $taxAmt, $opAcCode);
             } else {
                 if ($isCst) {
-                    $add($entries, 'IGST', $taxAmt, $opAcCode);
+                    $add($entries, 'IGST', $igstAmt ?: $taxAmt, $opAcCode);
                 } else {
-                    $add($entries, 'SGST', $taxAmt / 2, $opAcCode);
-                    $add($entries, 'CGST', $taxAmt / 2, $opAcCode);
+                    $add($entries, 'SGST', $sgstAmt, $opAcCode);
+                    $add($entries, 'CGST', $cgstAmt, $opAcCode);
                 }
             }
         }
         $add($entries, 'AST', $astAmt, $opAcCode);
+
+        if ($retAmt != 0.0) {
+            if ($srTaxAmt != 0.0) {
+                if ($taxSystem === 'VAT') {
+                    $staxAc = $this->readGeneralsValue('STAXAC', 'TAX');
+                    $add($entries, $staxAc, -$srTaxAmt, $opAcCode);
+                } elseif ($isCst) {
+                    $add($entries, 'IGST', -$srTaxAmt, $opAcCode);
+                } else {
+                    $add($entries, 'SGST', -$srTaxAmt / 2, $opAcCode);
+                    $add($entries, 'CGST', -$srTaxAmt / 2, $opAcCode);
+                }
+            }
+            $add($entries, 'AST', -$srCessAmt, $opAcCode);
+        }
 
         // Purchase tax external mapping parity
         if ($ptaxAmt != 0.0) {
@@ -2654,7 +2908,7 @@ class SalesBillController extends Controller
             $add($entries, 'RS', $baseSales, $sop);
         }
         if ($retAmt != 0.0) {
-            $add($entries, 'ESR', -$retAmt, $opAcCode);
+            $add($entries, 'ESR', -($retAmt - $srTaxAmt - $srCessAmt), $opAcCode);
         }
         if ($exAmt != 0.0) {
             $epAc = $hasOgExchange ? $sw($software, 'OGPurchaseAc', 'EP') : 'EP';
@@ -2752,6 +3006,7 @@ class SalesBillController extends Controller
 
         $legacySlno = (int) ($legacy->slno ?? 0);
         $legacyControl = (int) ($legacy->control ?? 1);
+        $this->recordCancelledSalesBillAudit($request, $billNo, $legacySlno, $bill, (string) ($payload['reason'] ?? ''));
 
         DB::transaction(function () use ($billNo, $bill, $legacySlno, $legacyControl) {
             if ($legacySlno > 0) {
@@ -2773,6 +3028,135 @@ class SalesBillController extends Controller
         }
 
         return response()->json(['ok' => true, 'message' => $message]);
+    }
+
+    private function recordCancelledSalesBillAudit(Request $request, string $billNo, int $legacySlno, ?SalesBill $bill, string $reason = ''): void
+    {
+        $this->ensureCancelledBillAuditTable();
+        if (!$this->hasTable('cancelled_bill_audits')) {
+            return;
+        }
+
+        $salesm = null;
+        if ($legacySlno > 0 && $this->hasTable('salesm')) {
+            $salesm = DB::table('salesm')->where('slno', $legacySlno)->first();
+        }
+
+        $weight = 0.0;
+        $qty = 0.0;
+        $itemCount = 0;
+        if ($legacySlno > 0 && $this->hasTable('salesd')) {
+            $detail = DB::table('salesd')
+                ->selectRaw('COALESCE(SUM(weight),0) as weight, COALESCE(SUM(qty),0) as qty, COUNT(*) as item_count')
+                ->where('slno', $legacySlno)
+                ->first();
+            $weight = (float) ($detail->weight ?? 0);
+            $qty = (float) ($detail->qty ?? 0);
+            $itemCount = (int) ($detail->item_count ?? 0);
+        } elseif ($bill) {
+            $items = json_decode((string) ($bill->items_json ?? '[]'), true);
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $weight += (float) ($item['weight'] ?? $item['wgt'] ?? 0);
+                    $qty += (float) ($item['qty'] ?? 0);
+                    $itemCount++;
+                }
+            }
+        }
+
+        $customerCode = trim((string) ($salesm->custcode ?? $bill->customer_code ?? ''));
+        $customerName = trim((string) ($salesm->custname ?? $bill->customer_name ?? ''));
+        $mobile = trim((string) ($salesm->mobno ?? $bill->mobile ?? ''));
+        $address = trim((string) ($salesm->addr ?? $bill->address ?? ''));
+
+        if ($customerCode !== '' && $this->hasTable('clients')) {
+            $client = DB::table('clients')
+                ->whereRaw('TRIM(code) = ?', [$customerCode])
+                ->first(['name', 'mobile', 'telephone', 'addr1', 'addr2', 'addr3', 'city']);
+            if ($client) {
+                $customerName = $customerName !== '' ? $customerName : trim((string) ($client->name ?? ''));
+                $mobile = $mobile !== '' ? $mobile : trim((string) ($client->mobile ?? $client->telephone ?? ''));
+                if ($address === '') {
+                    $address = trim(implode(' ', array_filter([
+                        trim((string) ($client->addr1 ?? '')),
+                        trim((string) ($client->addr2 ?? '')),
+                        trim((string) ($client->addr3 ?? '')),
+                        trim((string) ($client->city ?? '')),
+                    ])));
+                }
+            }
+        }
+
+        DB::table('cancelled_bill_audits')->insert([
+            'module' => 'sales',
+            'bill_no' => mb_substr($billNo, 0, 40),
+            'slno' => $legacySlno ?: null,
+            'control' => (int) ($salesm->control ?? 1),
+            'bill_date' => $this->normalizeAuditDate($salesm->tdate ?? $bill->bill_date ?? null),
+            'bill_time' => mb_substr(trim((string) ($salesm->ttime ?? $bill->bill_time ?? '')), 0, 20),
+            'customer_code' => mb_substr($customerCode, 0, 30),
+            'customer_name' => mb_substr($customerName, 0, 160),
+            'mobile' => mb_substr($mobile, 0, 40),
+            'address' => mb_substr($address, 0, 255),
+            'bill_amount' => round((float) ($salesm->billamt ?? $bill->bill_total ?? 0), 2),
+            'net_amount' => round((float) ($salesm->netamt ?? $bill->net_total ?? 0), 2),
+            'gross_weight' => round($weight, 3),
+            'qty' => round($qty, 3),
+            'item_count' => $itemCount,
+            'reason' => mb_substr(trim($reason), 0, 255),
+            'cancelled_by' => mb_substr(trim((string) $request->session()->get('user_code', $request->session()->get('user_id', ''))), 0, 30),
+            'cancelled_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function ensureCancelledBillAuditTable(): void
+    {
+        if (Schema::hasTable('cancelled_bill_audits')) {
+            return;
+        }
+
+        Schema::create('cancelled_bill_audits', function (\Illuminate\Database\Schema\Blueprint $table): void {
+            $table->id();
+            $table->string('module', 30)->default('sales');
+            $table->string('bill_no', 40)->index();
+            $table->unsignedBigInteger('slno')->nullable()->index();
+            $table->integer('control')->default(1);
+            $table->date('bill_date')->nullable()->index();
+            $table->string('bill_time', 20)->nullable();
+            $table->string('customer_code', 30)->nullable()->index();
+            $table->string('customer_name', 160)->nullable();
+            $table->string('mobile', 40)->nullable();
+            $table->string('address', 255)->nullable();
+            $table->decimal('bill_amount', 15, 2)->default(0);
+            $table->decimal('net_amount', 15, 2)->default(0);
+            $table->decimal('gross_weight', 15, 3)->default(0);
+            $table->decimal('qty', 15, 3)->default(0);
+            $table->integer('item_count')->default(0);
+            $table->string('reason', 255)->nullable();
+            $table->string('cancelled_by', 30)->nullable();
+            $table->timestamp('cancelled_at')->nullable()->index();
+            $table->timestamps();
+        });
+    }
+
+    private function normalizeAuditDate(mixed $value): ?string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $text = trim((string) $value);
+        if ($text === '') {
+            return null;
+        }
+
+        $time = strtotime($text);
+        return $time === false ? null : date('Y-m-d', $time);
     }
 
     public function confirmBill(Request $request): JsonResponse
@@ -2845,6 +3229,8 @@ class SalesBillController extends Controller
 
     public function generateEInvoice(Request $request): JsonResponse
     {
+        set_time_limit(120);
+
         $payload = $request->validate([
             'bill_no' => 'required|string|max:40',
             'password' => 'nullable|string|max:255',
@@ -2866,42 +3252,76 @@ class SalesBillController extends Controller
             return response()->json(['ok' => false, 'message' => 'Bill not found.'], 404);
         }
 
-        $threshold = round($this->toNum($sw($software, 'EInvoiceThresholdAmount', '1000000')), 2);
-        if ($threshold <= 0) {
-            $threshold = 1000000.00;
-        }
-
-        $netAmount = round($this->toNum($billData['net_total'] ?? 0), 2);
-        if ($netAmount <= $threshold) {
+        if (!$this->isB2BEInvoiceBill($billData)) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Bill amount is not above the e-invoice threshold.',
-                'threshold' => $threshold,
-                'net_amount' => $netAmount,
+                'message' => 'E-invoice can be generated only for B2B bills.',
             ], 422);
         }
 
+        $buyerGstin = strtoupper(trim((string) ($billData['gst_no'] ?? '')));
+        if (!preg_match('/^\d{2}[A-Z0-9]{13}$/', $buyerGstin)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'E-invoice can be generated only for B2B bills with a valid GSTIN.',
+            ], 422);
+        }
+
+        $provider = strtolower(preg_replace('/[^a-z0-9]+/', '', trim((string) ($apiSettings['EINVOICEPROVIDER'] ?? ''))));
+        if ($provider === '' && trim((string) ($apiSettings['EINVOICEAPIURL'] ?? '')) === '') {
+            $provider = 'mastersindia';
+        }
+        $isMastersIndia = $provider === 'mastersindia'
+            || str_contains(strtolower((string) ($apiSettings['EINVOICEAPIURL'] ?? '')), 'mastersindia.co');
+
         $apiUrl = trim((string) ($apiSettings['EINVOICEAPIURL'] ?? ''));
+        if ($apiUrl === '' && $isMastersIndia) {
+            $apiUrl = 'https://prod-api.mastersindia.co/api/v1/einvoice/';
+        }
         $username = trim((string) ($apiSettings['EINVOICEUSERNAME'] ?? ''));
+        if ($username === '' && $isMastersIndia) {
+            $username = (string) env('MASTERSINDIA_USERNAME', '');
+        }
         $password = trim((string) ($payload['password'] ?? ''));
         if ($password === '') {
             $password = (string) ($apiSettings['EINVOICEPASSWORD'] ?? '');
+        }
+        if ($password === '' && $isMastersIndia) {
+            $password = (string) env('MASTERSINDIA_PASSWORD', '');
         }
 
         if ($apiUrl === '') {
             return response()->json(['ok' => false, 'message' => 'Set EInvoice API URL in Application Settings before generating.'], 422);
         }
-        if ($username === '' || $password === '') {
-            return response()->json(['ok' => false, 'message' => 'Set EInvoice username and password in Application Settings before generating.'], 422);
+        $authMode = strtolower(trim((string) ($apiSettings['EINVOICEAUTHMODE'] ?? 'basic')));
+        if ($authMode === '') {
+            $authMode = 'basic';
         }
 
-        $requestPayload = $this->buildEInvoicePayload($billData, $settingsPayload);
+        if (($isMastersIndia || $authMode === 'basic') && ($username === '' || $password === '')) {
+            return response()->json(['ok' => false, 'message' => 'Set EInvoice username and password in Application Settings before generating.'], 422);
+        }
+        if (!$isMastersIndia && in_array($authMode, ['bearer', 'api_key', 'apikey'], true) && trim((string) ($apiSettings['EINVOICEAPIKEY'] ?? '')) === '') {
+            return response()->json(['ok' => false, 'message' => 'Set EInvoice API key in Application Settings before generating.'], 422);
+        }
+
+        $invoicePayload = $isMastersIndia
+            ? $this->buildMastersIndiaEInvoicePayload($billData, $settingsPayload, $apiSettings)
+            : $this->buildEInvoicePayload($billData, $settingsPayload);
+        $requestPayload = $this->wrapEInvoicePayload($invoicePayload, $apiSettings);
 
         try {
-            $response = Http::timeout(20)
-                ->acceptJson()
-                ->withBasicAuth($username, $password)
-                ->post($apiUrl, $requestPayload);
+            if ($isMastersIndia) {
+                $token = $this->fetchMastersIndiaToken($apiSettings, $username, $password);
+                $response = $this->mastersIndiaHttp(20)
+                    ->acceptJson()
+                    ->asJson()
+                    ->withHeaders(['Authorization' => 'JWT ' . $token])
+                    ->post($apiUrl, $requestPayload);
+            } else {
+                $response = $this->buildEInvoiceHttpRequest($apiSettings, $username, $password)
+                    ->post($apiUrl, $requestPayload);
+            }
         } catch (\Throwable $e) {
             return response()->json(['ok' => false, 'message' => 'E-invoice request failed: ' . $e->getMessage()], 502);
         }
@@ -2920,6 +3340,20 @@ class SalesBillController extends Controller
             if ($message === '') {
                 $message = 'E-invoice provider rejected the request.';
             }
+            \Log::warning('E-invoice provider HTTP failure', [
+                'bill_no' => $billNo,
+                'status' => $response->status(),
+                'response' => $decoded ?? $response->body(),
+                'request_payload' => $requestPayload,
+            ]);
+
+            $this->persistEInvoiceResult($billNo, [], $decoded ?? $response->body(), [
+                'bill_data' => $billData,
+                'request_payload' => $requestPayload,
+                'provider' => $isMastersIndia ? 'mastersindia' : ($apiSettings['EINVOICEPROVIDER'] ?? ''),
+                'user_code' => (string) $request->session()->get('user_code', ''),
+                'status' => 'failed',
+            ]);
 
             return response()->json([
                 'ok' => false,
@@ -2930,17 +3364,182 @@ class SalesBillController extends Controller
         }
 
         $providerMessage = is_array($decoded)
-            ? (string) ($decoded['message'] ?? $decoded['msg'] ?? $decoded['status'] ?? '')
+            ? (string) (data_get($decoded, 'results.errorMessage') ?: data_get($decoded, 'results.status') ?: ($decoded['message'] ?? $decoded['msg'] ?? $decoded['status'] ?? ''))
             : '';
         if ($providerMessage === '') {
             $providerMessage = 'E-invoice generated successfully.';
         }
+
+        $resultStatus = strtoupper(trim((string) data_get($decoded, 'results.status', '')));
+        $resultCode = trim((string) data_get($decoded, 'results.code', ''));
+        $providerFailed = is_array($decoded)
+            && ($resultStatus !== '' || $resultCode !== '')
+            && ($resultStatus !== 'SUCCESS' || !in_array($resultCode, ['', '0', '200'], true));
+        if ($providerFailed) {
+            \Log::warning('E-invoice provider failed response', [
+                'bill_no' => $billNo,
+                'status' => $response->status(),
+                'response' => $decoded,
+                'request_payload' => $requestPayload,
+            ]);
+            $this->persistEInvoiceResult($billNo, [], $decoded, [
+                'bill_data' => $billData,
+                'request_payload' => $requestPayload,
+                'provider' => $isMastersIndia ? 'mastersindia' : ($apiSettings['EINVOICEPROVIDER'] ?? ''),
+                'user_code' => (string) $request->session()->get('user_code', ''),
+                'status' => 'failed',
+            ]);
+            return response()->json([
+                'ok' => false,
+                'message' => (string) (data_get($decoded, 'results.errorMessage') ?: data_get($decoded, 'results.message') ?: 'E-invoice provider rejected the request.'),
+                'provider_status' => $response->status(),
+                'provider_response' => $decoded,
+                'request_payload' => $requestPayload,
+            ], 422);
+        }
+
+        $result = is_array($decoded) ? $this->extractEInvoiceProviderResult($decoded, $apiSettings) : [];
+        if (trim((string) ($result['irn'] ?? '')) === '') {
+            $this->persistEInvoiceResult($billNo, $result, $decoded ?? $response->body(), [
+                'bill_data' => $billData,
+                'request_payload' => $requestPayload,
+                'provider' => $isMastersIndia ? 'mastersindia' : ($apiSettings['EINVOICEPROVIDER'] ?? ''),
+                'user_code' => (string) $request->session()->get('user_code', ''),
+                'status' => 'failed',
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $providerMessage !== '' ? $providerMessage : 'E-invoice provider did not return an IRN.',
+                'provider_status' => $response->status(),
+                'provider_response' => $decoded ?? $response->body(),
+                'request_payload' => $requestPayload,
+            ], 422);
+        }
+
+        $this->persistEInvoiceResult($billNo, $result, $decoded ?? $response->body(), [
+            'bill_data' => $billData,
+            'request_payload' => $requestPayload,
+            'provider' => $isMastersIndia ? 'mastersindia' : ($apiSettings['EINVOICEPROVIDER'] ?? ''),
+            'user_code' => (string) $request->session()->get('user_code', ''),
+        ]);
 
         $this->logDelpart($request, 'Sales Bill(' . $billNo . ') E-Invoice Requested', ['utype' => 'E', 'ttype' => 'T']);
 
         return response()->json([
             'ok' => true,
             'message' => $providerMessage,
+            'irn' => $result['irn'] ?? '',
+            'ack_no' => $result['ack_no'] ?? '',
+            'provider_status' => $response->status(),
+            'provider_response' => $decoded ?? $response->body(),
+            'request_payload' => $requestPayload,
+        ]);
+    }
+
+    public function generateEWayBill(Request $request): JsonResponse
+    {
+        set_time_limit(120);
+
+        $payload = $request->validate([
+            'bill_no' => 'required|string|max:40',
+            'password' => 'nullable|string|max:255',
+        ]);
+
+        $billNo = trim((string) $payload['bill_no']);
+        $billData = $this->findBillData($billNo);
+        if ($billData === null) {
+            return response()->json(['ok' => false, 'message' => 'Bill not found.'], 404);
+        }
+
+        $settingsPayload = $this->loadSettingsPayload();
+        $software = (array) ($settingsPayload['Software'] ?? []);
+        $threshold = max(0.0, $this->toNum($software['EWayBillThresholdAmount'] ?? $software['EInvoiceThresholdAmount'] ?? 1000000));
+        $billAmount = $this->toNum($billData['net_total'] ?? $billData['bill_total'] ?? 0);
+        if ($threshold > 0 && $billAmount < $threshold) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'E-way bill can be generated only for bills of Rs. ' . number_format($threshold, 2, '.', '') . ' and above.',
+            ], 422);
+        }
+
+        $apiSettings = (array) ($settingsPayload['API'] ?? []);
+        $username = trim((string) ($apiSettings['EWAYUSERNAME'] ?? $apiSettings['EINVOICEUSERNAME'] ?? ''));
+        if ($username === '') {
+            $username = (string) env('MASTERSINDIA_USERNAME', '');
+        }
+        $password = trim((string) ($payload['password'] ?? ''));
+        if ($password === '') {
+            $password = (string) ($apiSettings['EWAYPASSWORD'] ?? $apiSettings['EINVOICEPASSWORD'] ?? '');
+        }
+        if ($password === '') {
+            $password = (string) env('MASTERSINDIA_PASSWORD', '');
+        }
+
+        if ($username === '' || $password === '') {
+            return response()->json(['ok' => false, 'message' => 'Set Masters India username and password before generating e-way bill.'], 422);
+        }
+
+        $vehicleNo = strtoupper(preg_replace('/[^A-Z0-9]+/', '', (string) ($billData['vehicle_no'] ?? '')));
+        if ($vehicleNo === '') {
+            return response()->json(['ok' => false, 'message' => 'Vehicle number is required for e-way bill generation.'], 422);
+        }
+
+        $requestPayload = $this->buildMastersIndiaEWayBillPayload($billData, $settingsPayload, $apiSettings);
+        $apiUrl = trim((string) ($apiSettings['EWAYAPIURL'] ?? ''));
+        if ($apiUrl === '') {
+            $apiUrl = 'https://prod-api.mastersindia.co/api/v1/ewayBillsGenerate/';
+        }
+
+        try {
+            $token = $this->fetchMastersIndiaToken($apiSettings, $username, $password);
+            $response = $this->mastersIndiaHttp(20)
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders(['Authorization' => 'JWT ' . $token])
+                ->post($apiUrl, $requestPayload);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => 'E-way bill request failed: ' . $e->getMessage()], 502);
+        }
+
+        $decoded = null;
+        try {
+            $decoded = $response->json();
+        } catch (\Throwable) {
+            $decoded = null;
+        }
+
+        $status = strtoupper((string) data_get($decoded, 'results.status', ''));
+        $code = (int) data_get($decoded, 'results.code', 0);
+        $message = data_get($decoded, 'results.message');
+        $messageText = is_array($message)
+            ? (string) ($message['alert'] ?? 'E-way bill generated successfully.')
+            : trim((string) ($message ?: 'E-way bill provider rejected the request.'));
+
+        if (!$response->successful() || $status !== 'SUCCESS' || ($code !== 0 && $code !== 200)) {
+            return response()->json([
+                'ok' => false,
+                'message' => $messageText !== '' ? $messageText : 'E-way bill provider rejected the request.',
+                'provider_status' => $response->status(),
+                'provider_response' => $decoded ?? $response->body(),
+                'request_payload' => $requestPayload,
+            ], 422);
+        }
+
+        $ewayBillNo = is_array($message) ? (string) ($message['ewayBillNo'] ?? '') : '';
+        $ewayBillDate = is_array($message) ? (string) ($message['ewayBillDate'] ?? '') : '';
+        $validUpto = is_array($message) ? (string) ($message['validUpto'] ?? '') : '';
+        $printUrl = is_array($message) ? (string) ($message['url'] ?? '') : '';
+
+        $this->logDelpart($request, 'Sales Bill(' . $billNo . ') E-Way Bill Requested', ['utype' => 'E', 'ttype' => 'T']);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'E-way bill generated successfully.',
+            'eway_bill_no' => $ewayBillNo,
+            'eway_bill_date' => $ewayBillDate,
+            'valid_upto' => $validUpto,
+            'print_url' => $printUrl,
             'provider_status' => $response->status(),
             'provider_response' => $decoded ?? $response->body(),
             'request_payload' => $requestPayload,
@@ -2953,8 +3552,11 @@ class SalesBillController extends Controller
             'items' => 'nullable|array',
             'exchange' => 'nullable|array',
             'sales_return' => 'nullable|array',
+            'sr_tax_perc' => 'nullable|numeric',
             'sr_tax_amt' => 'nullable|numeric',
+            'sr_cess_perc' => 'nullable|numeric',
             'sr_cess_amt' => 'nullable|numeric',
+            'sr_discount_amt' => 'nullable|numeric',
             'extra' => 'nullable|array',
         ]);
 
@@ -2967,6 +3569,7 @@ class SalesBillController extends Controller
     public function itemLookup(Request $request): JsonResponse
     {
         $rawCode = trim((string) $request->query('code', ''));
+        $requestedGroup = strtoupper(trim((string) $request->query('group_code', '')));
         $taxPerc = $this->toNum($request->query('tax_perc', 0));
         $astPerc = $this->toNum($request->query('ast_perc', 0));
         $isCst = $request->boolean('is_cst', false);
@@ -3010,7 +3613,43 @@ class SalesBillController extends Controller
         if ($platinumRate <= 0) {
             $platinumRate = $pickNum($ratesCfg, ['PRATE'], $this->toNum($sw($software, 'PRATE', '0')));
         }
+        // Fallback to generald (where Rate Update screen writes) when not set in INI.
+        $generaldRate = function (string $code): float {
+            try {
+                $v = DB::table('generald')->where('code', $code)->value('cvalue');
+                return $this->toNum($v);
+            } catch (\Throwable) {
+                return 0.0;
+            }
+        };
         $g18Rate = $pickNum($ratesCfg, ['G18RATE'], $this->toNum($sw($software, 'G18RATE', '0')));
+        if ($g18Rate <= 0) { $g18Rate = $generaldRate('G18RATE'); }
+        $g14Rate = $pickNum($ratesCfg, ['G14RATE'], $this->toNum($sw($software, 'G14RATE', '0')));
+        if ($g14Rate <= 0) { $g14Rate = $generaldRate('G14RATE'); }
+        $g9Rate  = $pickNum($ratesCfg, ['G9RATE'],  $this->toNum($sw($software, 'G9RATE',  '0')));
+        if ($g9Rate  <= 0) { $g9Rate  = $generaldRate('G9RATE');  }
+        $thRate  = $pickNum($ratesCfg, ['THRATE'],  $this->toNum($sw($software, 'THRATE',  '0')));
+        if ($thRate  <= 0) { $thRate  = $generaldRate('THRATE');  }
+
+        $rateByPurity = function (string $qtype) use ($goldRate, $g18Rate, $g14Rate, $g9Rate, $thRate): float {
+            $key = strtoupper(trim($qtype));
+            $rates = [
+                '22' => $goldRate,
+                '18' => $g18Rate,
+                '14' => $g14Rate,
+                '9'  => $g9Rate,
+                '24' => $thRate,
+            ];
+            if (isset($rates[$key]) && $rates[$key] > 0) {
+                return (float) $rates[$key];
+            }
+            foreach ($rates as $prefix => $r) {
+                if ($r > 0 && str_starts_with($key, $prefix)) {
+                    return (float) $r;
+                }
+            }
+            return 0.0;
+        };
 
         $lookupCode = $rawCode;
         if ($barcodeCutLastDigit && ctype_digit($lookupCode) && strlen($lookupCode) > 1) {
@@ -3037,6 +3676,10 @@ class SalesBillController extends Controller
 
         $itemCols = $this->getColumns('items');
         $itemDb = DB::table('items')->where('code', $itemCode)->first();
+        $itemGroup = strtoupper(trim((string) $this->col($itemDb, 'grpcode', '')));
+        if ($requestedGroup !== '' && in_array('grpcode', $itemCols, true) && strcasecmp($itemGroup, $requestedGroup) !== 0) {
+            return response()->json(['ok' => false, 'message' => 'Check the item group.'], 422);
+        }
 
         $itype = $this->col($itemDb, 'itype', 'G');
         $taxInternal = $isYes($this->col($itemDb, 'taxinternal', 'N'));
@@ -3052,6 +3695,7 @@ class SalesBillController extends Controller
         $model = '';
         $qtype = '';
         $qtype2 = trim((string) $this->col($itemDb, 'defquality', ''));
+        $itemBillType = trim((string) $this->col($itemDb, 'billtype', ''));
         $stockType = $this->col($itemDb, 'defstktype', '');
         $stkinnos = strtoupper(trim((string) $this->col($itemDb, 'stkinnos', 'N')));
         $vaperc = $this->toNum($this->col($itemDb, 'vaperc', 0));
@@ -3127,6 +3771,14 @@ class SalesBillController extends Controller
             $qtype = $qtype2;
         }
 
+        $isGold = strtoupper(trim((string) $itype)) === 'G';
+        $purityRate = ($isGold && $qtype !== '') ? $rateByPurity($qtype) : 0.0;
+
+        // Auto-pick row rate from purity (gold only). Skip when barcode supplied its own rate.
+        if ($purityRate > 0 && !$barcodeRow) {
+            $rate = $purityRate;
+        }
+
         $typeRate = $this->pickRateByType($itype, $goldRate, $silverRate, $platinumRate, 0);
         if ($internationalRate && $qtype !== '' && $this->hasTable('itemsqtype')) {
             $itemsQCols = $this->getColumns('itemsqtype');
@@ -3138,8 +3790,8 @@ class SalesBillController extends Controller
                 }
             }
         }
-        if (str_starts_with(strtoupper(trim($qtype)), '18') && strtoupper(trim((string) $itype)) === 'G' && $typeRate <= 0) {
-            $typeRate = $g18Rate > 0 ? $g18Rate : $goldRate;
+        if ($isGold && $purityRate > 0) {
+            $typeRate = $purityRate;
         }
         if ($typeRate <= 0) {
             $typeRate = $this->pickRateByType($itype, $goldRate, $silverRate, $platinumRate, $rate);
@@ -3215,6 +3867,22 @@ class SalesBillController extends Controller
             }
         }
 
+        $displayCategory = strtoupper(trim((string) $this->col($itemDb, 'display', '')));
+        $itemNameForDiamond = strtoupper(trim((string) $this->col($itemDb, 'name', $item->name)));
+        $dmdPlate = strtoupper(trim((string) $this->col($itemDb, 'dmdplt', '')));
+        $itemOpDmdWgt = $this->toNum($this->col($itemDb, 'opdmdwgt', 0));
+        $itemOpStoneAmt = $this->toNum($this->col($itemDb, 'opstoneamt', 0));
+        $diamondTypeCodes = ['D', 'DM', 'DMD', 'DIA', 'DIAMOND'];
+        $isDiamondItem = in_array(strtoupper(trim((string) $itype)), $diamondTypeCodes, true)
+            || str_contains($displayCategory, 'DIAM')
+            || str_contains($itemNameForDiamond, 'DIAM')
+            || $dmdPlate === 'D'
+            || $itemGroup === 'DD'
+            || $itemOpDmdWgt != 0.0
+            || $itemOpStoneAmt > 0
+            || $dmdWgt > 0
+            || $dmdAmt > 0;
+
         $amount = $stkinnos === 'Y'
             ? round(($qty * $rate) + $stonePrice + $mcAmt + $dmdAmt, 2)
             : round(($netWgt * $rate) + $stonePrice + $mcAmt + $dmdAmt, 2);
@@ -3230,7 +3898,10 @@ class SalesBillController extends Controller
                 'bcode' => $bcode,
                 'item_code' => $itemCode,
                 'item_name' => $this->col($itemDb, 'name', $item->name),
+                'group_code' => $itemGroup,
                 'item_type' => $itype,
+                'display_category' => $displayCategory,
+                'is_diamond' => $isDiamondItem,
                 'purity' => $qtype,
                 'model' => $model,
                 'hsn' => trim((string) $this->col(
@@ -3257,6 +3928,7 @@ class SalesBillController extends Controller
                 'stktype' => $stockType,
                 'stktouch' => $stktouch,
                 'stkinnos' => $stkinnos,
+                'billtype' => $itemBillType,
                 'vaperc' => $vaperc,
                 'vaperqty' => $vaperqty,
                 'cost' => $cost,
@@ -3338,6 +4010,11 @@ class SalesBillController extends Controller
         $salesReturn = [];
         $ptaxPerc = 0.0;
         $ptaxAmt = 0.0;
+        $srTaxPerc = 0.0;
+        $srTaxAmt = 0.0;
+        $srCessPerc = 0.0;
+        $srCessAmt = 0.0;
+        $srDiscountAmt = 0.0;
 
         if ($slno > 0 && $this->hasTable('salesd')) {
             $sdRows = DB::table('salesd')
@@ -3346,18 +4023,59 @@ class SalesBillController extends Controller
                 ->get();
 
             $nameByCode = [];
+            $groupByCode = [];
+                    $displayByCode = [];
+                    $diamondByCode = [];
             if ($this->hasTable('items')) {
                 $codes = $sdRows->pluck('code')->filter()->map(fn ($c) => trim((string) $c))->unique()->values()->all();
                 if ($codes !== []) {
-                    $nameByCode = DB::table('items')
+                    $itemSelect = ['code', 'name'];
+                    if (in_array('grpcode', $this->getColumns('items'), true)) {
+                        $itemSelect[] = 'grpcode';
+                    }
+                    if (in_array('display', $this->getColumns('items'), true)) {
+                        $itemSelect[] = 'display';
+                    }
+                    foreach (['dmdplt', 'opdmdwgt', 'opstoneamt'] as $col) {
+                        if (in_array($col, $this->getColumns('items'), true)) {
+                            $itemSelect[] = $col;
+                        }
+                    }
+                    $itemMasterRows = DB::table('items')
                         ->whereIn('code', $codes)
-                        ->pluck('name', 'code')
-                        ->mapWithKeys(fn ($v, $k) => [trim((string) $k) => trim((string) $v)])
+                        ->get($itemSelect);
+                    $nameByCode = $itemMasterRows
+                        ->mapWithKeys(fn ($row) => [trim((string) $row->code) => trim((string) ($row->name ?? ''))])
+                        ->toArray();
+                    $groupByCode = $itemMasterRows
+                        ->mapWithKeys(fn ($row) => [trim((string) $row->code) => strtoupper(trim((string) ($row->grpcode ?? '')))])
+                        ->toArray();
+                    $displayByCode = $itemMasterRows
+                        ->mapWithKeys(fn ($row) => [trim((string) $row->code) => strtoupper(trim((string) ($row->display ?? '')))])
+                        ->toArray();
+                    $diamondByCode = $itemMasterRows
+                        ->mapWithKeys(function ($row) {
+                            $display = strtoupper(trim((string) ($row->display ?? '')));
+                            $name = strtoupper(trim((string) ($row->name ?? '')));
+                            $group = strtoupper(trim((string) ($row->grpcode ?? '')));
+                            $dmdPlate = strtoupper(trim((string) ($row->dmdplt ?? '')));
+                            $opDmdWgt = $this->toNum($row->opdmdwgt ?? 0);
+                            $opStoneAmt = $this->toNum($row->opstoneamt ?? 0);
+
+                            return [
+                                trim((string) $row->code) => str_contains($display, 'DIAM')
+                                    || str_contains($name, 'DIAM')
+                                    || $group === 'DD'
+                                    || $dmdPlate === 'D'
+                                    || $opDmdWgt != 0.0
+                                    || $opStoneAmt > 0,
+                            ];
+                        })
                         ->toArray();
                 }
             }
 
-            $items = $sdRows->map(function ($r) use ($nameByCode) {
+            $items = $sdRows->map(function ($r) use ($nameByCode, $groupByCode, $displayByCode, $diamondByCode) {
                 $itemCode = trim((string) ($r->code ?? ''));
                 $itemName = trim((string) ($r->name ?? ''));
                 if ($itemName === '' && isset($nameByCode[$itemCode])) {
@@ -3371,6 +4089,9 @@ class SalesBillController extends Controller
                     'item_code' => $itemCode,
                     'item_name' => $itemName,
                     'item_type' => 'G',
+                    'group_code' => $groupByCode[$itemCode] ?? '',
+                    'display_category' => $displayByCode[$itemCode] ?? '',
+                    'is_diamond' => (bool) ($diamondByCode[$itemCode] ?? str_contains($displayByCode[$itemCode] ?? '', 'DIAM')),
                     'purity' => trim((string) ($r->iqtype ?? '')),
                     'model' => trim((string) ($r->model ?? '')),
                     'note' => trim((string) ($r->note ?? '')),
@@ -3382,6 +4103,8 @@ class SalesBillController extends Controller
                     'stone_price' => round($this->toNum($r->stoneprice ?? 0), 2),
                     'mc_perc' => round($this->toNum($r->vaperc ?? 0), 3),
                     'vaperc' => round($this->toNum($r->vaperc ?? 0), 3),
+                    'va_disc_perc' => round($this->toNum($r->va_disc_perc ?? $r->vadiscperc ?? 0), 3),
+                    'va_disc_amt' => round($this->toNum($r->va_disc_amt ?? $r->vadiscamt ?? 0), 2),
                     'making_charge' => round($this->toNum($r->mcharge ?? 0), 2),
                     'rate' => round($this->toNum($r->rate ?? 0), 2),
                     'amount' => $amount,
@@ -3471,6 +4194,23 @@ class SalesBillController extends Controller
             })->values()->all();
         }
 
+        if ($slno > 0 && $this->hasTable('salesrm')) {
+            $salesRmSelect = ['discount', 'staxperc', 'staxamt', 'astamt'];
+            if (Schema::hasColumn('salesrm', 'astperc')) {
+                $salesRmSelect[] = 'astperc';
+            }
+            $salesReturnMaster = DB::table('salesrm')
+                ->where('slno', $slno)
+                ->first($salesRmSelect);
+            if ($salesReturnMaster) {
+                $srDiscountAmt = round($this->toNum($salesReturnMaster->discount ?? 0), 2);
+                $srTaxPerc = round($this->toNum($salesReturnMaster->staxperc ?? 0), 3);
+                $srTaxAmt = round($this->toNum($salesReturnMaster->staxamt ?? 0), 2);
+                $srCessPerc = round($this->toNum($salesReturnMaster->astperc ?? 0), 3);
+                $srCessAmt = round($this->toNum($salesReturnMaster->astamt ?? 0), 2);
+            }
+        }
+
         if ($slno > 0 && $this->hasTable('purchasem')) {
             $purchaseM = DB::table('purchasem')
                 ->where('slno', $slno)
@@ -3538,6 +4278,12 @@ class SalesBillController extends Controller
             'add_bank_charge' => strtoupper(trim((string) ($salesm->addbcharge ?? 'N'))) === 'Y',
             'opening_balance' => round($this->toNum($salesm->ob ?? 0), 2),
             'received' => round($this->toNum($salesm->ramt ?? 0), 2),
+            'cash_amt' => round(max(
+                $this->toNum($salesm->ramt ?? 0)
+                - $this->toNum($salesm->ccamt ?? 0)
+                - $this->toNum($salesm->chqamt ?? 0),
+                0
+            ), 2),
             'credit' => strtoupper(trim((string) ($salesm->loan ?? 'N'))) === 'Y',
             'note' => trim((string) ($salesm->note ?? '')),
             'tcs_perc' => round($this->toNum($salesm->tcsperc ?? 0), 3),
@@ -3545,6 +4291,11 @@ class SalesBillController extends Controller
             'redeem_points' => round($this->toNum($salesm->redmpoints ?? 0), 2),
             'ptax_perc' => $ptaxPerc,
             'ptax_amt' => $ptaxAmt,
+            'sr_discount_amt' => $srDiscountAmt,
+            'sr_tax_perc' => $srTaxPerc,
+            'sr_tax_amt' => $srTaxAmt,
+            'sr_cess_perc' => $srCessPerc,
+            'sr_cess_amt' => $srCessAmt,
         ];
 
         return [
@@ -3681,6 +4432,798 @@ class SalesBillController extends Controller
         ];
     }
 
+    private function isB2BEInvoiceBill(array $billData): bool
+    {
+        $billType = strtoupper(trim((string) ($billData['bill_type'] ?? '')));
+        $billNo = strtoupper(trim((string) ($billData['bill_no'] ?? '')));
+        $candidates = [$billType, $billNo];
+
+        if ($this->hasTable('salestype') && $billType !== '') {
+            $cols = $this->getColumns('salestype');
+            $row = DB::table('salestype')
+                ->whereRaw('upper(trim(code)) = ?', [$billType])
+                ->first();
+            if ($row) {
+                foreach (['code', 'name', 'prefix'] as $col) {
+                    if (in_array($col, $cols, true)) {
+                        $candidates[] = strtoupper(trim((string) ($row->{$col} ?? '')));
+                    }
+                }
+            }
+        }
+
+        foreach ($candidates as $text) {
+            if ($text === '') {
+                continue;
+            }
+            if ($text === 'B2B' || str_contains($text, 'B2B') || str_contains($text, 'B3B')) {
+                return true;
+            }
+            if (preg_match('/^B[23][A-Z0-9\/-]*/', $text) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function fetchMastersIndiaToken(array $apiSettings, string $username, string $password): string
+    {
+        $tokenUrl = trim((string) ($apiSettings['EWAYTOKENURL'] ?? $apiSettings['EINVOICETOKENURL'] ?? ''));
+        if ($tokenUrl === '') {
+            $tokenUrl = 'https://prod-api.mastersindia.co/api/v1/token-auth/';
+        }
+
+        $response = $this->mastersIndiaHttp(15)
+            ->acceptJson()
+            ->asJson()
+            ->post($tokenUrl, [
+                'username' => $username,
+                'password' => $password,
+            ]);
+
+        $decoded = $response->json();
+        $token = is_array($decoded) ? trim((string) ($decoded['token'] ?? '')) : '';
+        if (!$response->successful() || $token === '') {
+            $message = is_array($decoded)
+                ? (string) ($decoded['error'] ?? $decoded['message'] ?? 'Unable to login to Masters India.')
+                : trim($response->body());
+            throw new \RuntimeException($message !== '' ? $message : 'Unable to login to Masters India.');
+        }
+
+        return $token;
+    }
+
+    private function mastersIndiaHttp(int $timeout = 20): \Illuminate\Http\Client\PendingRequest
+    {
+        $curlOptions = [];
+        if (defined('CURLOPT_IPRESOLVE') && defined('CURL_IPRESOLVE_V4')) {
+            $curlOptions[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+
+        return Http::connectTimeout(5)
+            ->timeout($timeout)
+            ->retry(0, 0)
+            ->withOptions($curlOptions !== [] ? ['curl' => $curlOptions] : []);
+    }
+
+    private function buildMastersIndiaEInvoicePayload(array $billData, array $settingsPayload, array $apiSettings): array
+    {
+        $company = (array) ($settingsPayload['Company'] ?? []);
+        $extra = (array) ($billData['extra'] ?? []);
+
+        $sellerGstin = strtoupper(trim((string) (
+            $apiSettings['EINVOICESELLERGSTIN']
+            ?? $apiSettings['EINVOICEUSERGSTIN']
+            ?? $company['KGST']
+            ?? ''
+        )));
+        $buyerOverrideGstin = strtoupper(trim((string) ($apiSettings['EINVOICEBUYERGSTIN'] ?? '')));
+        $buyerGstin = $buyerOverrideGstin !== ''
+            ? $buyerOverrideGstin
+            : strtoupper(trim((string) ($billData['gst_no'] ?? '')));
+        $userGstin = strtoupper(trim((string) ($apiSettings['EINVOICEUSERGSTIN'] ?? '')));
+        if ($userGstin === '') {
+            $userGstin = $sellerGstin;
+        }
+
+        $sellerState = $this->mastersStateCode((string) ($company['DefStateCode'] ?? ''), $sellerGstin);
+        $buyerState = $this->mastersStateCode((string) ($billData['state_code'] ?? ''), $buyerGstin);
+        if ($buyerState === '') {
+            $buyerState = $sellerState;
+        }
+        $interState = $sellerState !== '' && $buyerState !== '' && $sellerState !== $buyerState;
+
+        $sellerAddress = trim((string) ($company['Addr'] ?? ''));
+        if ($sellerAddress === '') {
+            $sellerAddress = trim((string) (($company['Addr1'] ?? '') . ' ' . ($company['Addr2'] ?? '')));
+        }
+        if ($sellerAddress === '') {
+            $sellerAddress = $this->readGeneralsValue('SHOPADDR', '');
+        }
+        $sellerName = trim((string) ($company['Name'] ?? ''));
+        if ($sellerName === '') {
+            $sellerName = $this->readGeneralsValue('SHOPNM', 'SALEENA GOLD AND DIAMONDS');
+        }
+        $sellerPhone = trim((string) ($company['Phone'] ?? ''));
+        if ($sellerPhone === '') {
+            $sellerPhone = $this->readGeneralsValue('SHOPPHONE', '');
+        }
+        $buyerAddress = trim((string) ($billData['address'] ?? ''));
+        $buyerName = trim((string) ($billData['customer_name'] ?? ''));
+        if ($buyerName === '') {
+            $buyerName = 'CUSTOMER';
+        }
+
+        $items = [];
+        $assessableTotal = 0.0;
+        $cgstTotal = 0.0;
+        $sgstTotal = 0.0;
+        $igstTotal = 0.0;
+
+        foreach (array_values((array) ($billData['items'] ?? [])) as $index => $item) {
+            $qty = max(1.0, $this->toNum($item['qty'] ?? 1));
+            $amount = round($this->toNum($item['amount'] ?? 0), 2);
+            if ($amount <= 0) {
+                $amount = round($this->toNum($item['rate'] ?? 0) * $qty, 2);
+            }
+            $taxRate = round($this->toNum($extra['tax_perc'] ?? 0), 2);
+            $taxAmount = round($amount * $taxRate / 100, 2);
+            $igst = $interState ? $taxAmount : 0.0;
+            $cgst = $interState ? 0.0 : round($taxAmount / 2, 2);
+            $sgst = $interState ? 0.0 : round($taxAmount - $cgst, 2);
+            $hsn = preg_replace('/\D+/', '', trim((string) ($item['hsn'] ?? $item['hsn_code'] ?? ''))) ?: '7113';
+
+            $assessableTotal += $amount;
+            $cgstTotal += $cgst;
+            $sgstTotal += $sgst;
+            $igstTotal += $igst;
+
+            $items[] = [
+                'item_serial_number' => (string) ($index + 1),
+                'product_description' => mb_substr(trim((string) ($item['item_name'] ?? $item['name'] ?? 'JEWELLERY')), 0, 300) ?: 'JEWELLERY',
+                'is_service' => 'N',
+                'hsn_code' => $hsn,
+                'bar_code' => $this->mastersBarCode((string) ($item['item_code'] ?? '')),
+                'quantity' => $qty,
+                'free_quantity' => 0,
+                'unit' => 'NOS',
+                'unit_price' => round($amount / $qty, 2),
+                'total_amount' => $amount,
+                'pre_tax_value' => 0,
+                'discount' => 0,
+                'other_charge' => 0,
+                'assessable_value' => $amount,
+                'gst_rate' => $taxRate,
+                'igst_amount' => $igst,
+                'cgst_amount' => $cgst,
+                'sgst_amount' => $sgst,
+                'cess_rate' => 0,
+                'cess_amount' => 0,
+                'cess_nonadvol_amount' => 0,
+                'state_cess_rate' => 0,
+                'state_cess_amount' => 0,
+                'state_cess_nonadvol_amount' => 0,
+                'total_item_value' => round($amount + $igst + $cgst + $sgst, 2),
+            ];
+        }
+
+        if ($items === []) {
+            $amount = max(1.0, round($this->toNum($billData['bill_total'] ?? $billData['net_total'] ?? 1), 2));
+            $assessableTotal = $amount;
+            $items[] = [
+                'item_serial_number' => '1',
+                'product_description' => 'JEWELLERY',
+                'is_service' => 'N',
+                'hsn_code' => '7113',
+                'quantity' => 1,
+                'free_quantity' => 0,
+                'unit' => 'NOS',
+                'unit_price' => $amount,
+                'total_amount' => $amount,
+                'pre_tax_value' => 0,
+                'discount' => 0,
+                'other_charge' => 0,
+                'assessable_value' => $amount,
+                'gst_rate' => 0,
+                'igst_amount' => 0,
+                'cgst_amount' => 0,
+                'sgst_amount' => 0,
+                'cess_rate' => 0,
+                'cess_amount' => 0,
+                'cess_nonadvol_amount' => 0,
+                'state_cess_rate' => 0,
+                'state_cess_amount' => 0,
+                'state_cess_nonadvol_amount' => 0,
+                'total_item_value' => $amount,
+            ];
+        }
+
+        $invoiceValue = round($assessableTotal + $cgstTotal + $sgstTotal + $igstTotal, 2);
+
+        return [
+            'user_gstin' => $userGstin,
+            'data_source' => 'erp',
+            'transaction_details' => [
+                'supply_type' => 'B2B',
+                'charge_type' => 'N',
+                'igst_on_intra' => 'N',
+                'ecommerce_gstin' => '',
+            ],
+            'document_details' => [
+                'document_type' => 'INV',
+                'document_number' => $this->mastersDocumentNumber((string) ($billData['bill_no'] ?? '')),
+                'document_date' => $this->mastersDate((string) ($billData['bill_date'] ?? '')),
+            ],
+            'seller_details' => [
+                'gstin' => $sellerGstin,
+                'legal_name' => mb_substr($sellerName, 0, 100),
+                'trade_name' => mb_substr($sellerName, 0, 100),
+                'address1' => $this->mastersAddressLine($sellerAddress, 'Shop Address'),
+                'address2' => $this->mastersAddressLine((string) ($company['Addr2'] ?? ''), ''),
+                'location' => $this->mastersLocation((string) ($company['Branch'] ?? $company['Loc'] ?? 'KOZHIKODE')),
+                'pincode' => $this->mastersPin($company['PIN'] ?? $company['Pin'] ?? null, $sellerState),
+                'state_code' => $sellerState,
+                'phone_number' => preg_replace('/\D+/', '', $sellerPhone) ?: '',
+                'email' => trim((string) ($company['HOMailID'] ?? '')),
+            ],
+            'buyer_details' => [
+                'gstin' => $buyerGstin,
+                'legal_name' => mb_substr($buyerName, 0, 100),
+                'trade_name' => mb_substr($buyerName, 0, 100),
+                'address1' => $this->mastersAddressLine($buyerAddress, 'Buyer Address'),
+                'address2' => '',
+                'location' => $this->mastersLocation((string) ($billData['city'] ?? 'CITY')),
+                'pincode' => $this->mastersPin($billData['pincode'] ?? null, $buyerState),
+                'place_of_supply' => $buyerState,
+                'state_code' => $buyerState,
+                'phone_number' => preg_replace('/\D+/', '', (string) ($billData['mobile'] ?? '')) ?: '',
+                'email' => '',
+            ],
+            'value_details' => [
+                'total_assessable_value' => round($assessableTotal, 2),
+                'total_cgst_value' => round($cgstTotal, 2),
+                'total_sgst_value' => round($sgstTotal, 2),
+                'total_igst_value' => round($igstTotal, 2),
+                'total_cess_value' => 0,
+                'total_cess_value_of_state' => 0,
+                'total_discount' => 0,
+                'total_other_charge' => 0,
+                'total_invoice_value' => $invoiceValue,
+                'round_off_amount' => 0,
+                'total_invoice_value_additional_currency' => 0,
+            ],
+            'item_list' => $items,
+        ];
+    }
+
+    private function buildMastersIndiaEWayBillPayload(array $billData, array $settingsPayload, array $apiSettings): array
+    {
+        $company = (array) ($settingsPayload['Company'] ?? []);
+        $extra = (array) ($billData['extra'] ?? []);
+
+        $sellerGstin = strtoupper(trim((string) (
+            $apiSettings['EWAYUSERGSTIN']
+            ?? $apiSettings['EWAYSELLERGSTIN']
+            ?? $apiSettings['EINVOICESELLERGSTIN']
+            ?? $apiSettings['EINVOICEUSERGSTIN']
+            ?? $company['KGST']
+            ?? ''
+        )));
+        $buyerGstin = strtoupper(trim((string) ($billData['gst_no'] ?? '')));
+        if (!preg_match('/^\d{2}[A-Z0-9]{13}$/', $buyerGstin)) {
+            $buyerGstin = 'URP';
+        }
+
+        $sellerStateCode = $this->mastersStateCode((string) ($company['DefStateCode'] ?? ''), $sellerGstin);
+        $buyerStateCode = $buyerGstin !== 'URP' ? $this->mastersStateCode((string) ($billData['state_code'] ?? ''), $buyerGstin) : '';
+        if ($buyerStateCode === '') {
+            $buyerStateCode = $sellerStateCode;
+        }
+        $interState = $sellerStateCode !== '' && $buyerStateCode !== '' && $sellerStateCode !== $buyerStateCode;
+
+        $sellerName = trim((string) ($company['Name'] ?? '')) ?: $this->readGeneralsValue('SHOPNM', 'SALEENA GOLD AND DIAMONDS');
+        $sellerAddress = trim((string) ($company['Addr'] ?? '')) ?: $this->readGeneralsValue('SHOPADDR', 'Shop Address');
+        $sellerAddress2 = trim((string) (($company['Addr1'] ?? '') . ' ' . ($company['Addr2'] ?? '')));
+        $buyerName = trim((string) ($billData['customer_name'] ?? '')) ?: 'CUSTOMER';
+        $buyerAddress = trim((string) ($billData['address'] ?? '')) ?: 'Buyer Address';
+
+        $taxRate = round($this->toNum($extra['tax_perc'] ?? 0), 3);
+        $cgstRate = $interState ? 0.0 : round($taxRate / 2, 3);
+        $sgstRate = $interState ? 0.0 : round($taxRate / 2, 3);
+        $igstRate = $interState ? $taxRate : 0.0;
+
+        $items = [];
+        $taxableTotal = 0.0;
+        foreach (array_values((array) ($billData['items'] ?? [])) as $item) {
+            $qty = max(1.0, $this->toNum($item['qty'] ?? 1));
+            $amount = round($this->toNum($item['amount'] ?? 0), 2);
+            if ($amount <= 0) {
+                $amount = round($this->toNum($item['rate'] ?? 0) * $qty, 2);
+            }
+            if ($amount <= 0) {
+                continue;
+            }
+            $taxableTotal += $amount;
+            $name = mb_substr(trim((string) ($item['item_name'] ?? $item['name'] ?? 'JEWELLERY')), 0, 100) ?: 'JEWELLERY';
+            $items[] = [
+                'product_name' => $name,
+                'product_description' => $name,
+                'hsn_code' => preg_replace('/\D+/', '', trim((string) ($item['hsn'] ?? $item['hsn_code'] ?? ''))) ?: '7113',
+                'quantity' => $qty,
+                'unit_of_product' => 'NOS',
+                'cgst_rate' => $cgstRate,
+                'sgst_rate' => $sgstRate,
+                'igst_rate' => $igstRate,
+                'cess_rate' => 0,
+                'cessNonAdvol' => 0,
+                'taxable_amount' => $amount,
+            ];
+        }
+
+        if ($items === []) {
+            $amount = max(1.0, round($this->toNum($billData['bill_total'] ?? $billData['net_total'] ?? 1), 2));
+            $taxableTotal = $amount;
+            $items[] = [
+                'product_name' => 'JEWELLERY',
+                'product_description' => 'JEWELLERY',
+                'hsn_code' => '7113',
+                'quantity' => 1,
+                'unit_of_product' => 'NOS',
+                'cgst_rate' => $cgstRate,
+                'sgst_rate' => $sgstRate,
+                'igst_rate' => $igstRate,
+                'cess_rate' => 0,
+                'cessNonAdvol' => 0,
+                'taxable_amount' => $amount,
+            ];
+        }
+
+        $cgstAmount = $interState ? 0.0 : round($taxableTotal * $taxRate / 200, 2);
+        $sgstAmount = $interState ? 0.0 : round($taxableTotal * $taxRate / 200, 2);
+        $igstAmount = $interState ? round($taxableTotal * $taxRate / 100, 2) : 0.0;
+        $invoiceValue = round($this->toNum($billData['net_total'] ?? 0), 2);
+        if ($invoiceValue <= 0) {
+            $invoiceValue = round($taxableTotal + $cgstAmount + $sgstAmount + $igstAmount, 2);
+        }
+
+        $sellerStateName = $this->mastersStateName($sellerStateCode);
+        $buyerStateName = $this->mastersStateName($buyerStateCode);
+        $sellerPin = $this->mastersPin($company['PIN'] ?? $company['Pin'] ?? null, $sellerStateCode);
+        $buyerPin = $this->mastersPin($billData['pincode'] ?? null, $buyerStateCode);
+        $vehicleNo = strtoupper(preg_replace('/[^A-Z0-9]+/', '', (string) ($billData['vehicle_no'] ?? '')));
+        $distance = (int) $this->toNum($billData['distance'] ?? 0);
+        if ($distance < 0 || $distance > 4000) {
+            $distance = 0;
+        }
+
+        return [
+            'userGstin' => $sellerGstin,
+            'supply_type' => 'outward',
+            'sub_supply_type' => 'Supply',
+            'sub_supply_description' => '',
+            'document_type' => 'Tax Invoice',
+            'document_number' => $this->mastersDocumentNumber((string) ($billData['bill_no'] ?? '')),
+            'document_date' => $this->mastersDate((string) ($billData['bill_date'] ?? '')),
+            'gstin_of_consignor' => $sellerGstin,
+            'legal_name_of_consignor' => mb_substr($sellerName, 0, 100),
+            'address1_of_consignor' => $this->mastersAddressLine($sellerAddress, 'Shop Address'),
+            'address2_of_consignor' => $this->mastersAddressLine($sellerAddress2, ''),
+            'place_of_consignor' => $this->mastersLocation((string) ($company['Branch'] ?? $company['Loc'] ?? 'KOZHIKODE')),
+            'pincode_of_consignor' => $sellerPin,
+            'state_of_consignor' => $sellerStateName,
+            'actual_from_state_name' => $sellerStateName,
+            'gstin_of_consignee' => $buyerGstin,
+            'legal_name_of_consignee' => mb_substr($buyerName, 0, 100),
+            'address1_of_consignee' => $this->mastersAddressLine($buyerAddress, 'Buyer Address'),
+            'address2_of_consignee' => '',
+            'place_of_consignee' => $this->mastersLocation((string) ($billData['supply_place'] ?? $billData['city'] ?? 'CITY')),
+            'pincode_of_consignee' => $buyerPin,
+            'state_of_supply' => $buyerStateName,
+            'actual_to_state_name' => $buyerStateName,
+            'transaction_type' => 1,
+            'other_value' => 0,
+            'total_invoice_value' => $invoiceValue,
+            'taxable_amount' => round($taxableTotal, 2),
+            'cgst_amount' => $cgstAmount,
+            'sgst_amount' => $sgstAmount,
+            'igst_amount' => $igstAmount,
+            'cess_amount' => 0,
+            'cess_nonadvol_value' => 0,
+            'transporter_id' => trim((string) ($apiSettings['EWAYTRANSPORTERID'] ?? '')),
+            'transporter_name' => trim((string) ($apiSettings['EWAYTRANSPORTERNAME'] ?? '')),
+            'transporter_document_number' => '',
+            'transporter_document_date' => '',
+            'transportation_mode' => 'Road',
+            'transportation_distance' => (string) $distance,
+            'vehicle_number' => $vehicleNo,
+            'vehicle_type' => 'Regular',
+            'generate_status' => 1,
+            'data_source' => 'erp',
+            'user_ref' => '',
+            'location_code' => '',
+            'eway_bill_status' => 'ABC',
+            'auto_print' => 'N',
+            'email' => '',
+            'delete_record' => 'N',
+            'itemList' => $items,
+        ];
+    }
+
+    private function mastersBarCode(string $itemCode): string
+    {
+        $code = trim($itemCode);
+        if ($code === '') {
+            return 'ITM';
+        }
+        if (mb_strlen($code) >= 3) {
+            return mb_substr($code, 0, 64);
+        }
+        return str_pad($code, 3, '0', STR_PAD_LEFT);
+    }
+
+    private function mastersDocumentNumber(string $billNo): string
+    {
+        $docNo = strtoupper(trim($billNo));
+        $docNo = preg_replace('/[^A-Z0-9\/-]+/', '', $docNo) ?: 'INV1';
+        $docNo = ltrim($docNo, '0/-');
+        if ($docNo === '') {
+            return 'INV1';
+        }
+
+        $docNo = preg_replace_callback('/(\d+)$/', function (array $match) {
+            $serial = ltrim($match[1], '0');
+            return $serial !== '' ? $serial : '1';
+        }, $docNo) ?: $docNo;
+
+        if (strlen($docNo) <= 16) {
+            return $docNo;
+        }
+
+        $parts = preg_split('/[\/-]+/', $docNo, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $compact = implode('', $parts);
+        if ($compact !== '' && strlen($compact) <= 16) {
+            return $compact;
+        }
+
+        $serial = (string) (preg_match('/(\d+)$/', $docNo, $m) ? $m[1] : '');
+        if ($serial !== '') {
+            $prefix = preg_replace('/[^A-Z0-9]+/', '', substr($docNo, 0, -strlen($serial))) ?: 'INV';
+            return substr($prefix, 0, max(1, 16 - strlen($serial))) . $serial;
+        }
+
+        return substr($compact !== '' ? $compact : $docNo, -16);
+    }
+
+    private function mastersDate(string $value): string
+    {
+        $value = trim($value);
+        // Try DD/MM/YYYY first (Indian format stored in this system)
+        $dt = \DateTime::createFromFormat('d/m/Y', $value);
+        if ($dt !== false) {
+            return $dt->format('d/m/Y');
+        }
+        // Fallback for YYYY-MM-DD or other unambiguous formats
+        $ts = strtotime($value);
+        return $ts ? date('d/m/Y', $ts) : date('d/m/Y');
+    }
+
+    private function mastersStateCode(string $stateCode, string $gstin = ''): string
+    {
+        $stateCode = trim($stateCode);
+        if (preg_match('/^\d{1,2}$/', $stateCode)) {
+            return str_pad($stateCode, 2, '0', STR_PAD_LEFT);
+        }
+        $gstin = strtoupper(trim($gstin));
+        return preg_match('/^\d{2}[A-Z0-9]{13}$/', $gstin) ? substr($gstin, 0, 2) : '';
+    }
+
+    private function mastersStateName(string $stateCode): string
+    {
+        $stateCode = str_pad(preg_replace('/\D+/', '', $stateCode), 2, '0', STR_PAD_LEFT);
+        return [
+            '01' => 'JAMMU AND KASHMIR',
+            '02' => 'HIMACHAL PRADESH',
+            '03' => 'PUNJAB',
+            '04' => 'CHANDIGARH',
+            '05' => 'UTTARAKHAND',
+            '06' => 'HARYANA',
+            '07' => 'DELHI',
+            '08' => 'RAJASTHAN',
+            '09' => 'UTTAR PRADESH',
+            '10' => 'BIHAR',
+            '11' => 'SIKKIM',
+            '12' => 'ARUNACHAL PRADESH',
+            '13' => 'NAGALAND',
+            '14' => 'MANIPUR',
+            '15' => 'MIZORAM',
+            '16' => 'TRIPURA',
+            '17' => 'MEGHALAYA',
+            '18' => 'ASSAM',
+            '19' => 'WEST BENGAL',
+            '20' => 'JHARKHAND',
+            '21' => 'ODISHA',
+            '22' => 'CHHATTISGARH',
+            '23' => 'MADHYA PRADESH',
+            '24' => 'GUJARAT',
+            '25' => 'DAMAN AND DIU',
+            '26' => 'DADRA AND NAGAR HAVELI AND DAMAN AND DIU',
+            '27' => 'MAHARASHTRA',
+            '28' => 'ANDHRA PRADESH',
+            '29' => 'KARNATAKA',
+            '30' => 'GOA',
+            '31' => 'LAKSHADWEEP',
+            '32' => 'KERALA',
+            '33' => 'TAMIL NADU',
+            '34' => 'PUDUCHERRY',
+            '35' => 'ANDAMAN AND NICOBAR ISLANDS',
+            '36' => 'TELANGANA',
+            '37' => 'ANDHRA PRADESH',
+            '38' => 'LADAKH',
+            '96' => 'OTHER COUNTRY',
+            '97' => 'OTHER TERRITORY',
+            '99' => 'OTHER COUNTRY',
+        ][$stateCode] ?? 'KERALA';
+    }
+
+    private function mastersPin(mixed $pin, string $stateCode): int
+    {
+        $digits = preg_replace('/\D+/', '', (string) $pin);
+        if (strlen($digits) === 6) {
+            return (int) $digits;
+        }
+        return match ($stateCode) {
+            '05' => 263001,
+            '06' => 122001,
+            '07' => 110001,
+            '09' => 201301,
+            '24' => 380001,
+            '27' => 400001,
+            '29' => 560001,
+            '32' => 673001,
+            '33' => 600001,
+            default => 673001,
+        };
+    }
+
+    private function mastersAddressLine(string $value, string $fallback): string
+    {
+        $value = trim(preg_replace('/\s+/', ' ', $value));
+        if (mb_strlen($value) < 3) {
+            if ($fallback === '') {
+                return '';
+            }
+            $value = $fallback;
+        }
+        return mb_substr($value, 0, 100);
+    }
+
+    private function mastersLocation(string $value): string
+    {
+        $value = trim(preg_replace('/\s+/', ' ', $value));
+        if (mb_strlen($value) < 3) {
+            $value = 'CITY';
+        }
+        return mb_substr($value, 0, 50);
+    }
+
+    private function buildEInvoiceHttpRequest(array $apiSettings, string $username, string $password)
+    {
+        $authMode = strtolower(trim((string) ($apiSettings['EINVOICEAUTHMODE'] ?? 'basic')));
+        $apiKey = trim((string) ($apiSettings['EINVOICEAPIKEY'] ?? ''));
+        $apiKeyHeader = trim((string) ($apiSettings['EINVOICEAPIKEYHEADER'] ?? 'x-api-key')) ?: 'x-api-key';
+
+        $request = Http::timeout(30)
+            ->acceptJson()
+            ->asJson();
+
+        $headers = $this->parseEInvoiceHeaders((string) ($apiSettings['EINVOICEEXTRAHEADERS'] ?? ''));
+
+        if ($authMode === 'basic') {
+            $request = $request->withBasicAuth($username, $password);
+        } elseif ($authMode === 'bearer') {
+            $request = $request->withToken($apiKey);
+        } elseif ($authMode === 'api_key' || $authMode === 'apikey') {
+            $headers[$apiKeyHeader] = $apiKey;
+        } elseif ($authMode !== 'none') {
+            $headers[$apiKeyHeader] = $apiKey;
+        }
+
+        return $headers !== [] ? $request->withHeaders($headers) : $request;
+    }
+
+    private function parseEInvoiceHeaders(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return collect($decoded)
+                ->filter(fn ($value, $key) => is_string($key) && trim($key) !== '' && !is_array($value))
+                ->mapWithKeys(fn ($value, $key) => [trim((string) $key) => trim((string) $value)])
+                ->all();
+        }
+
+        $headers = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
+            if (!str_contains($line, ':')) {
+                continue;
+            }
+            [$key, $value] = explode(':', $line, 2);
+            $key = trim($key);
+            if ($key !== '') {
+                $headers[$key] = trim($value);
+            }
+        }
+
+        return $headers;
+    }
+
+    private function wrapEInvoicePayload(array $payload, array $apiSettings): array
+    {
+        $root = trim((string) ($apiSettings['EINVOICEPAYLOADROOT'] ?? ''));
+        return $root === '' ? $payload : [$root => $payload];
+    }
+
+    private function extractEInvoiceProviderResult(array $response, array $apiSettings): array
+    {
+        return [
+            'irn' => $this->eInvoiceResponseValue($response, (string) ($apiSettings['EINVOICEIRNKEY'] ?? ''), [
+                'irn', 'Irn', 'IRN', 'data.irn', 'data.Irn', 'Data.Irn', 'result.irn', 'result.Irn',
+                'results.message.Irn', 'Einvoice.Irn', 'eInvoice.Irn',
+            ]),
+            'ack_no' => $this->eInvoiceResponseValue($response, (string) ($apiSettings['EINVOICEACKNOKEY'] ?? ''), [
+                'ack_no', 'AckNo', 'AckNum', 'ackNo', 'data.AckNo', 'Data.AckNo', 'result.AckNo',
+                'results.message.AckNo',
+            ]),
+            'ack_date' => $this->eInvoiceResponseValue($response, (string) ($apiSettings['EINVOICEACKDATEKEY'] ?? ''), [
+                'ack_date', 'AckDt', 'AckDate', 'ackDate', 'data.AckDt', 'Data.AckDt', 'result.AckDt',
+                'results.message.AckDt',
+            ]),
+            'signed_qr_code' => $this->eInvoiceResponseValue($response, (string) ($apiSettings['EINVOICEQRKEY'] ?? ''), [
+                'SignedQRCode', 'SignedQrCode', 'signed_qr_code', 'data.SignedQRCode', 'Data.SignedQRCode',
+                'result.SignedQRCode', 'results.message.SignedQRCode',
+            ]),
+        ];
+    }
+
+    private function eInvoiceResponseValue(array $response, string $configuredPath, array $fallbackPaths): string
+    {
+        $paths = array_values(array_filter(array_merge([$configuredPath], $fallbackPaths), fn ($path) => trim((string) $path) !== ''));
+
+        foreach ($paths as $path) {
+            $value = data_get($response, $path);
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                return trim((string) $value);
+            }
+        }
+
+        $needleParts = [];
+        foreach ($paths as $path) {
+            $parts = explode('.', (string) $path);
+            $needleParts[] = strtolower((string) end($parts));
+        }
+
+        return $this->findEInvoiceResponseValue($response, array_unique($needleParts));
+    }
+
+    private function findEInvoiceResponseValue(array $data, array $keys): string
+    {
+        foreach ($data as $key => $value) {
+            if (in_array(strtolower((string) $key), $keys, true) && is_scalar($value) && trim((string) $value) !== '') {
+                return trim((string) $value);
+            }
+            if (is_array($value)) {
+                $found = $this->findEInvoiceResponseValue($value, $keys);
+                if ($found !== '') {
+                    return $found;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function persistEInvoiceResult(string $billNo, array $result, mixed $providerResponse, array $context = []): void
+    {
+        $status = strtolower(trim((string) ($context['status'] ?? 'generated')));
+        if (!in_array($status, ['generated', 'failed', 'cancelled'], true)) {
+            $status = 'generated';
+        }
+        $responseText = is_string($providerResponse)
+            ? $providerResponse
+            : (json_encode($providerResponse, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
+
+        $updates = [
+            'e_invoice_status' => $status,
+            'einvoice_status' => $status,
+            'irn' => $result['irn'] ?? '',
+            'ack_no' => $result['ack_no'] ?? '',
+            'ackno' => $result['ack_no'] ?? '',
+            'ack_date' => $result['ack_date'] ?? '',
+            'ackdt' => $result['ack_date'] ?? '',
+            'signed_qr_code' => $result['signed_qr_code'] ?? '',
+            'signedqrcode' => $result['signed_qr_code'] ?? '',
+            'e_invoice_response' => $responseText,
+            'einvoice_response' => $responseText,
+        ];
+
+        $this->updateExistingColumns('sales_bills', 'bill_no', $billNo, $updates);
+        $this->updateExistingColumns('salesm', 'billno', $billNo, $updates);
+
+        if ($this->hasTable('e_invoices')) {
+            $billData = (array) ($context['bill_data'] ?? []);
+            $requestPayload = $context['request_payload'] ?? null;
+            $requestText = is_string($requestPayload)
+                ? $requestPayload
+                : (json_encode($requestPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
+
+            $row = [
+                'bill_no' => $billNo,
+                'bill_type' => 'S',
+                'bill_date' => $this->parseDate((string) ($billData['bill_date'] ?? ''), true),
+                'customer_code' => mb_substr((string) ($billData['customer_code'] ?? ''), 0, 20),
+                'customer_name' => mb_substr((string) ($billData['customer_name'] ?? ''), 0, 150),
+                'gst_no' => mb_substr((string) ($billData['gst_no'] ?? ''), 0, 20),
+                'net_total' => round($this->toNum($billData['net_total'] ?? 0), 2),
+                'status' => $status,
+                'irn' => mb_substr((string) ($result['irn'] ?? ''), 0, 120),
+                'ack_no' => mb_substr((string) ($result['ack_no'] ?? ''), 0, 80),
+                'ack_date' => mb_substr((string) ($result['ack_date'] ?? ''), 0, 80),
+                'signed_qr_code' => mb_substr((string) ($result['signed_qr_code'] ?? ''), 0, 65000),
+                'request_payload' => mb_substr((string) $requestText, 0, 65000),
+                'response_payload' => mb_substr((string) $responseText, 0, 65000),
+                'provider' => mb_substr((string) ($context['provider'] ?? ''), 0, 50),
+                'generated_by' => mb_substr((string) ($context['user_code'] ?? ''), 0, 20),
+                'generated_at' => now(),
+                'cancel_reason' => null,
+                'cancel_remark' => null,
+                'cancelled_by' => null,
+                'cancelled_at' => null,
+                'cancel_response' => null,
+                'updated_at' => now(),
+            ];
+
+            $existing = DB::table('e_invoices')
+                ->where('bill_no', $billNo)
+                ->where('bill_type', 'S')
+                ->first(['id']);
+
+            if ($existing) {
+                DB::table('e_invoices')->where('id', $existing->id)->update($row);
+            } else {
+                $row['created_at'] = now();
+                DB::table('e_invoices')->insert($row);
+            }
+        }
+    }
+
+    private function updateExistingColumns(string $table, string $whereColumn, string $whereValue, array $updates): void
+    {
+        if (!$this->hasTable($table)) {
+            return;
+        }
+
+        $columns = $this->getColumns($table);
+        if (!in_array($whereColumn, $columns, true)) {
+            return;
+        }
+
+        $payload = [];
+        foreach ($updates as $column => $value) {
+            if (in_array(strtolower($column), $columns, true)) {
+                $payload[$column] = is_string($value) ? mb_substr($value, 0, 65000) : $value;
+            }
+        }
+
+        if ($payload !== []) {
+            DB::table($table)->where($whereColumn, $whereValue)->update($payload);
+        }
+    }
+
     private function calcTotals(array $payload): array
     {
         $items = collect($payload['items'] ?? []);
@@ -3688,11 +5231,40 @@ class SalesBillController extends Controller
         $salesReturn = collect($payload['sales_return'] ?? []);
         $extra = (array) ($payload['extra'] ?? []);
 
-        $billTotal = round($items->sum(fn ($r) => $this->toNum($r['amount'] ?? 0)), 2);
+        $taxPercForInclusive = $this->toNum($extra['tax_perc'] ?? 0);
+        $astPercForInclusive = $this->toBool($extra['is_cst'] ?? false)
+            ? 0.0
+            : $this->toNum($extra['ast_perc'] ?? $extra['cess_perc'] ?? 0);
+        $inclusiveRate = $taxPercForInclusive + $astPercForInclusive;
+        $inclusiveBase = 0.0;
+        $inclusiveTax = 0.0;
+        $inclusiveAst = 0.0;
+        $exclusiveBase = 0.0;
+
+        foreach ($items as $row) {
+            $amount = $this->toNum($row['amount'] ?? 0);
+            $taxInternal = $this->toBool($row['taxinternal'] ?? $row['tax_internal'] ?? false);
+            if ($taxInternal && $inclusiveRate > 0) {
+                $base = ($amount * 100) / (100 + $inclusiveRate);
+                $included = $amount - $base;
+                $inclusiveBase += $base;
+                if ($inclusiveRate > 0) {
+                    $inclusiveTax += $included * ($taxPercForInclusive / $inclusiveRate);
+                    $inclusiveAst += $included * ($astPercForInclusive / $inclusiveRate);
+                }
+            } else {
+                $exclusiveBase += $amount;
+            }
+        }
+
+        $billTotal = round($exclusiveBase + $inclusiveBase, 2);
         $exchangeAmount = round($exchange->sum(fn ($r) => $this->toNum($r['amount'] ?? 0)), 2);
         $srTaxAmt = $this->toNum($payload['sr_tax_amt'] ?? 0);
+        $srTaxPerc = $this->toNum($payload['sr_tax_perc'] ?? 0);
         $srCessAmt = $this->toNum($payload['sr_cess_amt'] ?? 0);
-        $returnAmount = round($salesReturn->sum(fn ($r) => $this->toNum($r['amount'] ?? 0)) + $srTaxAmt + $srCessAmt, 2);
+        $srCessPerc = $this->toNum($payload['sr_cess_perc'] ?? 0);
+        $srDiscountAmt = $this->toNum($payload['sr_discount_amt'] ?? 0);
+        $returnAmount = round($salesReturn->sum(fn ($r) => $this->toNum($r['amount'] ?? 0)) - $srDiscountAmt + $srTaxAmt + $srCessAmt, 2);
 
         $discount = $this->toNum($extra['discount'] ?? 0);
         $discountPerc = $this->toNum($extra['discount_perc'] ?? 0);
@@ -3704,6 +5276,7 @@ class SalesBillController extends Controller
         $advance = $this->toNum($extra['advance'] ?? 0);
         $fancy = $this->toNum($extra['fancy_amt'] ?? 0);
         $scheme = $this->toNum($extra['scheme_amt'] ?? 0);
+        $schemeLedger = strtoupper(trim((string) ($extra['scheme_ledger'] ?? 'APP')));
         $bankCharge = $this->toNum($extra['bank_charge'] ?? 0);
         $addBankCharge = $this->toBool($extra['add_bank_charge'] ?? false);
         $openingBal = $this->toNum($extra['opening_balance'] ?? 0);
@@ -3717,6 +5290,13 @@ class SalesBillController extends Controller
             $discount = round(($billTotal * $discountPerc) / 100, 2);
         } elseif ($billTotal > 0 && $discount > 0 && $discountPerc == 0) {
             $discountPerc = round(($discount * 100) / $billTotal, 3);
+        }
+
+        if ($taxPercForInclusive > 0 || $inclusiveTax > 0) {
+            $tax = round($inclusiveTax + (($exclusiveBase * $taxPercForInclusive) / 100), 2);
+        }
+        if ($astPercForInclusive > 0 || $inclusiveAst > 0) {
+            $ast = round($inclusiveAst + (($exclusiveBase * $astPercForInclusive) / 100), 2);
         }
 
         $netBeforeTcs = $billTotal + $tax + $ast + $rcAmt + $hmc - $exchangeAmount - $returnAmount - $advance + $fancy - $scheme;
@@ -3743,13 +5323,19 @@ class SalesBillController extends Controller
         if ($autoRcvd && !$credit) {
             $rcvd = $grandToRcvd ? $grandAmt : $netAmt;
         }
+        $rcvd = round($rcvd, 0);
 
         $balance = round($netAmt - $rcvd, 2);
-        $netBalance = round($openingBal - $balance, 2);
+        $openingAdjustment = $schemeLedger === 'SCHMAMT' ? 0.0 : $scheme;
+        $netBalance = round($openingBal - $openingAdjustment - $balance, 2);
 
         $extra['discount'] = round($discount, 2);
         $extra['discount_perc'] = round($discountPerc, 3);
         $extra['tax'] = round($tax, 2);
+        $taxSplit = $this->salesTaxSplitFromAmount((float) $extra['tax'], $this->toBool($extra['is_cst'] ?? false));
+        $extra['sgst'] = $taxSplit['sgst'];
+        $extra['cgst'] = $taxSplit['cgst'];
+        $extra['igst'] = $taxSplit['igst'];
         $extra['ast'] = round($ast, 2);
         $extra['tcs_perc'] = round($tcsPerc, 3);
         $extra['tcs_amt'] = round($tcsAmt, 2);
@@ -3758,6 +5344,7 @@ class SalesBillController extends Controller
         $extra['advance'] = round($advance, 2);
         $extra['fancy_amt'] = round($fancy, 2);
         $extra['scheme_amt'] = round($scheme, 2);
+        $extra['scheme_ledger'] = $schemeLedger === 'SCHMAMT' ? 'SCHMAMT' : 'APP';
         $extra['bank_charge'] = round($bankCharge, 2);
         $extra['add_bank_charge'] = $addBankCharge;
         $extra['opening_balance'] = round($openingBal, 2);
@@ -3770,6 +5357,11 @@ class SalesBillController extends Controller
         $extra['credit'] = $credit;
         $extra['auto_rcvd'] = $autoRcvd;
         $extra['grand_to_rcvd'] = $grandToRcvd;
+        $extra['sr_tax_perc'] = round($srTaxPerc, 3);
+        $extra['sr_tax_amt'] = round($srTaxAmt, 2);
+        $extra['sr_cess_perc'] = round($srCessPerc, 3);
+        $extra['sr_cess_amt'] = round($srCessAmt, 2);
+        $extra['sr_discount_amt'] = round($srDiscountAmt, 2);
 
         return [
             'bill_total' => round($billTotal, 2),
@@ -3778,6 +5370,35 @@ class SalesBillController extends Controller
             'net_total' => round($netTotal, 2),
             'extra' => $extra,
         ];
+    }
+
+    private function salesTaxSplit(float $taxable, float $taxPerc, bool $isCst = false): array
+    {
+        $taxable = max(round($taxable, 2), 0.0);
+        $taxPerc = max($taxPerc, 0.0);
+        if ($isCst) {
+            $igst = round(($taxable * $taxPerc) / 100, 2);
+            return ['sgst' => 0.0, 'cgst' => 0.0, 'igst' => $igst, 'total' => $igst];
+        }
+
+        $halfPerc = $taxPerc / 2;
+        $sgst = round(($taxable * $halfPerc) / 100, 2);
+        $cgst = round(($taxable * $halfPerc) / 100, 2);
+
+        return ['sgst' => $sgst, 'cgst' => $cgst, 'igst' => 0.0, 'total' => round($sgst + $cgst, 2)];
+    }
+
+    private function salesTaxSplitFromAmount(float $taxAmount, bool $isCst = false): array
+    {
+        $taxAmount = round($taxAmount, 2);
+        if ($isCst) {
+            return ['sgst' => 0.0, 'cgst' => 0.0, 'igst' => $taxAmount, 'total' => $taxAmount];
+        }
+
+        $cgst = round($taxAmount / 2, 2);
+        $sgst = round($taxAmount - $cgst, 2);
+
+        return ['sgst' => $sgst, 'cgst' => $cgst, 'igst' => 0.0, 'total' => round($sgst + $cgst, 2)];
     }
 
     private function toArray(?string $json): array
@@ -3925,6 +5546,94 @@ class SalesBillController extends Controller
         }
     }
 
+    private function rewindBillNoCounterToSavedMax(string $billNo): void
+    {
+        if (!$this->hasTable('generali') || $billNo === '') {
+            return;
+        }
+
+        $match = $this->counterCodeAndPrefixForBillNo($billNo);
+        if (!$match) {
+            return;
+        }
+
+        [$counterCode, $prefix] = $match;
+        $maxSaved = $this->maxSavedBillNumberForPrefix($prefix);
+        $current = (int) $this->toNum((string) (DB::table('generali')->where('code', $counterCode)->value('cvalue') ?? '0'));
+
+        if ($current !== $maxSaved) {
+            DB::table('generali')->updateOrInsert(['code' => $counterCode], ['cvalue' => (string) $maxSaved]);
+        }
+    }
+
+    private function counterCodeAndPrefixForBillNo(string $billNo): ?array
+    {
+        if ($billNo === '') {
+            return null;
+        }
+
+        $settingsPayload = $this->loadSettingsPayload();
+        $software = (array) ($settingsPayload['Software'] ?? []);
+        $sw = static fn (array $arr, string $key, string $default = ''): string => (string) ($arr[$key] ?? $default);
+        $billTypewiseBillNo = strtoupper(trim($sw($software, 'BillTypewiseBillNo', 'N'))) === 'Y';
+
+        if ($billTypewiseBillNo && $this->hasTable('salestype')) {
+            $types = DB::table('salestype')
+                ->whereNotNull('prefix')
+                ->get(['prefix'])
+                ->map(fn ($row) => trim((string) ($row->prefix ?? '')))
+                ->filter(fn ($prefix) => $prefix !== '')
+                ->sortByDesc(fn ($prefix) => strlen($prefix))
+                ->values();
+
+            foreach ($types as $prefix) {
+                if (str_starts_with($billNo, $prefix)) {
+                    return ['SALES' . $prefix, $prefix];
+                }
+            }
+        }
+
+        $prefix = $this->readGeneralsValue('SBPREF', 'SLB/');
+        if ($prefix !== '' && str_starts_with($billNo, $prefix)) {
+            return ['SALESB', $prefix];
+        }
+
+        $estimatePrefix = $this->readGeneralsValue('SEPREF', 'SLE/');
+        if ($estimatePrefix !== '' && str_starts_with($billNo, $estimatePrefix)) {
+            return ['SALESE', $estimatePrefix];
+        }
+
+        return null;
+    }
+
+    private function maxSavedBillNumberForPrefix(string $prefix): int
+    {
+        $max = 0;
+        if ($prefix === '') {
+            return $max;
+        }
+
+        if ($this->hasTable('salesm')) {
+            $rows = DB::table('salesm')
+                ->where('billno', 'like', $prefix . '%')
+                ->pluck('billno');
+            foreach ($rows as $billNo) {
+                $max = max($max, (int) $this->toNum(substr(trim((string) $billNo), strlen($prefix))));
+            }
+        }
+
+        if ($this->hasSalesBillsTable()) {
+            $rows = DB::table('sales_bills')
+                ->where('bill_no', 'like', $prefix . '%')
+                ->pluck('bill_no');
+            foreach ($rows as $billNo) {
+                $max = max($max, (int) $this->toNum(substr(trim((string) $billNo), strlen($prefix))));
+            }
+        }
+
+        return $max;
+    }
+
     private function readGeneraliCounter(string $code): int
     {
         if (!$this->hasTable('generali')) {
@@ -3962,20 +5671,37 @@ class SalesBillController extends Controller
 
     private function reserveGlobalSerialNo(): int
     {
-        $current = $this->readGeneraliCounter('SERIALNO');
-        $maxUsed = 0;
-        foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
-            if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
-                $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+        // Atomic: lock the SERIALNO counter row for the duration of the transaction so two concurrent
+        // saves from different terminals can't both compute the same slno and collide (or worse,
+        // cause the second save to "edit" the first by matching its slno through a duplicate billno).
+        if (!$this->hasTable('generali')) {
+            $maxUsed = 0;
+            foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
+                if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
+                    $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+                }
             }
+            return $maxUsed + 1;
         }
 
-        $next = max($current, $maxUsed) + 1;
-        if ($this->hasTable('generali')) {
+        return DB::transaction(function () {
+            $row = DB::table('generali')
+                ->where('code', 'SERIALNO')
+                ->lockForUpdate()
+                ->first();
+            $current = (int) $this->toNum((string) ($row->cvalue ?? '0'));
+
+            $maxUsed = 0;
+            foreach (['salesm', 'salesrm', 'purchasem', 'purchaserm', 'daybook', 'daybookpart', 'orderm', 'smithm', 'refinerym', 'repairm'] as $table) {
+                if ($this->hasTable($table) && Schema::hasColumn($table, 'slno')) {
+                    $maxUsed = max($maxUsed, (int) (DB::table($table)->max('slno') ?? 0));
+                }
+            }
+
+            $next = max($current, $maxUsed) + 1;
             DB::table('generali')->updateOrInsert(['code' => 'SERIALNO'], ['cvalue' => (string) $next]);
-        }
-
-        return $next;
+            return $next;
+        });
     }
 
     private function readGeneralsValue(string $code, string $default = ''): string

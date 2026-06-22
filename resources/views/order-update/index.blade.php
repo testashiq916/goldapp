@@ -169,6 +169,15 @@ table.orders tbody tr.detail-row td{background:#f0f6ff;padding:6px 12px;text-ali
   .grid-scroll{overflow:visible;max-height:none}
   table.orders thead th{background:#1a6da3!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+body{font-size:15px}
+.title-bar{font-size:16px}
+.toolbar label{font-size:14px}
+.toolbar input,.toolbar select{font-size:13px;height:32px}
+.btn{font-size:13px;height:32px}
+.summary-bar{font-size:13px}
+table.orders{font-size:13px}
+table.orders thead th{font-size:12px;padding:6px 6px}
+table.orders tbody td{padding:5px 6px}
 </style>
 @include('partials.print-layout-head')
 </head>

@@ -630,6 +630,15 @@ function renderSuggest(kind, boxId){
   box.style.display = 'block';
 }
 
+function pickSuggest(kind, inputId, boxId, index){
+  const rec = suggests[kind].rows[index];
+  if (!rec) return false;
+  $(inputId).value = rec.code;
+  $(boxId).style.display = 'none';
+  suggests[kind].index = -1;
+  return rec;
+}
+
 async function searchItems(kind, inputId, boxId){
   const q = $(inputId).value.trim();
   if (!q) {
@@ -644,23 +653,109 @@ async function searchItems(kind, inputId, boxId){
 
 function searchSman(){
   const q = $('smcode').value.trim().toLowerCase();
-  if (!q) {
-    suggests.sman = { rows: [], index: -1 };
-    renderSuggest('sman', 'smanList');
-    return;
-  }
   suggests.sman = {
-    rows: SALESMEN.filter((r) => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)),
+    rows: (q ? SALESMEN.filter((r) => String(r.code || '').toLowerCase().includes(q) || String(r.name || '').toLowerCase().includes(q)) : SALESMEN).slice(0, 50),
     index: -1,
   };
   renderSuggest('sman', 'smanList');
 }
 
-$('fromcode').addEventListener('input', () => searchItems('from', 'fromcode', 'fromSuggest'));
-$('tocode').addEventListener('input', () => searchItems('to', 'tocode', 'toSuggest'));
-$('smcode').addEventListener('input', searchSman);
+function completeSman(moveNext = false){
+  if (!suggests.sman.rows.length) {
+    searchSman();
+  }
+  const rows = suggests.sman.rows;
+  const pickIndex = suggests.sman.index >= 0 ? suggests.sman.index : 0;
+  if (rows[pickIndex]) {
+    pickSuggest('sman', 'smcode', 'smanList', pickIndex);
+  }
+  if (moveNext) $('frombcode').focus();
+  return Boolean(rows[pickIndex]);
+}
 
-[['from','fromcode','fromSuggest'], ['to','tocode','toSuggest'], ['sman','smcode','smanList']].forEach(([kind,inputId,boxId]) => {
+function transferFieldOrder(){
+  return ['smcode', 'frombcode', 'fromcode', 'fromqty', 'fromwgt', 'tobcode', 'tocode', 'toqty', 'towgt', 'reason', 'btnSave']
+    .map((id) => $(id))
+    .filter(Boolean);
+}
+
+function focusNextTransferField(current){
+  ['smanList', 'fromSuggest', 'toSuggest'].forEach((id) => {
+    const box = $(id);
+    if (box) box.style.display = 'none';
+  });
+  const fields = transferFieldOrder();
+  const index = fields.indexOf(current);
+  const next = fields[index + 1] || fields[0];
+  if (next) {
+    next.focus();
+    if (typeof next.select === 'function' && next.tagName !== 'BUTTON') next.select();
+  }
+}
+
+async function completeItemCode(kind){
+  const inputId = kind + 'code';
+  const boxId = kind + 'Suggest';
+  $(boxId).style.display = 'none';
+  await loadItem(kind, $(inputId).value);
+  focusNextTransferField($(inputId));
+}
+$('smcode').addEventListener('input', searchSman);
+$('smcode').addEventListener('focus', searchSman);
+$('smcode').addEventListener('keydown', (e) => {
+  const list = $('smanList');
+  if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(e.key) && list.style.display === 'none') {
+    searchSman();
+  }
+  const rows = suggests.sman.rows;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggests.sman.index = Math.min(suggests.sman.index + 1, rows.length - 1);
+    renderSuggest('sman', 'smanList');
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggests.sman.index = Math.max(suggests.sman.index - 1, 0);
+    renderSuggest('sman', 'smanList');
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    if (e.key === 'Enter') e.preventDefault();
+    completeSman(e.key === 'Enter');
+  } else if (e.key === 'Escape') {
+    list.style.display = 'none';
+    suggests.sman.index = -1;
+  }
+});
+$('smcode').addEventListener('keyup', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    completeSman(true);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target === $('smcode')) {
+    e.preventDefault();
+    completeSman(true);
+  }
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const target = e.target;
+  if (!transferFieldOrder().includes(target) || target === $('smcode')) return;
+  e.preventDefault();
+  if (target === $('fromcode') || target === $('tocode')) {
+    completeItemCode(target === $('fromcode') ? 'from' : 'to');
+    return;
+  }
+  if (target === $('btnSave')) {
+    saveEntry();
+    return;
+  }
+  focusNextTransferField(target);
+}, true);
+$('smcode').addEventListener('blur', () => setTimeout(() => {
+  $('smanList').style.display = 'none';
+}, 150));
+
+[['sman','smcode','smanList']].forEach(([kind,inputId,boxId]) => {
   $(boxId).addEventListener('mousedown', async (e) => {
     e.preventDefault();
     const row = e.target.closest('[data-idx]');
@@ -668,8 +763,7 @@ $('smcode').addEventListener('input', searchSman);
     const idx = Number(row.dataset.idx);
     const rec = suggests[kind].rows[idx];
     if (!rec) return;
-    $(inputId).value = rec.code;
-    $(boxId).style.display = 'none';
+    pickSuggest(kind, inputId, boxId, idx);
     if (kind === 'sman') return;
     await loadItem(kind, rec.code);
   });

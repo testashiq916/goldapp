@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daybook Issue Clear</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --green: #047857;
+      --gold: #b7791f;
+      --line: #d8e0ea;
+      --code-bg: #111827;
+      --code: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .wrap {
+      max-width: 1040px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    .head {
+      background: #12345a;
+      color: #fff;
+      border-radius: 8px 8px 0 0;
+      padding: 18px 22px;
+    }
+    .head h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: .2px;
+    }
+    .head p {
+      margin: 6px 0 0;
+      color: #dbeafe;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+      padding: 20px 22px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+    }
+    .status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: #f8fffb;
+    }
+    .pill.warn {
+      border-left-color: var(--gold);
+      background: #fffaf0;
+    }
+    .pill b {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .pill span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 22px 0 10px;
+    }
+    p {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    pre {
+      margin: 0;
+      padding: 16px;
+      overflow: auto;
+      background: var(--code-bg);
+      color: var(--code);
+      border-radius: 8px;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 12px 0 18px;
+    }
+    button {
+      border: 0;
+      background: #0f766e;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #334155;
+    }
+    label.file-btn {
+      display: inline-flex;
+      align-items: center;
+      background: #1d4ed8;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-name {
+      align-self: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .note {
+      border: 1px dashed #d6b36b;
+      background: #fffdf5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #6b4f16;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="head">
+      <h1>Daybook Issue Clear</h1>
+      <p>No ALTER TABLE required for the current database.</p>
+    </section>
+
+    <section class="card">
+      <div class="status">
+        <div class="pill">
+          <b>Current DB Status</b>
+          <span>The local <code>daybook</code> structure already matches the uploaded SQL.</span>
+        </div>
+        <div class="pill">
+          <b>Rows Safe</b>
+          <span>Existing daybook data should not be dropped or altered.</span>
+        </div>
+        <div class="pill warn">
+          <b>Issue Cause</b>
+          <span>Import errors can happen if SQL comments and CREATE TABLE text are pasted without proper line breaks.</span>
+        </div>
+      </div>
+
+      <h2>Correct SQL Format</h2>
+      <p>Use this clean format when importing or checking the dump. Keep the comment lines and CREATE TABLE on separate lines.</p>
+
+      <div class="actions">
+        <label class="file-btn" for="sqlFile">Browse SQL File</label>
+        <input id="sqlFile" type="file" accept=".sql,.txt" onchange="loadSqlFile(event)">
+        <button type="button" onclick="copySql()">Copy SQL</button>
+        <button type="button" class="secondary" onclick="window.print()">Print</button>
+        <span id="fileName" class="file-name">No file selected</span>
+      </div>
+
+      <pre id="sql">-- --------------------------------------------------------
+
+--
+-- Table structure for table `daybook`
+--
+
+CREATE TABLE `daybook` (
+  `slno` decimal(10,0) NOT NULL,
+  `tdate` date DEFAULT curdate(),
+  `accode` char(8) DEFAULT NULL,
+  `amount` decimal(11,2) DEFAULT 0.00,
+  `control` smallint(6) DEFAULT 1,
+  `sno` smallint(6) DEFAULT NULL,
+  `opaccode` varchar(10) DEFAULT NULL,
+  `note` varchar(30) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</pre>
+
+      <div class="note">
+        Do not run DROP TABLE or ALTER TABLE for this issue. If import fails, fix the SQL formatting/newlines first.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function copySql() {
+      const sql = document.getElementById('sql').innerText;
+      navigator.clipboard.writeText(sql).then(() => {
+        alert('Daybook SQL copied.');
+      });
+    }
+
+    function loadSqlFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      document.getElementById('fileName').innerText = file.name;
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const text = String(reader.result || '');
+        const match = text.match(/CREATE\s+TABLE\s+`daybook`\s*\([\s\S]*?\)\s*ENGINE\s*=\s*InnoDB[^;]*;/i);
+        if (!match) {
+          alert('daybook CREATE TABLE not found in selected file.');
+          return;
+        }
+        document.getElementById('sql').innerText = cleanDaybookSql(match[0]);
+      };
+      reader.readAsText(file);
+    }
+
+    function cleanDaybookSql(sql) {
+      return [
+        '-- --------------------------------------------------------',
+        '',
+        '--',
+        '-- Table structure for table `daybook`',
+        '--',
+        '',
+        sql.trim()
+      ].join('\n');
+    }
+  </script>
+</body>
+</html>

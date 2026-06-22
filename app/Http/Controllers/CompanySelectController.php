@@ -187,9 +187,9 @@ class CompanySelectController extends Controller
                 throw new \RuntimeException('Login table not found.');
             }
 
-            $user = UserM::authenticateForCode($currentUserCode, $password);
+            $user = UserM::authenticateLegacy($password);
             if (!$user) {
-                return $this->switchFailure($currentDatabase, $targetDatabase, 'Invalid password.');
+                return $this->switchFailure($currentDatabase, $targetDatabase, 'Invalid password for selected company.');
             }
 
             $this->populateAuthenticatedSession($request, $user, $targetDatabase);
@@ -322,6 +322,8 @@ class CompanySelectController extends Controller
     private function availableCompanies(): array
     {
         $currentDatabase = (string) Config::get('database.connections.mysql.database', '');
+        $userCode = strtoupper(trim((string) request()->session()->get('user_code', '')));
+        $allowedDatabases = $this->allowedCompanyDatabases($userCode);
 
         $registry = collect($this->loadCompanyRegistry());
 
@@ -344,6 +346,12 @@ class CompanySelectController extends Controller
                 ];
             })
             ->filter(fn (array $company) => $company['database'] !== '')
+            ->filter(function (array $company) use ($allowedDatabases): bool {
+                if ($allowedDatabases === null) {
+                    return true;
+                }
+                return in_array(strtolower($company['database']), $allowedDatabases, true);
+            })
             ->sortBy([
                 ['is_current', 'desc'],
                 ['company_name', 'asc'],
@@ -351,6 +359,26 @@ class CompanySelectController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    private function allowedCompanyDatabases(string $userCode): ?array
+    {
+        if ($userCode === '' || in_array($userCode, ['ADMIN', 'MGR', 'DEVELOPER'], true)) {
+            return null;
+        }
+        if (!Schema::hasTable('user_company_access')) {
+            return null;
+        }
+
+        $rows = DB::table('user_company_access')
+            ->whereRaw('UPPER(TRIM(code)) = ?', [$userCode])
+            ->pluck('database_name')
+            ->map(fn ($db) => strtolower(trim((string) $db)))
+            ->filter()
+            ->values()
+            ->all();
+
+        return empty($rows) ? null : $rows;
     }
 
     private function companyNameForDatabase(string $database): string

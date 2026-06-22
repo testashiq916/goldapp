@@ -7,24 +7,24 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Segoe UI",system-ui,sans-serif;background:#eef3f8;color:#18324a;font-size:13px}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:#eef3f8;color:#18324a;font-size:20px}
 .page{padding:14px;max-width:1480px;margin:0 auto}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;background:#173b63;color:#fff;padding:12px 14px;border-radius:12px}
 .toolbar h1{font-size:18px;font-weight:800;margin-right:8px}
 .field{display:flex;flex-direction:column;gap:4px}
-.field label{font-size:10px;font-weight:700;text-transform:uppercase;opacity:.82}
+.field label{font-size:17px;font-weight:700;text-transform:uppercase;opacity:.82}
 .field input{height:32px;border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:0 10px;background:rgba(255,255,255,.12);color:#fff}
 .btn{height:32px;border:none;border-radius:8px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer}
 .btn-show{background:#f6c453;color:#17324a}
 .btn-lite{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.18)}
-.meta{margin:10px 0 14px;color:#5b738d;font-size:12px}
+.meta{margin:10px 0 14px;color:#5b738d;font-size:18px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
 .card{background:#fff;border:1px solid #d7e3ef;border-radius:12px;padding:14px}
 .card .k{font-size:10px;text-transform:uppercase;color:#6b7f92;font-weight:700;margin-bottom:6px}
 .card .v{font-size:24px;font-weight:800;color:#173b63}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
 .panel{background:#fff;border:1px solid #d7e3ef;border-radius:12px;overflow:hidden}
-.panel h2{padding:11px 14px;background:#f7fbff;border-bottom:1px solid #e6eef6;font-size:13px}
+.panel h2{padding:11px 14px;background:#f7fbff;border-bottom:1px solid #e6eef6;font-size:20px}
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px 10px;border-bottom:1px solid #edf3f8}
 th{font-size:10px;color:#6b7f92;text-transform:uppercase;text-align:left;background:#fbfdff}
@@ -33,7 +33,9 @@ td.r,th.r{text-align:right}
 .loading,.empty{padding:40px;text-align:center;color:#7a8ea2}
 @media print{.toolbar{display:none}.page{padding:0}.panel,.card{break-inside:avoid}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="page">

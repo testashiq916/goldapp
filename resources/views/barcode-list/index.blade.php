@@ -63,7 +63,9 @@ tfoot td{position:sticky;bottom:0;background:#e0f2fe;font-weight:700;color:#0c4a
 @keyframes fadeInOut{0%{opacity:0;transform:translateY(10px)}10%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
 @media print{.toolbar,.toast{display:none}body{background:#fff}.window{margin:0;box-shadow:none;border-radius:0}.tbl-wrap{max-height:none;overflow:visible;border:0}th,tfoot td{position:static}.summary-bar{background:#f0f0f0;color:#000;border-radius:0}.summary-bar .lbl{color:#555}td input[type="checkbox"]{display:none}.act-col,.h5{display:none}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 @php
@@ -268,7 +270,7 @@ if(bd)bd.addEventListener('click',function(){if(!confirm('Delete ALL displayed b
 // Row select
 document.querySelectorAll('#bcTable tbody tr').forEach(function(r){r.addEventListener('click',function(e){if(e.target.type==='checkbox')return;document.querySelectorAll('#bcTable tbody tr.selected').forEach(function(x){x.classList.remove('selected')});this.classList.add('selected')})});
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>ReportExport.initFromTable('btnSaveAs','#bcTable','barcode_list_{{ $dateFrom }}_{{ $dateTo }}');</script>
 </body>
 </html>

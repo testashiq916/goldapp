@@ -60,6 +60,7 @@
   .modal-body tbody tr{cursor:pointer}
   .modal-body tbody tr:hover{background:#e0eaff}
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 </head>
 <body>
 <div class="window">

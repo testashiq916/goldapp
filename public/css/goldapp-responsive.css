@@ -5,6 +5,156 @@
    complex transaction entry forms (sales-bill, etc.)
    ======================================================= */
 
+/* ── 0. Global Font Size Increase ── */
+body {
+    font-size: 20px !important;
+}
+
+input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+select,
+textarea {
+    font-size: 18px !important;
+}
+
+table {
+    font-size: 18px !important;
+}
+
+th {
+    font-size: 16px !important;
+}
+
+td {
+    font-size: 18px !important;
+}
+
+button,
+.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    font-size: 17px !important;
+}
+
+label {
+    font-size: 17px !important;
+}
+
+.panel-header {
+    font-size: 20px !important;
+}
+
+.status-bar,
+.statusbar,
+.status-bar span {
+    font-size: 16px !important;
+}
+
+.badge {
+    font-size: 14px !important;
+}
+
+h1 { font-size: 28px !important; }
+h2 { font-size: 26px !important; }
+h3 { font-size: 24px !important; }
+h4 { font-size: 22px !important; }
+
+/* ── Dashboard sidebar navigation ── */
+.sb-link              { font-size: 19px !important; }
+.sb-link i            { font-size: 21px !important; width: 24px !important; }
+.sb-section-label     { font-size: 13px !important; letter-spacing: 1.5px !important; }
+.sb-uname             { font-size: 18px !important; }
+.sb-urole             { font-size: 15px !important; }
+.sbr-val              { font-size: 18px !important; }
+.sbr-label            { font-size: 13px !important; }
+
+/* ── Dashboard top menubar ── */
+.menu-item            { font-size: 19px !important; }
+.dd-item              { font-size: 18px !important; }
+.submenu .dd-item     { font-size: 18px !important; }
+.dd-key               { font-size: 13px !important; }
+.dd-left i            { font-size: 16px !important; }
+
+/* ── Dashboard tab bar & quick bar ── */
+.tab-item             { font-size: 17px !important; }
+.qb-btn               { font-size: 17px !important; }
+.qb-heading           { font-size: 18px !important; }
+
+/* ── Dashboard topbar elements ── */
+.page-title           { font-size: 20px !important; }
+.breadcrumb           { font-size: 15px !important; }
+.date-chip            { font-size: 15px !important; }
+.tb-icon-btn          { font-size: 18px !important; }
+.module-frame-title   { font-size: 18px !important; }
+.stat-label           { font-size: 17px !important; }
+
+/* ── Dashboard statusbar ── */
+.statusbar, .sb-seg   { font-size: 15px !important; }
+
+/* ── Dashboard topbar & panel elements ── */
+.sb-user-menu a { font-size: 17px !important; }
+.phone-lookup-name { font-size: 17px !important; }
+.stat-sub { font-size: 16px !important; }
+.rc-lbl, .rc-unit { font-size: 16px !important; }
+.il-sub { font-size: 15px !important; }
+.startup-table th { font-size: 14px !important; }
+.startup-table td { font-size: 16px !important; }
+
+/* ── Common module list/grid elements ── */
+.list-item,
+.grid-row,
+.tbl-row,
+.row-data {
+    font-size: 18px !important;
+}
+
+/* ── Report summary bar (shared across all report views) ── */
+.summary {
+    font-size: 20px !important;
+    padding: 18px 20px !important;
+    min-height: 64px !important;
+    gap: 28px !important;
+    align-items: center !important;
+}
+.summary b {
+    font-size: 23px !important;
+}
+
+/* ── Toolbar labels and inputs in modules ── */
+.toolbar label,
+.toolbar input,
+.toolbar select,
+.toolbar button {
+    font-size: 17px !important;
+}
+
+.field label,
+.field input,
+.field select {
+    font-size: 17px !important;
+}
+
+/* ── Fill full iframe (width + height) ── */
+html {
+    height: 100% !important;
+}
+
+body {
+    min-height: 100% !important;
+}
+
+.wrap,
+.page-wrap,
+.main-wrap,
+.page,
+.app-container,
+.container,
+.content-wrap {
+    max-width: 100% !important;
+    min-height: 100vh !important;
+    box-sizing: border-box !important;
+}
+
 /* ── 1. Universal table horizontal scroll ── */
 .table-wrap,
 .list-wrap,
@@ -44,6 +194,35 @@ input[type="button"],
 input[type="submit"],
 input[type="reset"] {
     touch-action: manipulation;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   COMPACT DESKTOP  (≤ 1100px)
+   Iframe modules at this width should already collapse 4-col to 3-col,
+   wrap toolbars, and use less horizontal padding so nothing is clipped.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 1100px) {
+
+    .grid4,
+    .form-grid4 {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .toolbar,
+    .btn-row,
+    .qbar,
+    .action-bar,
+    .button-row {
+        flex-wrap: wrap !important;
+    }
+
+    /* Bring side margins in slightly for module containers */
+    .wrap,
+    .page-wrap,
+    .main-wrap {
+        margin-left: 10px !important;
+        margin-right: 10px !important;
+    }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,7 +292,7 @@ input[type="reset"] {
 @media (max-width: 640px) {
 
     body {
-        font-size: 13px;
+        font-size: 17px;
     }
 
     /* Full-width containers */
@@ -151,7 +330,7 @@ input[type="reset"] {
         max-width: 100% !important;
         box-sizing: border-box !important;
         min-height: 34px;
-        font-size: 13px !important;
+        font-size: 14px !important;
     }
 
     /* Buttons – comfortable touch target */
@@ -162,13 +341,13 @@ input[type="reset"] {
     input[type="reset"] {
         min-height: 36px;
         padding: 6px 14px !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
     }
 
     /* Section / card headings */
-    h1 { font-size: 18px !important; }
-    h2 { font-size: 16px !important; }
-    h3 { font-size: 14px !important; }
+    h1 { font-size: 20px !important; }
+    h2 { font-size: 18px !important; }
+    h3 { font-size: 16px !important; }
 
     /* Toolbar wraps */
     .toolbar,
@@ -194,7 +373,7 @@ input[type="reset"] {
         flex-wrap: wrap !important;
         height: auto !important;
         padding: 4px 8px !important;
-        font-size: 10px !important;
+        font-size: 12px !important;
     }
 
     /* Pills / badge rows */
@@ -231,7 +410,7 @@ input[type="reset"] {
     .stat-val,
     .balance,
     .big-num {
-        font-size: 32px !important;
+        font-size: 34px !important;
     }
 }
 

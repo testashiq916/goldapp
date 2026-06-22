@@ -147,16 +147,45 @@ class PurchaseBillController extends Controller
             })
             ->when($tdate, fn ($query) => $query->whereDate('tdate', $tdate));
 
-        $rows = $query
+        $rawRows = $query
             ->orderByDesc('tdate')
             ->orderByDesc('slno')
-            ->limit(50)
-            ->get(['slno', 'docno', 'tdate', 'name'])
+            ->get(['slno', 'docno', 'tdate', 'name', 'netamt', 'billamt']);
+
+        $slnos = $rawRows
+            ->pluck('slno')
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->values()
+            ->all();
+
+        $purchaseWeights = collect();
+        $purchaseAmounts = collect();
+        if ($slnos !== [] && $this->hasTable('purchased')) {
+            if (Schema::hasColumn('purchased', 'weight')) {
+                $purchaseWeights = DB::table('purchased')
+                    ->select('slno', DB::raw('SUM(COALESCE(weight, 0)) as total_weight'))
+                    ->whereIn('slno', $slnos)
+                    ->groupBy('slno')
+                    ->pluck('total_weight', 'slno');
+            }
+            if (Schema::hasColumn('purchased', 'amount')) {
+                $purchaseAmounts = DB::table('purchased')
+                    ->select('slno', DB::raw('SUM(COALESCE(amount, 0)) as total_amount'))
+                    ->whereIn('slno', $slnos)
+                    ->groupBy('slno')
+                    ->pluck('total_amount', 'slno');
+            }
+        }
+
+        $rows = $rawRows
             ->map(fn ($r) => [
                 'slno' => (int) ($r->slno ?? 0),
                 'doc_no' => trim((string) ($r->docno ?? '')),
                 'tdate' => !empty($r->tdate) ? date('d/m/Y', strtotime((string) $r->tdate)) : '',
                 'party_name' => trim((string) ($r->name ?? '')),
+                'weight' => round((float) ($purchaseWeights[(int) ($r->slno ?? 0)] ?? 0), 3),
+                'amount' => round((float) (($r->netamt ?? 0) ?: ($r->billamt ?? 0) ?: ($purchaseAmounts[(int) ($r->slno ?? 0)] ?? 0)), 2),
             ])
             ->values();
 
@@ -170,11 +199,12 @@ class PurchaseBillController extends Controller
         }
 
         $docNo = strtoupper(trim((string) $request->input('doc_no', '')));
+        $slno = (int) $request->input('slno', 0);
         $tdate = $this->parseDate((string) $request->input('tdate', ''));
         $action = strtolower(trim((string) $request->input('action', 'edit')));
         $viewOnly = filter_var($request->input('view_only', false), FILTER_VALIDATE_BOOLEAN);
 
-        if ($docNo === '' || !$tdate) {
+        if ($slno <= 0 && ($docNo === '' || !$tdate)) {
             return response()->json(['ok' => false, 'message' => 'Doc no and date are required.'], 422);
         }
 
@@ -182,14 +212,18 @@ class PurchaseBillController extends Controller
             return response()->json(['ok' => false, 'message' => 'Purchase table not found.'], 404);
         }
 
-        $row = $this->livePurchaseBillsQuery(
+        $query = $this->livePurchaseBillsQuery(
             in_array($action, ['bill', 'cancel', 'edit'], true),
             $this->purchaseDocTypesForAction($action)
-        )
-            ->whereRaw('UPPER(TRIM(docno)) = ?', [$docNo])
-            ->whereDate('tdate', $tdate)
-            ->orderByDesc('slno')
-            ->first(['slno', 'docno', 'tdate', 'status']);
+        );
+        if ($slno > 0) {
+            $query->where('slno', $slno);
+        } else {
+            $query->whereRaw('UPPER(TRIM(docno)) = ?', [$docNo])
+                ->whereDate('tdate', $tdate)
+                ->orderByDesc('slno');
+        }
+        $row = $query->first(['slno', 'docno', 'tdate', 'status']);
 
         if (!$row) {
             return response()->json(['ok' => false, 'message' => 'This bill number does not exist...'], 404);
@@ -205,7 +239,10 @@ class PurchaseBillController extends Controller
             ]);
         }
 
-        $query = ['doc_no' => trim((string) ($row->docno ?? ''))];
+        $query = [
+            'doc_no' => trim((string) ($row->docno ?? '')),
+            'slno' => (int) ($row->slno ?? 0),
+        ];
 
         return response()->json([
             'ok' => true,
@@ -249,7 +286,7 @@ class PurchaseBillController extends Controller
                 if ($pprefix !== '') {
                     $current = $this->lastPurchaseBillNumberForPrefix($pprefix);
                     $next    = $current + 1;
-                    $billNo  = $pprefix . str_pad($next, $this->purchaseBillNumberLength(), '0', STR_PAD_LEFT);
+                    $billNo  = $this->nextUniquePurchaseDocNo($pprefix, $next);
                     return response()->json(['ok' => true, 'bill_no' => $billNo, 'tax_perc' => $taxPerc]);
                 }
             }
@@ -261,7 +298,7 @@ class PurchaseBillController extends Controller
             $prefix = 'PL/';
         }
         $next    = $current + 1;
-        $billNo  = $prefix . str_pad($next, $this->purchaseBillNumberLength(), '0', STR_PAD_LEFT);
+        $billNo  = $this->nextUniquePurchaseDocNo($prefix, $next);
 
         return response()->json(['ok' => true, 'bill_no' => $billNo, 'tax_perc' => $taxPerc]);
     }
@@ -558,12 +595,48 @@ class PurchaseBillController extends Controller
 
         // Validate items — view sends code/name/lessperc/lesswgt/stwgt/stprice/mcharge
         $validItems = [];
+        $droppedItems = [];
+
+        // Batch-fetch valid item codes once so every row can be checked against the items master.
+        $candidateCodes = [];
         foreach ($items as $item) {
+            $c = strtoupper(trim($item['code'] ?? $item['item_code'] ?? ''));
+            if ($c !== '') $candidateCodes[$c] = true;
+        }
+        $knownCodes = [];
+        if ($candidateCodes && $this->hasTable('items')) {
+            $knownCodes = array_flip(array_map(
+                fn ($v) => strtoupper(trim((string) $v)),
+                DB::table('items')->whereIn('code', array_keys($candidateCodes))->pluck('code')->all()
+            ));
+        }
+
+        foreach ($items as $idx => $item) {
             $scode = strtoupper(trim($item['code'] ?? $item['item_code'] ?? ''));
+            $sname = trim((string)($item['name'] ?? ''));
             $dwgt  = (float)($item['weight'] ?? 0);
             $iqty  = (int)($item['qty'] ?? 0);
-            if ($scode === '' || ($dwgt + $iqty) <= 0) continue;
-            if ((float)($item['rate'] ?? 0) <= 0) {
+            $damt  = (float)($item['amount'] ?? 0);
+            // Reject rows that have data (name/qty/weight/amount) but no item code.
+            if ($scode === '' && ($sname !== '' || $iqty > 0 || $dwgt > 0 || $damt > 0)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Item code is required for row ' . ($idx + 1) . ($sname !== '' ? " ($sname)" : ''),
+                ], 422);
+            }
+            if ($scode === '') continue;
+            // Reject codes that don't exist in the items master — prevents typos like "OLD" being saved when "OLD@2" was intended.
+            if (!isset($knownCodes[$scode])) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => "Item code '$scode' (row " . ($idx + 1) . ") is not in the item master. Pick a valid item from the lookup.",
+                ], 422);
+            }
+            if ($iqty <= 0 && $dwgt <= 0 && $damt <= 0) {
+                $droppedItems[] = $scode;
+                continue;
+            }
+            if ((float)($item['rate'] ?? 0) <= 0 && $damt <= 0) {
                 return response()->json(['ok' => false, 'message' => "Check Rate for $scode"]);
             }
             // Normalize field names
@@ -579,6 +652,39 @@ class PurchaseBillController extends Controller
         // Compute bill total from validated items
         $billTotal = 0.0;
         foreach ($validItems as $itm) { $billTotal += (float)($itm['amount'] ?? 0); }
+
+        // Reject exchange rows that have data but no item code, and check existence in items master.
+        $exchCandidates = [];
+        foreach ($exchItems as $ei) {
+            $c = strtoupper(trim($ei['code'] ?? $ei['item_code'] ?? ''));
+            if ($c !== '') $exchCandidates[$c] = true;
+        }
+        $knownExchCodes = [];
+        if ($exchCandidates && $this->hasTable('items')) {
+            $knownExchCodes = array_flip(array_map(
+                fn ($v) => strtoupper(trim((string) $v)),
+                DB::table('items')->whereIn('code', array_keys($exchCandidates))->pluck('code')->all()
+            ));
+        }
+        foreach ($exchItems as $eidx => $ei) {
+            $ecode = strtoupper(trim($ei['code'] ?? $ei['item_code'] ?? ''));
+            $ename = trim((string)($ei['name'] ?? ''));
+            $eqty  = (int)($ei['qty'] ?? 0);
+            $ewgt  = (float)($ei['weight'] ?? 0);
+            $eamt  = (float)($ei['amount'] ?? 0);
+            if ($ecode === '' && ($ename !== '' || $eqty > 0 || $ewgt > 0 || $eamt > 0)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Item code is required for exchange row ' . ($eidx + 1) . ($ename !== '' ? " ($ename)" : ''),
+                ], 422);
+            }
+            if ($ecode !== '' && !isset($knownExchCodes[$ecode])) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => "Exchange item code '$ecode' (row " . ($eidx + 1) . ") is not in the item master.",
+                ], 422);
+            }
+        }
 
         // Compute exchange total from exchange items
         $exchAmtCalc = 0.0;
@@ -718,6 +824,7 @@ class PurchaseBillController extends Controller
                 'taxonmconly' => $taxOnMcOnly ? 'Y' : 'N',
             ];
             $purchasemData = array_filter($purchasemAll, fn($k) => in_array($k, $pmCols), ARRAY_FILTER_USE_KEY);
+            $this->clampToColumnLengths('purchasem', $purchasemData, ['name', 'addr', 'note', 'mobile', 'pan', 'chqbank', 'chqno', 'statecode', 'counter']);
 
             if ($existingSlno > 0) {
                 DB::table('purchasem')->where('slno', $lslno)->update($purchasemData);
@@ -926,19 +1033,26 @@ class PurchaseBillController extends Controller
     {
         if (!$request->session()->has('user_code')) return response()->json(['ok' => false], 401);
 
+        $slno = (int) $request->query('slno', 0);
         $billNo = trim((string)$request->query('bill_no', ''));
-        $billNo = $this->resolveAccessiblePurchaseDocNo($billNo);
+        if ($slno <= 0) {
+            $billNo = $this->resolveAccessiblePurchaseDocNo($billNo);
+        }
         $action = strtolower(trim((string) $request->query('action', 'bill')));
-        if ($billNo === '') return response()->json(['ok' => false, 'message' => 'No bill number']);
+        if ($slno <= 0 && $billNo === '') return response()->json(['ok' => false, 'message' => 'No bill number']);
 
         if (!$this->hasTable('purchasem')) return response()->json(['ok' => false, 'message' => 'Table missing']);
 
-        $m = $this->livePurchaseBillsQuery(
+        $query = $this->livePurchaseBillsQuery(
             in_array($action, ['bill', 'edit', 'cancel'], true),
             $this->purchaseDocTypesForAction($action)
-        )
-            ->where('docno', $billNo)
-            ->first();
+        );
+        if ($slno > 0) {
+            $query->where('slno', $slno);
+        } else {
+            $query->where('docno', $billNo);
+        }
+        $m = $query->first();
         if (!$m) return response()->json(['ok' => false, 'message' => 'Bill not found']);
         if (in_array($action, ['bill', 'edit', 'cancel'], true) && (int)($m->status ?? 1) === 0) {
             return response()->json(['ok' => false, 'message' => 'Bill already cancelled']);
@@ -999,6 +1113,11 @@ class PurchaseBillController extends Controller
         $ob      = (float)($m->ob ?? 0);
         $balance = (float)($m->netamt ?? 0) - (float)($m->pamt ?? 0);
         $cb      = $ob + $balance;
+        $salesmanCode = trim((string) ($m->smcode ?? ''));
+        $salesmanName = '';
+        if ($salesmanCode !== '' && $this->hasTable('sman')) {
+            $salesmanName = trim((string) (DB::table('sman')->whereRaw('TRIM(code) = ?', [$salesmanCode])->value('name') ?? ''));
+        }
 
         // Return flat JSON — field names match applyBill() in the view
         return response()->json([
@@ -1015,7 +1134,8 @@ class PurchaseBillController extends Controller
             'pan'        => $m->pan ?? '',
             'gst_no'     => $m->gstno ?? '',
             'state_code' => $m->statecode ?? '',
-            'salesman'   => $m->smcode ?? '',
+            'salesman'   => $salesmanCode,
+            'salesman_name' => $salesmanName,
             'counter'    => $m->counter ?? '',
             'btype'      => $m->billtype ?? 'Gold',
             'gold_rate'  => (float)($m->rate ?? 0),
@@ -1464,6 +1584,14 @@ class PurchaseBillController extends Controller
 
     private function generateBillNumber(string $billTypeCode = ''): string
     {
+        // Secondary database: keep its own series so saved doc_no matches the
+        // preview the form showed (e.g. "P/00001" instead of "PB/2500127").
+        if ($this->shouldUseSecondaryPrefix('purchase')) {
+            $prefix = $this->secondaryPrefixFor('purchase');
+            $next   = $this->incrementGenInt('PURCHASEB');
+            return $this->nextUniquePurchaseDocNo($prefix, $next);
+        }
+
         $sw = $this->loadSoftwareSettings();
         $billTypeWise = strtoupper($sw['BILLTYPEWISEBILLNO'] ?? 'N') === 'Y';
         if ($billTypeWise && $billTypeCode !== '' && $this->hasTable('salestype')) {
@@ -1471,13 +1599,15 @@ class PurchaseBillController extends Controller
             $pprefix = trim((string)($st->pprefix ?? ''));
             if ($pprefix !== '') {
                 $next = $this->lastPurchaseBillNumberForPrefix($pprefix) + 1;
+                $docNo = $this->nextUniquePurchaseDocNo($pprefix, $next);
+                $next = $this->numberFromPrefixedDocNo($docNo, $pprefix);
                 if ($this->hasTable('generali')) {
                     DB::table('generali')->updateOrInsert(
                         ['code' => 'PURCH' . $pprefix],
                         ['cvalue' => $next]
                     );
                 }
-                return $pprefix . str_pad($next, $this->purchaseBillNumberLength(), '0', STR_PAD_LEFT);
+                return $docNo;
             }
         }
 
@@ -1486,7 +1616,38 @@ class PurchaseBillController extends Controller
         if ($prefix === '') {
             $prefix = 'PL/';
         }
-        return $prefix . str_pad($next, $this->purchaseBillNumberLength(), '0', STR_PAD_LEFT);
+        return $this->nextUniquePurchaseDocNo($prefix, $next);
+    }
+
+    private function nextUniquePurchaseDocNo(string $prefix, int $start): string
+    {
+        $prefix = trim($prefix);
+        $number = max(1, $start);
+        $length = $this->purchaseBillNumberLength();
+
+        do {
+            $docNo = $prefix . str_pad((string) $number, $length, '0', STR_PAD_LEFT);
+            $exists = $this->hasTable('purchasem')
+                && DB::table('purchasem')
+                    ->where('pr', 'P')
+                    ->whereRaw('UPPER(TRIM(docno)) = ?', [strtoupper($docNo)])
+                    ->exists();
+            if (!$exists) {
+                return $docNo;
+            }
+            $number++;
+        } while ($number < 1000000000);
+
+        return $prefix . str_pad((string) $number, $length, '0', STR_PAD_LEFT);
+    }
+
+    private function numberFromPrefixedDocNo(string $docNo, string $prefix): int
+    {
+        if (!str_starts_with($docNo, $prefix)) {
+            return 0;
+        }
+
+        return (int) preg_replace('/\D+/', '', substr($docNo, strlen($prefix)));
     }
 
     private function lastPurchaseBillNumberForPrefix(string $prefix): int

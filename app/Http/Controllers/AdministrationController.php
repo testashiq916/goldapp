@@ -289,15 +289,23 @@ class AdministrationController extends Controller
 
         $userHistory = [];
         if ($this->hasTable('userhist')) {
+            $selectCols = [
+                'userhist.tdate',
+                'userhist.time1',
+                'userhist.time2',
+                DB::raw('TRIM(COALESCE(userm.name, userhist.code)) as user_name'),
+                DB::raw('TRIM(userhist.code) as user_code'),
+            ];
+            if (Schema::hasColumn('userhist', 'ip')) {
+                $selectCols[] = 'userhist.ip';
+            }
+            if (Schema::hasColumn('userhist', 'useragent')) {
+                $selectCols[] = 'userhist.useragent';
+            }
+
             $query = DB::table('userhist')
                 ->leftJoin('userm', 'userhist.code', '=', 'userm.code')
-                ->select(
-                    'userhist.tdate',
-                    'userhist.time1',
-                    'userhist.time2',
-                    DB::raw('TRIM(COALESCE(userm.name, userhist.code)) as user_name'),
-                    DB::raw('TRIM(userhist.code) as user_code')
-                )
+                ->select($selectCols)
                 ->whereBetween('userhist.tdate', [$dateFrom, $dateTo]);
 
             if ($sort === 'user') {
@@ -312,22 +320,28 @@ class AdministrationController extends Controller
                 'time2' => (string) ($row->time2 ?? ''),
                 'user_name' => trim((string) ($row->user_name ?? '')),
                 'user_code' => trim((string) ($row->user_code ?? '')),
+                'ip' => trim((string) ($row->ip ?? '')),
+                'useragent' => trim((string) ($row->useragent ?? '')),
             ])->all();
         }
 
         $updateLog = [];
         if ($this->hasTable('delpart')) {
             $query = DB::table('delpart')
-                ->select(['updtdate', 'updttime', 'tdate', 'part', 'uid', 'ic', 'utype', 'ttype', 'slno'])
+                ->select(['updtdate', 'updttime', 'tdate', 'part', 'uid', 'ic', 'utype', 'ttype', 'slno', 'control'])
                 ->whereBetween('updtdate', [$dateFrom, $dateTo]);
 
             if (Schema::hasColumn('delpart', 'control')) {
                 $query->where('control', '<=', 9999);
             }
 
-            $query->orderBy('updtdate')->orderBy('updttime')->orderBy('tdate');
+            if ($sort === 'user') {
+                $query->orderBy('uid')->orderByDesc('updtdate')->orderByDesc('updttime');
+            } else {
+                $query->orderByDesc('updtdate')->orderByDesc('updttime')->orderByDesc('tdate');
+            }
 
-            $updateLog = $query->limit(500)->get()->map(fn ($row) => [
+            $updateLog = $this->enrichUpdateLogRows($query->limit(5000)->get()->map(fn ($row) => [
                 'updtdate' => (string) ($row->updtdate ?? ''),
                 'updttime' => (string) ($row->updttime ?? ''),
                 'tdate' => (string) ($row->tdate ?? ''),
@@ -337,7 +351,8 @@ class AdministrationController extends Controller
                 'utype' => trim((string) ($row->utype ?? '')),
                 'ttype' => trim((string) ($row->ttype ?? '')),
                 'slno' => (string) ($row->slno ?? ''),
-            ])->all();
+                'control' => (string) ($row->control ?? ''),
+            ])->all());
         }
 
         return response()->json([
@@ -345,6 +360,237 @@ class AdministrationController extends Controller
             'user_history' => $userHistory,
             'update_log' => $updateLog,
         ]);
+    }
+
+    private function enrichUpdateLogRows(array $rows): array
+    {
+        $salesKeys = $this->auditLookupKeys($rows, 'Sales Bill');
+        $purchaseKeys = $this->auditLookupKeys($rows, 'Purchase Bill');
+        $purchaseReturnKeys = $this->auditLookupKeys($rows, 'Purchase Return');
+        $salesReturnKeys = $this->auditLookupKeys($rows, 'Sales Return');
+        $goldsmithKeys = $this->auditLookupKeys($rows, 'Goldsmith');
+
+        $sales = $this->fetchAuditTxnDetails('salesm', 'salesd', 'billno', $salesKeys['slnos'], $salesKeys['docnos'], 'billamt');
+        $cancelledSales = $this->fetchCancelledSalesAuditDetails($salesKeys['slnos'], $salesKeys['docnos']);
+        $purchase = $this->fetchAuditTxnDetails('purchasem', 'purchased', 'docno', $purchaseKeys['slnos'], $purchaseKeys['docnos'], 'billamt');
+        $purchaseReturn = $this->fetchAuditTxnDetails('purchaserm', 'purchaserd', 'docno', $purchaseReturnKeys['slnos'], $purchaseReturnKeys['docnos'], 'billamt');
+        $salesReturn = $this->fetchAuditTxnDetails('salesrm', 'salesrd', 'billno', $salesReturnKeys['slnos'], $salesReturnKeys['docnos'], 'billamt');
+        $goldsmith = $this->fetchAuditTxnDetails('smithm', 'smithd', 'docno', $goldsmithKeys['slnos'], $goldsmithKeys['docnos'], 'pamt');
+
+        foreach ($rows as &$row) {
+            $type = $this->auditTransactionType((string) ($row['part'] ?? ''));
+            $details = match ($type) {
+                'sales' => $this->auditDetailForRow($row, $sales) ?: $this->auditDetailForRow($row, $cancelledSales),
+                'purchase' => $this->auditDetailForRow($row, $purchase),
+                'purchase_return' => $this->auditDetailForRow($row, $purchaseReturn),
+                'sales_return' => $this->auditDetailForRow($row, $salesReturn),
+                'goldsmith' => $this->auditDetailForRow($row, $goldsmith),
+                default => [],
+            };
+
+            $row['amount'] = $details['amount'] ?? '';
+            $row['weight'] = $details['weight'] ?? '';
+            $row['customer'] = $details['customer'] ?? '';
+            $row['staff'] = $details['staff'] ?? '';
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function fetchCancelledSalesAuditDetails(array $slnos, array $docnos): array
+    {
+        if (!$this->hasTable('cancelled_bill_audits') || ($slnos === [] && $docnos === [])) {
+            return [];
+        }
+
+        $query = DB::table('cancelled_bill_audits')
+            ->select(['slno', 'bill_no', 'customer_code', 'customer_name', 'net_amount', 'bill_amount', 'gross_weight']);
+
+        $query->where(function ($q) use ($slnos, $docnos) {
+            if ($slnos !== []) {
+                $q->whereIn('slno', $slnos);
+            }
+            if ($docnos !== []) {
+                $method = $slnos === [] ? 'whereIn' : 'orWhereIn';
+                $q->{$method}('bill_no', $docnos);
+            }
+        });
+
+        $out = [];
+        foreach ($query->get() as $row) {
+            $customer = trim((string) ($row->customer_code ?? ''));
+            $name = trim((string) ($row->customer_name ?? ''));
+            if ($name !== '') {
+                $customer = $customer !== '' ? ($customer . ' - ' . $name) : $name;
+            }
+
+            $detail = [
+                'amount' => round((float) ($row->net_amount ?? $row->bill_amount ?? 0), 2),
+                'weight' => round((float) ($row->gross_weight ?? 0), 3),
+                'customer' => $customer,
+                'staff' => '',
+            ];
+
+            $slno = (int) ($row->slno ?? 0);
+            if ($slno > 0) {
+                $out['slno:' . $slno] = $detail;
+            }
+            $docno = trim((string) ($row->bill_no ?? ''));
+            if ($docno !== '') {
+                $out['doc:' . $docno] = $detail;
+            }
+        }
+
+        return $out;
+    }
+
+    private function auditLookupKeys(array $rows, string $label): array
+    {
+        $slnos = [];
+        $docnos = [];
+        foreach ($rows as $row) {
+            $part = (string) ($row['part'] ?? '');
+            if (stripos($part, $label) === false) {
+                continue;
+            }
+            $slno = (int) ($row['slno'] ?? 0);
+            if ($slno > 0) {
+                $slnos[] = $slno;
+            }
+            $docno = $this->auditDocNoFromPart($part);
+            if ($docno !== '') {
+                $docnos[] = $docno;
+            }
+        }
+
+        return [
+            'slnos' => array_values(array_unique($slnos)),
+            'docnos' => array_values(array_unique($docnos)),
+        ];
+    }
+
+    private function auditTransactionType(string $part): string
+    {
+        if (stripos($part, 'Sales Return') !== false) return 'sales_return';
+        if (stripos($part, 'Sales Bill') !== false) return 'sales';
+        if (stripos($part, 'Purchase Return') !== false) return 'purchase_return';
+        if (stripos($part, 'Purchase Bill') !== false || stripos($part, 'Purchase Return') !== false) return 'purchase';
+        if (stripos($part, 'Goldsmith') !== false) return 'goldsmith';
+        return '';
+    }
+
+    private function auditDocNoFromPart(string $part): string
+    {
+        if (preg_match('/\(([^)]+)\)/', $part, $match) !== 1) {
+            return '';
+        }
+        return trim((string) $match[1]);
+    }
+
+    private function auditDetailForRow(array $row, array $details): array
+    {
+        $slno = (int) ($row['slno'] ?? 0);
+        if ($slno > 0 && isset($details['slno:' . $slno])) {
+            return $details['slno:' . $slno];
+        }
+
+        $docno = $this->auditDocNoFromPart((string) ($row['part'] ?? ''));
+        if ($docno !== '' && isset($details['doc:' . $docno])) {
+            return $details['doc:' . $docno];
+        }
+
+        return [];
+    }
+
+    private function fetchAuditTxnDetails(string $masterTable, string $detailTable, string $docColumn, array $slnos, array $docnos, string $amountColumn): array
+    {
+        if (!$this->hasTable($masterTable) || ($slnos === [] && $docnos === [])) {
+            return [];
+        }
+
+        $masterCols = $this->columnList($masterTable);
+        if (!in_array('slno', $masterCols, true) || !in_array($docColumn, $masterCols, true)) {
+            return [];
+        }
+        $hasDetail = $this->hasTable($detailTable) && in_array('slno', $this->columnList($detailTable), true);
+        $hasSman = $this->hasTable('sman') && in_array('smcode', $masterCols, true);
+        $amountExpr = in_array($amountColumn, $masterCols, true) ? 'm.' . $amountColumn : '0';
+
+        $query = DB::table($masterTable . ' as m')
+            ->selectRaw('m.slno, TRIM(COALESCE(m.' . $docColumn . ', "")) as docno, COALESCE(' . $amountExpr . ', 0) as amount');
+
+        if (in_array('smcode', $masterCols, true)) {
+            $query->addSelect(DB::raw('TRIM(COALESCE(m.smcode, "")) as smcode'));
+        } else {
+            $query->addSelect(DB::raw('"" as smcode'));
+        }
+
+        if (in_array('custcode', $masterCols, true)) {
+            $query->addSelect(DB::raw('TRIM(COALESCE(m.custcode, "")) as custcode'));
+        } else {
+            $query->addSelect(DB::raw('"" as custcode'));
+        }
+
+        if (in_array('custname', $masterCols, true)) {
+            $query->addSelect(DB::raw('TRIM(COALESCE(m.custname, "")) as custname'));
+        } else {
+            $query->addSelect(DB::raw('"" as custname'));
+        }
+
+        if ($hasDetail && in_array('weight', $this->columnList($detailTable), true)) {
+            $detail = DB::table($detailTable)
+                ->selectRaw('slno, COALESCE(SUM(weight), 0) as total_weight')
+                ->groupBy('slno');
+            $query->leftJoinSub($detail, 'd', 'd.slno', '=', 'm.slno')
+                ->addSelect(DB::raw('COALESCE(d.total_weight, 0) as weight'));
+        } else {
+            $query->addSelect(DB::raw('0 as weight'));
+        }
+
+        if ($hasSman) {
+            $query->leftJoin('sman as sm', DB::raw('TRIM(sm.code)'), '=', DB::raw('TRIM(m.smcode)'))
+                ->addSelect(DB::raw('TRIM(COALESCE(sm.name, "")) as smname'));
+        } else {
+            $query->addSelect(DB::raw('"" as smname'));
+        }
+
+        $query->where(function ($q) use ($slnos, $docnos, $docColumn) {
+            if ($slnos !== []) {
+                $q->whereIn('m.slno', $slnos);
+            }
+            if ($docnos !== []) {
+                $method = $slnos === [] ? 'whereIn' : 'orWhereIn';
+                $q->{$method}('m.' . $docColumn, $docnos);
+            }
+        });
+
+        $out = [];
+        foreach ($query->get() as $row) {
+            $staff = trim((string) ($row->smcode ?? ''));
+            $smname = trim((string) ($row->smname ?? ''));
+            if ($smname !== '') {
+                $staff = $staff !== '' ? ($staff . ' - ' . $smname) : $smname;
+            }
+            $customer = trim((string) ($row->custcode ?? ''));
+            $customerName = trim((string) ($row->custname ?? ''));
+            if ($customerName !== '') {
+                $customer = $customer !== '' ? ($customer . ' - ' . $customerName) : $customerName;
+            }
+            $detail = [
+                'amount' => round((float) ($row->amount ?? 0), 2),
+                'weight' => round((float) ($row->weight ?? 0), 3),
+                'customer' => $customer,
+                'staff' => $staff,
+            ];
+            $out['slno:' . (int) ($row->slno ?? 0)] = $detail;
+            $docno = trim((string) ($row->docno ?? ''));
+            if ($docno !== '') {
+                $out['doc:' . $docno] = $detail;
+            }
+        }
+
+        return $out;
     }
 
     public function clearUpdateLog(Request $request): JsonResponse
@@ -800,7 +1046,7 @@ class AdministrationController extends Controller
         // DDL actions (ALTER TABLE etc.) cause an implicit MySQL commit, so they
         // must not be wrapped in a transaction — doing so would leave no active
         // transaction for the subsequent DB::commit() call, throwing an exception.
-        $ddlActions = ['widen_salestype_prefix_cols', 'widen_billno_columns', 'widen_legacy_docno_columns'];
+        $ddlActions = ['add_clients_balance_column', 'add_sales_va_discount_columns', 'widen_salestype_prefix_cols', 'widen_billno_columns', 'widen_legacy_docno_columns', 'widen_bill_header_text_cols', 'create_einvoice_tables'];
         $isDdl = in_array($action, $ddlActions, true);
 
         if (!$isDdl) {
@@ -826,9 +1072,18 @@ class AdministrationController extends Controller
                 'all_zero_stktouch_to_100' => $this->sqlUpdateStockTouchToHundred(),
                 'cleanup_stale_prefix_counters' => $this->sqlCleanupStalePrefixCounters(),
                 'reset_daybook_slno' => $this->sqlResetDaybookSlno(),
+                'add_clients_balance_column' => $this->sqlAddClientsBalanceColumn(),
+                'add_sales_va_discount_columns' => $this->sqlAddSalesVaDiscountColumns(),
                 'widen_salestype_prefix_cols' => $this->sqlWidenSalestypePrefixCols(),
                 'widen_billno_columns' => $this->sqlWidenBillNoColumns(),
                 'widen_legacy_docno_columns' => $this->sqlWidenLegacyDocNoColumns(),
+                'widen_bill_header_text_cols' => $this->sqlWidenBillHeaderTextCols(),
+                'create_einvoice_tables' => $this->sqlCreateEInvoiceTables(),
+                'clear_message_log' => $this->sqlClearMessageLog(),
+                'clear_salary_drafts' => $this->sqlClearSalaryDrafts(),
+                'clear_item_images_orphans' => $this->sqlClearItemImagesOrphans(),
+                'check_hallmark_duplicate_huid' => $this->sqlCheckHallmarkDuplicateHuid(),
+                'check_loan_balance' => $this->sqlCheckLoanBalance(),
                 default => throw new \RuntimeException('Action handler missing.'),
             };
 
@@ -952,7 +1207,7 @@ class AdministrationController extends Controller
                     ['label' => 'Dmd Purchase Ret Length',  'input' => 'diamond_purchase_return_length',    'table' => 'generals', 'code' => 'DPRBLEN',  'type' => 'text', 'default' => '5',    'group' => 'Diamond'],
                     ['label' => 'Jewellery Issue Prefix',   'input' => 'jewellery_issue_prefix',            'table' => 'generals', 'code' => 'JBPREF',   'type' => 'text', 'default' => 'JLB/', 'group' => 'Jewellery'],
                     ['label' => 'Jewellery Issue Length',   'input' => 'jewellery_issue_length',            'table' => 'generals', 'code' => 'JBLEN',    'type' => 'text', 'default' => '5',    'group' => 'Jewellery'],
-                    ['label' => 'Jewellery Rcpt Prefix',    'input' => 'jewellery_receipt_prefix',          'table' => 'generals', 'code' => 'JRBPREF',  'type' => 'text', 'default' => 'JRB/', 'group' => 'Jewellery'],
+                    ['label' => 'Jewellery Rcpt Prefix',    'input' => 'jewellery_receipt_prefix',          'table' => 'generals', 'code' => 'JRBPREF',  'type' => 'text', 'default' => 'JR/',  'group' => 'Jewellery'],
                     ['label' => 'Jewellery Rcpt Length',    'input' => 'jewellery_receipt_length',          'table' => 'generals', 'code' => 'JRBLEN',   'type' => 'text', 'default' => '5',    'group' => 'Jewellery'],
                     ['label' => 'Smith Prefix',             'input' => 'smith_prefix',                      'table' => 'generals', 'code' => 'GSBPREF',  'type' => 'text', 'default' => 'GSB/', 'group' => 'Smith'],
                     ['label' => 'Smith Length',             'input' => 'smith_length',                      'table' => 'generals', 'code' => 'GSBLEN',   'type' => 'text', 'default' => '5',    'group' => 'Smith'],
@@ -1174,9 +1429,19 @@ class AdministrationController extends Controller
             ['key' => 'all_zero_stktouch_to_100', 'label' => 'All 0 StkTouch(smith/Jw) to 100', 'category' => 'Goldsmith', 'risk' => 'low', 'description' => 'Updates zero stock touch to 100 in `clientsgs`.'],
             ['key' => 'cleanup_stale_prefix_counters', 'label' => 'Cleanup Stale Prefix Counters', 'category' => 'Cleanup', 'risk' => 'low', 'description' => 'Removes orphaned SALES/SRET/PURCH/PRET counter rows in `generali` that no longer match any bill prefix in `salestype`.'],
             ['key' => 'reset_daybook_slno', 'label' => 'Reset Daybook SLNO', 'category' => 'Cleanup', 'risk' => 'medium', 'description' => 'Fixes duplicate or out-of-order `slno` values in the `daybook` table by reassigning them sequentially by date.'],
+            ['key' => 'add_clients_balance_column', 'label' => 'Add Client Balance Column', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Adds missing `clients.balance` DECIMAL(15,2) column used by repair voucher balance updates. Seeds it from `clamt` when available. Safe to re-run.'],
+            ['key' => 'add_sales_va_discount_columns', 'label' => 'Add Sales VA Discount Columns', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Adds missing `salesd.va_disc_perc` and `salesd.va_disc_amt` columns so Sales Invoice VA discount percentage and amount save/load correctly. Safe to re-run.'],
             ['key' => 'widen_salestype_prefix_cols', 'label' => 'Widen Prefix Columns', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Extends `salestype` prefix/name columns to VARCHAR(20)/VARCHAR(30), `generali.code` to VARCHAR(30), and `stkandprofit` value columns to DECIMAL(15,2) to support large bill amounts.'],
-            ['key' => 'widen_billno_columns', 'label' => 'Widen Bill No Columns', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Extends sales, sales return, purchase, and purchase return `billno` columns to VARCHAR(20) so longer bill numbers save correctly.'],
+            ['key' => 'widen_billno_columns', 'label' => 'Widen Bill No Columns', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Extends sales/purchase/repair bill numbers and order `ordno` / `salebill` columns to VARCHAR(30) so longer bill numbers save correctly.'],
             ['key' => 'widen_legacy_docno_columns', 'label' => 'Fix Exchange DocNo Length', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Extends legacy `docno` and related `billno` columns used by exchange, return, daybook, stock-profit, kuri, and PDC sync so long bill numbers save without truncation errors.'],
+            ['key' => 'widen_bill_header_text_cols', 'label' => 'Widen Bill Header Text Columns', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Extends `name`, `addr`, `note`, `mobile`, `pan` columns on sales/purchase/return headers so long supplier/customer details save without truncation errors.'],
+            ['key' => 'create_einvoice_tables', 'label' => 'Create E-Invoice Tables', 'category' => 'Schema', 'risk' => 'low', 'description' => 'Creates the `e_invoices` audit table and adds e-invoice columns (`irn`, `ackno`, `ackdt`, `signedqrcode`, `einvoice_status`, `einvoice_response`, `cancel_reason`, `cancel_remark`, `cancelled_at`) to `salesm` and `sales_bills` if missing. Safe to re-run.'],
+            // New module maintenance actions
+            ['key' => 'clear_message_log', 'label' => 'Clear Message Log', 'category' => 'WhatsApp', 'risk' => 'medium', 'description' => 'Deletes all WhatsApp/SMS message log records older than 90 days from the `message_log` table.'],
+            ['key' => 'clear_salary_drafts', 'label' => 'Clear Salary Drafts', 'category' => 'Payroll', 'risk' => 'medium', 'description' => 'Removes all salary register records with status `draft` that were never finalized.'],
+            ['key' => 'clear_item_images_orphans', 'label' => 'Remove Orphan Catalogue Images', 'category' => 'Catalogue', 'risk' => 'medium', 'description' => 'Removes `item_images` rows whose image file no longer exists on disk in `public/uploads/catalogue/`.'],
+            ['key' => 'check_hallmark_duplicate_huid', 'label' => 'Check Duplicate HUIDs', 'category' => 'Audit', 'risk' => 'low', 'description' => 'Scans `hallmark_records` for duplicate HUID values and reports groups — no data changed.'],
+            ['key' => 'check_loan_balance', 'label' => 'Recalculate Loan Balances', 'category' => 'Gold Loan', 'risk' => 'low', 'description' => 'Recomputes `balance` in `loan` table as `loan_amt − sum(loancolln.amount)` for all active loans and reports any mismatches found.'],
         ];
     }
 
@@ -1390,7 +1655,7 @@ class AdministrationController extends Controller
                 'purchase' => count($this->fetchStandalonePurchaseSlnos($sourceDb, $dateFrom, $dateTo)),
                 'order' => $this->countSourceDateRows($sourceDb, 'orderm', $dateFrom, $dateTo),
                 'order_sale' => count($this->fetchOrderSaleSlnos($sourceDb, $dateFrom, $dateTo)),
-                'sales_return' => $this->countSourceDateRows($sourceDb, 'salesrm', $dateFrom, $dateTo),
+                'sales_return' => count($this->fetchStandaloneSalesReturnSlnos($sourceDb, $dateFrom, $dateTo)),
                 'purchase_return' => $this->countSourceDateRows($sourceDb, 'purchaserm', $dateFrom, $dateTo),
                 'smith' => $this->countSmithByCtype($sourceDb, $dateFrom, $dateTo, 'smith'),
                 'jewellery' => $this->countSmithByCtype($sourceDb, $dateFrom, $dateTo, 'jewellery'),
@@ -1451,13 +1716,13 @@ class AdministrationController extends Controller
                 $copied += $this->transferRelatedMastersForSlnos($sourceDb, $targetDb, $slnos, ['salesm', 'salesd', 'salesrm', 'salesrd', 'purchasem', 'purchased', 'orderm', 'orderd', 'orderdga', 'daybook', 'daybookpart', 'stkandprofit', 'oglist', 'pdclist']);
                 break;
             case 'sales_return':
-                $slnos = $this->fetchDateRangeSlnos($sourceDb, 'salesrm', $dateFrom, $dateTo);
-                $copied += $this->transferSalesLike($sourceDb, $targetDb, 'salesrm', 'salesrd', $dateFrom, $dateTo);
+                $slnos = $this->fetchStandaloneSalesReturnSlnos($sourceDb, $dateFrom, $dateTo);
+                $copied += $this->transferTransactionsWithSyncEngine($targetDb, 'sales_return', $slnos);
                 $copied += $this->transferRelatedMastersForSlnos($sourceDb, $targetDb, $slnos, ['salesrm', 'salesrd', 'daybook', 'daybookpart']);
                 break;
             case 'purchase_return':
                 $slnos = $this->fetchDateRangeSlnos($sourceDb, 'purchaserm', $dateFrom, $dateTo);
-                $copied += $this->transferSalesLike($sourceDb, $targetDb, 'purchaserm', 'purchaserd', $dateFrom, $dateTo);
+                $copied += $this->transferTransactionsWithSyncEngine($targetDb, 'purchase_return', $slnos);
                 $copied += $this->transferRelatedMastersForSlnos($sourceDb, $targetDb, $slnos, ['purchaserm', 'purchaserd', 'daybook', 'daybookpart']);
                 break;
             case 'smith':
@@ -1665,6 +1930,28 @@ class AdministrationController extends Controller
             ->all();
     }
 
+    private function fetchStandaloneSalesReturnSlnos(string $sourceDb, string $dateFrom, string $dateTo): array
+    {
+        $returnSlnos = $this->fetchDateRangeSlnos($sourceDb, 'salesrm', $dateFrom, $dateTo);
+        if ($returnSlnos === [] || !$this->sourceTableExists($sourceDb, 'salesm')) {
+            return $returnSlnos;
+        }
+
+        $salesLinkedSlnos = collect($this->fetchSourceRowsBySlno($sourceDb, 'salesm', $returnSlnos))
+            ->pluck('slno')
+            ->filter(fn ($value) => (int) $value > 0)
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($salesLinkedSlnos === []) {
+            return $returnSlnos;
+        }
+
+        return array_values(array_diff($returnSlnos, $salesLinkedSlnos));
+    }
+
     private function transferRelatedMastersForSlnos(string $sourceDb, string $targetDb, array $slnos, array $tables): int
     {
         if ($slnos === []) {
@@ -1808,13 +2095,20 @@ class AdministrationController extends Controller
         return $copied;
     }
 
-    private function transferSalesLike(string $sourceDb, string $targetDb, string $headerTable, string $detailTable, string $dateFrom, string $dateTo): int
+    private function transferSalesLike(string $sourceDb, string $targetDb, string $headerTable, string $detailTable, string $dateFrom, string $dateTo, ?array $onlySlnos = null): int
     {
         if (!$this->hasTable($headerTable) || !$this->sourceTableExists($sourceDb, $headerTable) || !$this->sourceTableExists($targetDb, $headerTable)) {
             return 0;
         }
 
         $headerRows = $this->fetchSourceTableRowsByDate($sourceDb, $headerTable, $dateFrom, $dateTo);
+        if ($onlySlnos !== null) {
+            $allowed = array_flip(array_map('intval', $onlySlnos));
+            $headerRows = collect($headerRows)
+                ->filter(fn (array $row) => isset($allowed[(int) ($row['slno'] ?? 0)]))
+                ->values()
+                ->all();
+        }
         if ($headerRows === []) {
             return 0;
         }
@@ -1915,10 +2209,11 @@ class AdministrationController extends Controller
             'JI/',
             'JLB/',
             'JLE/',
+            'JR/',
             'JRB/',
             $this->sourceGeneralText($database, 'JBPREF', 'JLB/'),
             $this->sourceGeneralText($database, 'JEPREF', 'JLE/'),
-            $this->sourceGeneralText($database, 'JRBPREF', 'JRB/'),
+            $this->sourceGeneralText($database, 'JRBPREF', 'JR/'),
         ];
 
         return collect($prefixes)
@@ -1994,12 +2289,14 @@ class AdministrationController extends Controller
             : [];
 
         $slnoMap = $this->buildTargetSlnoMapForSmithLike($targetDb, $headerRows);
+        $docNoMap = $this->buildTargetDocNoMapForSmithLike($targetDb, $headerRows, $slnoMap);
         $targetSlnos = collect($slnoMap)->values()->map(fn ($value) => (int) $value)->unique()->values()->all();
         $docMap = collect($headerRows)
             ->map(fn (array $row) => [
                 'source_slno' => (int) ($row['slno'] ?? 0),
                 'target_slno' => (int) ($slnoMap[(int) ($row['slno'] ?? 0)] ?? 0),
-                'docno' => trim((string) ($row['docno'] ?? '')),
+                'source_docno' => trim((string) ($row['docno'] ?? '')),
+                'target_docno' => $docNoMap[trim((string) ($row['docno'] ?? ''))] ?? trim((string) ($row['docno'] ?? '')),
             ])
             ->values()
             ->all();
@@ -2022,6 +2319,11 @@ class AdministrationController extends Controller
         $daybookRows = $this->remapRowsBySlno($daybookRows, $slnoMap);
         $daybookPartRows = $this->remapRowsBySlno($daybookPartRows, $slnoMap);
 
+        $headerRows = $this->remapRowsByDocumentNumbers($headerRows, $docNoMap);
+        $detailRows = $this->remapRowsByDocumentNumbers($detailRows, $docNoMap);
+        $daybookRows = $this->remapRowsByDocumentNumbers($daybookRows, $docNoMap);
+        $daybookPartRows = $this->remapRowsByDocumentNumbers($daybookPartRows, $docNoMap);
+
         $this->cleanupRowsBySlnoInDatabase($targetDb, 'smithd', $targetSlnos);
         $this->cleanupRowsBySlnoInDatabase($targetDb, 'smithm', $targetSlnos);
         $this->cleanupRowsBySlnoInDatabase($targetDb, 'daybook', $targetSlnos);
@@ -2042,6 +2344,7 @@ class AdministrationController extends Controller
         }
 
         $this->syncTargetSerialNo($targetDb, $targetSlnos);
+        $this->syncTargetSmithDocCounters($targetDb, $variant);
 
         Log::info('data-transfer.smith-like.done', [
             'variant' => $variant,
@@ -2094,6 +2397,86 @@ class AdministrationController extends Controller
         }
 
         return $map;
+    }
+
+    private function buildTargetDocNoMapForSmithLike(string $targetDb, array $headerRows, array $slnoMap): array
+    {
+        $map = [];
+        foreach ($headerRows as $row) {
+            $sourceSlno = (int) ($row['slno'] ?? 0);
+            $targetSlno = (int) ($slnoMap[$sourceSlno] ?? 0);
+            $sourceDocNo = trim((string) ($row['docno'] ?? ''));
+            if ($sourceDocNo === '') {
+                continue;
+            }
+
+            $map[$sourceDocNo] = $this->resolveTargetShadowDocNo($targetDb, 'smithm', 'docno', $sourceDocNo, $targetSlno);
+        }
+
+        return $map;
+    }
+
+    private function resolveTargetShadowDocNo(string $database, string $table, string $column, string $sourceDocNo, int $targetSlno = 0): string
+    {
+        $sourceDocNo = trim($sourceDocNo);
+        if ($sourceDocNo === '' || !$this->sourceTableExists($database, $table) || !$this->sourceColumnExists($database, $table, $column)) {
+            return $sourceDocNo;
+        }
+
+        if ($targetSlno > 0 && $this->sourceColumnExists($database, $table, 'slno')) {
+            $existingForSlno = trim((string) (DB::table(DB::raw($this->qualifiedTable($database, $table)))
+                ->where('slno', $targetSlno)
+                ->value($column) ?? ''));
+            if ($existingForSlno !== '' && (strcasecmp($existingForSlno, $sourceDocNo) === 0 || preg_match('/^' . preg_quote($sourceDocNo, '/') . 'd[0-9]*$/i', $existingForSlno))) {
+                return $existingForSlno;
+            }
+        }
+
+        $candidate = $sourceDocNo;
+        $suffix = 0;
+        while ($this->targetDocNoExists($database, $table, $column, $candidate)) {
+            $suffix++;
+            $candidate = $sourceDocNo . 'd' . ($suffix > 1 ? (string) $suffix : '');
+        }
+
+        return $candidate;
+    }
+
+    private function targetDocNoExists(string $database, string $table, string $column, string $docNo): bool
+    {
+        if ($docNo === '' || !$this->sourceTableExists($database, $table) || !$this->sourceColumnExists($database, $table, $column)) {
+            return false;
+        }
+
+        return DB::table(DB::raw($this->qualifiedTable($database, $table)))
+            ->whereRaw('TRIM(`' . str_replace('`', '``', $column) . '`) = ?', [$docNo])
+            ->exists();
+    }
+
+    private function remapRowsByDocumentNumbers(array $rows, array $docNoMap): array
+    {
+        if ($rows === [] || $docNoMap === []) {
+            return $rows;
+        }
+
+        return collect($rows)
+            ->map(function (array $row) use ($docNoMap) {
+                foreach ($row as $column => $value) {
+                    $columnKey = strtolower((string) $column);
+                    if (!in_array($columnKey, ['billno', 'docno', 'vchno', 'ordno'], true)) {
+                        continue;
+                    }
+
+                    $current = trim((string) $value);
+                    if ($current !== '' && array_key_exists($current, $docNoMap)) {
+                        $row[$column] = $docNoMap[$current];
+                    }
+                }
+
+                return $row;
+            })
+            ->values()
+            ->all();
     }
 
     private function remapRowsBySlno(array $rows, array $slnoMap): array
@@ -2185,6 +2568,80 @@ class AdministrationController extends Controller
         }
 
         DB::table($table)->insert(['code' => 'SERIALNO', 'cvalue' => (int) $maxSlno]);
+    }
+
+    private function syncTargetSmithDocCounters(string $database, string $variant): void
+    {
+        if (!$this->sourceTableExists($database, 'smithm') || !$this->sourceTableExists($database, 'generali')) {
+            return;
+        }
+
+        $variant = strtolower(trim($variant));
+        $configs = $variant === 'jewellery'
+            ? [
+                ['code' => 'JEWLB',  'prefixes' => [$this->sourceGeneralText($database, 'JBPREF', 'JLB/'), 'JI/', 'JLB/']],
+                ['code' => 'JEWLE',  'prefixes' => [$this->sourceGeneralText($database, 'JEPREF', 'JLE/'), 'JLE/']],
+                ['code' => 'JEWLRB', 'prefixes' => [$this->sourceGeneralText($database, 'JRBPREF', 'JR/'), 'JR/', 'JRB/']],
+            ]
+            : [
+                ['code' => 'SMITHB',  'prefixes' => [$this->sourceGeneralText($database, 'GSBPREF', 'GSB/'), 'GI/', 'GSB/']],
+                ['code' => 'SMITHE',  'prefixes' => [$this->sourceGeneralText($database, 'GSEPREF', 'GSE/'), 'GSE/']],
+                ['code' => 'SMITHRB', 'prefixes' => [$this->sourceGeneralText($database, 'GSRBPREF', 'GSR/'), 'GR/', 'GSR/']],
+            ];
+
+        foreach ($configs as $config) {
+            $max = $this->maxTargetSmithDocSerialForPrefixes($database, $config['prefixes']);
+            if ($max > 0) {
+                $this->upsertTargetGeneralInt($database, $config['code'], $max);
+            }
+        }
+    }
+
+    private function maxTargetSmithDocSerialForPrefixes(string $database, array $prefixes): int
+    {
+        $prefixes = collect($prefixes)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn ($value) => $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($prefixes === [] || !$this->sourceTableExists($database, 'smithm') || !$this->sourceColumnExists($database, 'smithm', 'docno')) {
+            return 0;
+        }
+
+        $rows = DB::table(DB::raw($this->qualifiedTable($database, 'smithm')))
+            ->where(function ($query) use ($prefixes) {
+                foreach ($prefixes as $prefix) {
+                    $query->orWhere('docno', 'like', $prefix . '%');
+                }
+            })
+            ->pluck('docno');
+
+        return $rows->reduce(function (int $max, $docNo): int {
+            return preg_match('/(\d+)\s*$/', trim((string) $docNo), $m)
+                ? max($max, (int) $m[1])
+                : $max;
+        }, 0);
+    }
+
+    private function upsertTargetGeneralInt(string $database, string $code, int $value): void
+    {
+        if ($value <= 0 || !$this->sourceTableExists($database, 'generali')) {
+            return;
+        }
+
+        $table = DB::raw($this->qualifiedTable($database, 'generali'));
+        $exists = DB::table($table)->whereRaw('TRIM(code) = ?', [$code])->exists();
+
+        if ($exists) {
+            DB::table($table)
+                ->whereRaw('TRIM(code) = ?', [$code])
+                ->update(['cvalue' => DB::raw('GREATEST(COALESCE(cvalue,0), ' . (int) $value . ')')]);
+            return;
+        }
+
+        DB::table($table)->insert(['code' => $code, 'cvalue' => (int) $value]);
     }
 
     private function countRowsBySlnos(string $database, string $table, array $slnos): int
@@ -2856,6 +3313,26 @@ class AdministrationController extends Controller
                 'issue' => 'Bills or orders appear more than once with the same number',
                 'recommended_action' => 'check_duplicate_bills',
                 'why' => 'Scans legacy sales, purchase, return, and order tables and reports duplicate bill/order number groups.',
+            ],
+            [
+                'issue' => 'WhatsApp/SMS message log table is growing too large or slowing down',
+                'recommended_action' => 'clear_message_log',
+                'why' => 'Removes sent/failed message records older than 90 days — keeps recent history intact.',
+            ],
+            [
+                'issue' => 'Salary register has old unfinished draft entries cluttering the payroll list',
+                'recommended_action' => 'clear_salary_drafts',
+                'why' => 'Removes only draft-status salary rows that were never finalized or paid.',
+            ],
+            [
+                'issue' => 'Product catalogue shows images that do not load or give 404 errors',
+                'recommended_action' => 'clear_item_images_orphans',
+                'why' => 'Removes DB rows whose physical image file is missing from the uploads folder.',
+            ],
+            [
+                'issue' => 'Loan balance in report does not match the sum of collections received',
+                'recommended_action' => 'check_loan_balance',
+                'why' => 'Reads actual collection totals and compares them to the stored balance field — safe read-only check.',
             ],
         ];
     }
@@ -3673,6 +4150,70 @@ class AdministrationController extends Controller
         return ['message' => 'Zero stock touch updated to 100.', 'summary' => ['updated' => $updated]];
     }
 
+    private function sqlAddClientsBalanceColumn(): array
+    {
+        if (!$this->hasTable('clients')) {
+            return ['message' => '`clients` table not found.', 'summary' => ['altered' => 0, 'seeded' => 0]];
+        }
+
+        $altered = 0;
+        $seeded = 0;
+
+        if (!Schema::hasColumn('clients', 'balance')) {
+            DB::statement('ALTER TABLE `clients` ADD COLUMN `balance` DECIMAL(15,2) NOT NULL DEFAULT 0');
+            $altered = 1;
+        }
+
+        if (Schema::hasColumn('clients', 'clamt')) {
+            $seeded = DB::table('clients')->update(['balance' => DB::raw('COALESCE(`clamt`, 0)')]);
+        }
+
+        if ($altered === 0) {
+            return [
+                'message' => '`clients.balance` already exists. Existing balances refreshed from `clamt` where available.',
+                'summary' => ['altered' => 0, 'seeded' => $seeded],
+            ];
+        }
+
+        return [
+            'message' => '`clients.balance` column added for repair voucher balance updates.',
+            'summary' => ['altered' => $altered, 'seeded' => $seeded],
+        ];
+    }
+
+    private function sqlAddSalesVaDiscountColumns(): array
+    {
+        if (!$this->hasTable('salesd')) {
+            return ['message' => '`salesd` table not found.', 'summary' => ['altered' => 0, 'skipped' => 2]];
+        }
+
+        $alters = [];
+        if (!Schema::hasColumn('salesd', 'va_disc_perc')) {
+            $alters[] = 'ADD COLUMN `va_disc_perc` DECIMAL(10,3) NOT NULL DEFAULT 0';
+        }
+        if (!Schema::hasColumn('salesd', 'va_disc_amt')) {
+            $alters[] = 'ADD COLUMN `va_disc_amt` DECIMAL(12,2) NOT NULL DEFAULT 0';
+        }
+
+        if ($alters !== []) {
+            DB::statement('ALTER TABLE `salesd` ' . implode(', ', $alters));
+        }
+
+        $altered = count($alters);
+        $skipped = 2 - $altered;
+        if ($altered === 0) {
+            return [
+                'message' => '`salesd` VA discount columns already exist.',
+                'summary' => ['altered' => 0, 'skipped' => $skipped],
+            ];
+        }
+
+        return [
+            'message' => '`salesd` VA discount columns added for Sales Invoice save/load.',
+            'summary' => ['altered' => $altered, 'skipped' => $skipped],
+        ];
+    }
+
     private function sqlWidenSalestypePrefixCols(): array
     {
         $altered = 0;
@@ -3710,23 +4251,38 @@ class AdministrationController extends Controller
     private function sqlWidenBillNoColumns(): array
     {
         $targets = [
-            'salesm',
-            'salesrm',
-            'purchasem',
-            'purchaserm',
+            'salesm' => ['billno'],
+            'salesrm' => ['billno'],
+            'purchasem' => ['billno'],
+            'purchaserm' => ['billno'],
+            'repairm' => ['billno', 'rbillno'],
+            'orderm' => ['ordno', 'salebill'],
+            'sales_bills' => ['bill_no', 'billno'],
         ];
 
         $altered = 0;
         $skipped = 0;
 
-        foreach ($targets as $table) {
-            if (!$this->hasTable($table) || !Schema::hasColumn($table, 'billno')) {
-                $skipped++;
+        foreach ($targets as $table => $columns) {
+            if (!$this->hasTable($table)) {
+                $skipped += count($columns);
                 continue;
             }
 
-            DB::statement("ALTER TABLE `{$table}` MODIFY `billno` VARCHAR(20) NULL");
-            $altered++;
+            foreach ($columns as $column) {
+                if (!Schema::hasColumn($table, $column)) {
+                    if (($table === 'repairm' && $column === 'rbillno') || ($table === 'orderm' && $column === 'salebill')) {
+                        DB::statement("ALTER TABLE `{$table}` ADD COLUMN `{$column}` VARCHAR(30) NULL");
+                        $altered++;
+                        continue;
+                    }
+                    $skipped++;
+                    continue;
+                }
+
+                DB::statement("ALTER TABLE `{$table}` MODIFY `{$column}` VARCHAR(30) NULL");
+                $altered++;
+            }
         }
 
         if ($altered === 0) {
@@ -3734,8 +4290,126 @@ class AdministrationController extends Controller
         }
 
         return [
-            'message' => 'Sales, sales return, purchase, and purchase return bill number columns widened to VARCHAR(20).',
+            'message' => 'Sales, purchase, repair, and order bill number columns widened to VARCHAR(30).',
             'summary' => ['altered' => $altered, 'skipped' => $skipped],
+        ];
+    }
+
+    private function sqlCreateEInvoiceTables(): array
+    {
+        $createdTable = false;
+        $alteredSalesm = [];
+        $alteredSalesBills = [];
+
+        if (!Schema::hasTable('e_invoices')) {
+            Schema::create('e_invoices', function ($table): void {
+                $table->bigIncrements('id');
+                $table->string('bill_no', 40)->index();
+                $table->string('bill_type', 10)->default('S');
+                $table->date('bill_date')->nullable();
+                $table->string('customer_code', 20)->nullable();
+                $table->string('customer_name', 150)->nullable();
+                $table->string('gst_no', 20)->nullable();
+                $table->decimal('net_total', 16, 2)->default(0);
+                $table->string('status', 20)->default('generated');
+                $table->string('irn', 120)->nullable();
+                $table->string('ack_no', 80)->nullable();
+                $table->string('ack_date', 80)->nullable();
+                $table->longText('signed_qr_code')->nullable();
+                $table->longText('request_payload')->nullable();
+                $table->longText('response_payload')->nullable();
+                $table->string('provider', 50)->nullable();
+                $table->string('generated_by', 20)->nullable();
+                $table->timestamp('generated_at')->nullable();
+                $table->string('cancel_reason', 255)->nullable();
+                $table->string('cancel_remark', 255)->nullable();
+                $table->string('cancelled_by', 20)->nullable();
+                $table->timestamp('cancelled_at')->nullable();
+                $table->longText('cancel_response')->nullable();
+                $table->timestamps();
+                $table->unique(['bill_no', 'bill_type'], 'e_invoices_billno_billtype_unique');
+            });
+            $createdTable = true;
+        }
+
+        if (Schema::hasTable('salesm')) {
+            $cols = array_map('strtolower', Schema::getColumnListing('salesm'));
+            $alters = [];
+            $add = function (string $name, string $ddl) use (&$cols, &$alters, &$alteredSalesm): void {
+                if (!in_array(strtolower($name), $cols, true)) {
+                    $alters[] = $ddl;
+                    $alteredSalesm[] = $name;
+                }
+            };
+            $add('einvoice_status',   "ADD `einvoice_status` VARCHAR(30) NULL");
+            $add('irn',               "ADD `irn` VARCHAR(120) NULL");
+            $add('ackno',             "ADD `ackno` VARCHAR(80) NULL");
+            $add('ackdt',             "ADD `ackdt` VARCHAR(80) NULL");
+            $add('signedqrcode',      "ADD `signedqrcode` LONGTEXT NULL");
+            $add('einvoice_response', "ADD `einvoice_response` LONGTEXT NULL");
+            $add('cancel_reason',     "ADD `cancel_reason` VARCHAR(255) NULL");
+            $add('cancel_remark',     "ADD `cancel_remark` VARCHAR(255) NULL");
+            $add('cancelled_at',      "ADD `cancelled_at` DATETIME NULL");
+            if ($alters !== []) {
+                DB::statement('ALTER TABLE `salesm` ' . implode(', ', $alters));
+            }
+        }
+
+        if (Schema::hasTable('sales_bills')) {
+            $cols = array_map('strtolower', Schema::getColumnListing('sales_bills'));
+            $alters = [];
+            $add = function (string $name, string $ddl) use (&$cols, &$alters, &$alteredSalesBills): void {
+                if (!in_array(strtolower($name), $cols, true)) {
+                    $alters[] = $ddl;
+                    $alteredSalesBills[] = $name;
+                }
+            };
+            $add('e_invoice_status',   "ADD `e_invoice_status` VARCHAR(30) NULL");
+            $add('irn',                "ADD `irn` VARCHAR(120) NULL");
+            $add('ack_no',             "ADD `ack_no` VARCHAR(80) NULL");
+            $add('ack_date',           "ADD `ack_date` VARCHAR(80) NULL");
+            $add('signed_qr_code',     "ADD `signed_qr_code` LONGTEXT NULL");
+            $add('e_invoice_response', "ADD `e_invoice_response` LONGTEXT NULL");
+            $add('cancel_reason',      "ADD `cancel_reason` VARCHAR(255) NULL");
+            $add('cancel_remark',      "ADD `cancel_remark` VARCHAR(255) NULL");
+            $add('cancelled_at',       "ADD `cancelled_at` DATETIME NULL");
+            if ($alters !== []) {
+                DB::statement('ALTER TABLE `sales_bills` ' . implode(', ', $alters));
+            }
+        }
+
+        $totalChanges = ($createdTable ? 1 : 0) + count($alteredSalesm) + count($alteredSalesBills);
+        if ($totalChanges === 0) {
+            return [
+                'message' => 'E-invoice schema already up to date — nothing to change.',
+                'summary' => [
+                    'table_created' => false,
+                    'salesm_columns_added' => 0,
+                    'sales_bills_columns_added' => 0,
+                ],
+            ];
+        }
+
+        $parts = [];
+        if ($createdTable) {
+            $parts[] = 'created `e_invoices` table';
+        }
+        if ($alteredSalesm !== []) {
+            $parts[] = 'added to `salesm`: ' . implode(', ', $alteredSalesm);
+        }
+        if ($alteredSalesBills !== []) {
+            $parts[] = 'added to `sales_bills`: ' . implode(', ', $alteredSalesBills);
+        }
+
+        return [
+            'message' => 'E-invoice schema ready — ' . implode('; ', $parts) . '.',
+            'summary' => [
+                'table_created' => $createdTable,
+                'salesm_columns_added' => count($alteredSalesm),
+                'sales_bills_columns_added' => count($alteredSalesBills),
+                'salesm_columns' => $alteredSalesm,
+                'sales_bills_columns' => $alteredSalesBills,
+            ],
         ];
     }
 
@@ -3779,6 +4453,48 @@ class AdministrationController extends Controller
 
         return [
             'message' => 'Legacy exchange/docno related columns widened to VARCHAR(30).',
+            'summary' => ['altered' => $altered, 'skipped' => $skipped],
+        ];
+    }
+
+    private function sqlWidenBillHeaderTextCols(): array
+    {
+        // Widen short text columns on bill/return header tables that commonly
+        // overflow with real-world supplier/customer details. Each entry maps
+        // a column to the target VARCHAR length.
+        $targets = [
+            'salesm'     => ['name' => 150, 'addr' => 200, 'note' => 200, 'mobile' => 30, 'pan' => 30],
+            'salesrm'    => ['name' => 150, 'addr' => 200, 'note' => 200, 'mobile' => 30, 'pan' => 30],
+            'purchasem'  => ['name' => 150, 'addr' => 200, 'note' => 200, 'mobile' => 30, 'pan' => 30],
+            'purchaserm' => ['name' => 150, 'addr' => 200, 'note' => 200, 'mobile' => 30, 'pan' => 30],
+        ];
+
+        $altered = 0;
+        $skipped = 0;
+
+        foreach ($targets as $table => $columns) {
+            if (!$this->hasTable($table)) {
+                $skipped += count($columns);
+                continue;
+            }
+
+            foreach ($columns as $column => $length) {
+                if (!Schema::hasColumn($table, $column)) {
+                    $skipped++;
+                    continue;
+                }
+
+                DB::statement("ALTER TABLE `{$table}` MODIFY `{$column}` VARCHAR({$length}) NULL");
+                $altered++;
+            }
+        }
+
+        if ($altered === 0) {
+            return ['message' => 'No bill header text columns were updated.', 'summary' => ['altered' => 0, 'skipped' => $skipped]];
+        }
+
+        return [
+            'message' => 'Sales/purchase header name, address, note, mobile, and PAN columns widened.',
             'summary' => ['altered' => $altered, 'skipped' => $skipped],
         ];
     }
@@ -4150,7 +4866,10 @@ class AdministrationController extends Controller
 
             if ($isReceipt) {
                 $receiptNo++;
-                $docNo = $this->buildRunningDocNo($type . 'RB/', $receiptNo);
+                $receiptPrefix = $type === 'J'
+                    ? $this->generalText('JRBPREF', 'JR/')
+                    : $this->generalText('GSRBPREF', 'GSR/');
+                $docNo = $this->buildRunningDocNo($receiptPrefix, $receiptNo);
             } else {
                 $issueNo++;
                 $docNo = $type === 'J'
@@ -4199,9 +4918,12 @@ class AdministrationController extends Controller
 
         $current = max(0, $startNo - 1);
         $updated = 0;
+        $receiptPrefix = $type === 'J'
+            ? $this->generalText('JRBPREF', 'JR/')
+            : $this->generalText('GSRBPREF', 'GSR/');
         foreach ($rows as $row) {
             $current++;
-            $docNo = $this->buildRunningDocNo($type . 'RB/', $current);
+            $docNo = $this->buildRunningDocNo($receiptPrefix, $current);
             DB::table('smithm')->where('slno', $row->slno)->update(['docno' => $docNo]);
             $party = '';
             if ($this->hasTable('clients')) {
@@ -4332,5 +5054,105 @@ class AdministrationController extends Controller
         if ($deletePict) {
             $this->deleteTables(['clientspict']);
         }
+    }
+
+    // ── New module maintenance handlers ──────────────────────────────────────
+
+    private function sqlClearMessageLog(): array
+    {
+        if (!$this->hasTable('message_log')) {
+            return ['message' => '`message_log` table not found. Run migrations first.', 'summary' => ['deleted' => 0]];
+        }
+        $cutoff = now()->subDays(90)->format('Y-m-d');
+        $deleted = DB::table('message_log')
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+        return [
+            'message' => "Deleted {$deleted} message log record(s) older than 90 days.",
+            'summary' => ['deleted' => $deleted],
+        ];
+    }
+
+    private function sqlClearSalaryDrafts(): array
+    {
+        if (!$this->hasTable('salary_register')) {
+            return ['message' => '`salary_register` table not found. Run migrations first.', 'summary' => ['deleted' => 0]];
+        }
+        $deleted = DB::table('salary_register')->where('status', 'draft')->delete();
+        return [
+            'message' => "Deleted {$deleted} draft salary register record(s).",
+            'summary' => ['deleted' => $deleted],
+        ];
+    }
+
+    private function sqlClearItemImagesOrphans(): array
+    {
+        if (!$this->hasTable('item_images')) {
+            return ['message' => '`item_images` table not found. Run migrations first.', 'summary' => ['deleted' => 0]];
+        }
+        $rows = DB::table('item_images')->select(['id', 'filename'])->get();
+        $deleted = 0;
+        foreach ($rows as $row) {
+            $path = public_path('uploads/catalogue/' . $row->filename);
+            if (!file_exists($path)) {
+                DB::table('item_images')->where('id', $row->id)->delete();
+                $deleted++;
+            }
+        }
+        return [
+            'message' => "Removed {$deleted} orphan catalogue image record(s) whose files were missing.",
+            'summary' => ['deleted' => $deleted],
+        ];
+    }
+
+    private function sqlCheckHallmarkDuplicateHuid(): array
+    {
+        if (!$this->hasTable('hallmark_records')) {
+            return ['message' => '`hallmark_records` table not found. Run migrations first.', 'summary' => ['duplicates' => 0]];
+        }
+        $dupes = DB::table('hallmark_records')
+            ->select(DB::raw('huid, COUNT(*) as cnt'))
+            ->groupBy('huid')
+            ->having('cnt', '>', 1)
+            ->get();
+        $count = $dupes->count();
+        $msg = $count > 0
+            ? "Found {$count} duplicate HUID group(s): " . $dupes->pluck('huid')->implode(', ')
+            : 'No duplicate HUIDs found. All records are unique.';
+        return ['message' => $msg, 'summary' => ['duplicates' => $count]];
+    }
+
+    private function sqlCheckLoanBalance(): array
+    {
+        if (!$this->hasTable('loan')) {
+            return ['message' => '`loan` table not found.', 'summary' => ['mismatches' => 0]];
+        }
+        $mismatches = 0;
+        $fixed = 0;
+
+        $loans = DB::table('loan')->select(['slno', 'loan_no', 'loan_amt', 'paidamt', 'balance'])->get();
+        foreach ($loans as $loan) {
+            $paid = 0;
+            if ($this->hasTable('loancolln')) {
+                $paid = (float) DB::table('loancolln')
+                    ->where('loan_no', $loan->loan_no ?? '')
+                    ->sum('amount');
+            }
+            $expectedBalance = max(0, (float) ($loan->loan_amt ?? 0) - $paid);
+            $storedBalance   = (float) ($loan->balance ?? 0);
+            if (abs($expectedBalance - $storedBalance) > 0.01) {
+                $mismatches++;
+                DB::table('loan')->where('slno', $loan->slno)->update([
+                    'paidamt' => $paid,
+                    'balance' => $expectedBalance,
+                ]);
+                $fixed++;
+            }
+        }
+
+        $msg = $mismatches > 0
+            ? "Found and fixed {$fixed} loan balance mismatch(es)."
+            : 'All loan balances are correct.';
+        return ['message' => $msg, 'summary' => ['mismatches' => $mismatches, 'fixed' => $fixed]];
     }
 }

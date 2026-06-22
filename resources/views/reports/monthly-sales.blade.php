@@ -7,11 +7,11 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293b;font-size:20px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 .toolbar{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
 .toolbar h1{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;margin-right:4px}
-.tb-lbl{color:rgba(255,255,255,.8);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tb-lbl{color:rgba(255,255,255,.8);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
 .tb-input,.tb-select{height:30px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:0 8px;font-size:12px;background:rgba(255,255,255,.12);color:#fff;outline:none}
 .tb-input:focus,.tb-select:focus{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.2)}
 .tb-select option{background:#1e3a5f;color:#fff}
@@ -19,7 +19,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1e293
 .tb-check input{width:14px;height:14px;accent-color:#60a5fa;cursor:pointer}
 .f-group{display:flex;align-items:center;gap:4px}
 .sep{width:1px;height:24px;background:rgba(255,255,255,.2);margin:0 2px}
-.btn{padding:5px 14px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn{padding:5px 14px;border:none;border-radius:6px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s}
 .btn-show{background:#3b82f6;color:#fff}.btn-show:hover{background:#2563eb}
 .btn-out{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-out:hover{background:rgba(255,255,255,.25)}
 
@@ -36,9 +36,9 @@ tr.sel td{background:#dbeafe !important}
 .summary{background:#fff;border-top:2px solid #e2e8f0;padding:8px 16px;display:flex;gap:20px;flex-wrap:wrap;font-size:12px;flex-shrink:0}
 .summary span{color:#64748b}.summary b{color:#1e40af}
 
-.sub-header{background:#eff6ff;padding:6px 16px;font-size:11px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
+.sub-header{background:#eff6ff;padding:6px 16px;font-size:17px;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;flex-shrink:0}
 
-.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast{position:fixed;top:16px;right:16px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:17px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.ok{background:#16a34a}.toast.err{background:#dc2626}
 
 @media print{
@@ -47,7 +47,9 @@ tr.sel td{background:#dbeafe !important}
   body{height:auto;overflow:visible}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -118,6 +120,9 @@ function headers(){
       ['Ex.Wgt','totexwgt',1,3],
       ['S.Ret.Amt','sretamt',1],
       ['Ret.Wgt','totretwgt',1,3],
+      ['SGST','sgst',1],
+      ['CGST','cgst',1],
+      ['Tax','staxamt',1],
       ['Discount','discount',1],
       ['Received','tramt',1],
       ['Balance','balance',1]
@@ -131,6 +136,9 @@ function headers(){
     ['Bill Amt','billamt',1],
     ['Exchange','eamt',1],
     ['S.Ret.Amt','sretamt',1],
+    ['SGST','sgst',1],
+    ['CGST','cgst',1],
+    ['Tax','staxamt',1],
     ['Discount','discount',1],
     ['Received','tramt',1],
     ['Balance','balance',1]
@@ -191,6 +199,9 @@ function render(){
   parts.push(`<span>Bill Amt: <b>${nf(t.billamt)}</b></span>`);
   parts.push(`<span>Exchange: <b>${nf(t.eamt)}</b></span>`);
   parts.push(`<span>S.Ret: <b>${nf(t.sretamt)}</b></span>`);
+  parts.push(`<span>SGST: <b>${nf(t.sgst)}</b></span>`);
+  parts.push(`<span>CGST: <b>${nf(t.cgst)}</b></span>`);
+  parts.push(`<span>Tax: <b>${nf(t.staxamt)}</b></span>`);
   parts.push(`<span>Disc: <b>${nf(t.discount)}</b></span>`);
   parts.push(`<span>Received: <b>${nf(t.tramt)}</b></span>`);
   parts.push(`<span>Balance: <b>${nf(t.balance)}</b></span>`);
@@ -237,7 +248,7 @@ document.getElementById('btnExit').onclick = ()=> window.parent.postMessage({typ
 /* ── Init ─────────────────────────────────────────────────────── */
 loadData();
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.init('btnSaveAs', headers, ()=>rows,
   ()=>`monthly-sales-${document.getElementById('date1').value}-to-${document.getElementById('date2').value}`);

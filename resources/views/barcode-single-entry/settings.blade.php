@@ -1149,15 +1149,18 @@ document.getElementById('btnTplSave').onclick = () => {
 // =====================================================================
 document.getElementById('btnPresetSingle').onclick = () => {
   deserialize({
-    mode:'single', canvasW:320, canvasH:92, cols:1, rows:1,
+    mode:'single', canvasW:628, canvasH:96, cols:1, rows:1,
+    printMode:'raw',
+    printerName:'IMPACT by Honeywell IH-2 (203 dpi) - TSPL',
+    printerShareName:'\\\\DESKTOP-2V8G30N\\IMPACT',
+    tplName:'Honeywell Slim Tag',
     sticker1:[
-      {type:'text',value:'GW:[Weight]',x:44,y:8,fs:10,rot:0},
-      {type:'text',value:'ST:[StWgt]',x:44,y:25,fs:10,rot:0},
-      {type:'text',value:'NW:[NetWgt]',x:44,y:42,fs:10,rot:0},
-      {type:'text',value:'RS:[MetalRate]',x:44,y:59,fs:10,rot:0},
-      {type:'barcode128',value:'[BarCode]',x:148,y:8,w:138,h:42},
-      {type:'text',value:'[BarCode]',x:178,y:55,fs:8,rot:0},
-      {type:'text',value:'[ItemCode]',x:174,y:69,fs:8,rot:0}
+      {type:'text',value:'[VA]',x:342,y:52,w:130,h:32,fs:11,rot:1},
+      {type:'barcode128',value:'[BarCode]',x:398,y:31,w:86,h:28,bars:true},
+      {type:'text',value:'[BarCode]',x:408,y:64,w:130,h:30,fs:8,rot:0},
+      {type:'text',value:'GW:[Weight]',x:240,y:27,w:130,h:32,fs:10,rot:0},
+      {type:'text',value:'SW:[StWgt]',x:240,y:46,w:130,h:32,fs:10,rot:0},
+      {type:'text',value:'NW:[NetWgt]',x:240,y:65,w:130,h:32,fs:10,rot:0}
     ], sticker2:[]
   });
   toast('Slim tag preset loaded');
@@ -1270,7 +1273,7 @@ async function persistDesignerSettings(successMessage) {
     const payload = JSON.parse(JSON.stringify(settings || {}));
     payload.Software = payload.Software || {};
     payload.Software.BPrintType = 'TemplateDesigner';
-    payload.Software.BCRenderAsImage = 'Y';
+    payload.Software.BCRenderAsImage = 'N';
     payload.Software.BCDesignerTemplate = JSON.stringify(data);
     payload.Software.BCDesignerTemplates = JSON.stringify(namedTpls || {});
     payload.Software.BCStickerMode = String(data.mode || 'single');

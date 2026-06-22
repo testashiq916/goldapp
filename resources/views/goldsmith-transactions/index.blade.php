@@ -10,6 +10,10 @@ body { font-family: Arial, sans-serif; font-size: 13px; margin: 0; background: #
 #topbar { background: {{ $type === 'J' ? '#8b6914' : ($type === 'C' ? '#606060' : '#2c2410') }}; color: #f5d87a; padding: 8px 12px; display: flex; gap: 10px; align-items: center; }
 #topbar h2 { margin: 0; flex: 1; font-size: 15px; }
 .btn { padding: 5px 10px; border: 0; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px; }
+.btn:disabled { cursor: wait; opacity: .75; }
+.btn .spinner { display: none; width: 12px; height: 12px; margin-right: 6px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; vertical-align: -2px; animation: spin .75s linear infinite; }
+.btn.loading .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .btn-save { background: #27ae60; color: #fff; }
 .btn-danger { background: #c0392b; color: #fff; }
 .btn-lite { background: #e7d6aa; color: #222; }
@@ -27,6 +31,7 @@ tfoot td { background: #f0ede5; padding: 4px 3px; }
 #summary { display: flex; gap: 18px; padding: 8px 10px; background: #eaf0fb; border-top: 1px solid #b0c4de; border-bottom: 1px solid #b0c4de; flex-wrap: wrap; }
 .box { padding: 8px 10px; }
 #warn { color: #b00020; font-weight: bold; }
+#saveStatus { color: #1d6f42; font-weight: bold; line-height: 24px; display: none; }
 .ac-wrap { position: relative; }
 .ac-drop { position: absolute; top: 100%; left: 0; right: 0; min-width: 220px; background: #fff; border: 1px solid #c8a23a; z-index: 300; max-height: 200px; overflow-y: auto; box-shadow: 0 3px 8px rgba(0,0,0,.25); display: none; }
 .ac-drop div { padding: 5px 10px; cursor: pointer; font-size: 12px; white-space: nowrap; }
@@ -36,6 +41,7 @@ tfoot td { background: #f0ede5; padding: 4px 3px; }
 .smith-row input { flex: 1; }
 .smith-row .btn-plus { flex-shrink: 0; padding: 4px 9px; font-size: 14px; line-height: 1; background: #c8a23a; color: #fff; border: 0; border-radius: 3px; cursor: pointer; }
 </style>
+<link rel="stylesheet" href="{{ asset('css/transaction-readable.css') }}?v={{ @filemtime(public_path('css/transaction-readable.css')) }}">
 @include('partials.print-layout-head')
 </head>
 <body>
@@ -55,14 +61,18 @@ tfoot td { background: #f0ede5; padding: 4px 3px; }
 <div id="master">
   <div><label>Doc No</label><input id="docno" value="{{ $billNo }}" readonly></div>
   <div class="smith-wrap">
-    <label>{{ $type === 'J' ? 'Jewellery' : ($type === 'C' ? 'Customer' : 'Goldsmith') }} Code</label>
+    <label>{{ $type === 'J' ? 'Jewellery' : (in_array($type, ['C', 'R'], true) ? 'Customer' : 'Goldsmith') }} Code</label>
     <div class="smith-row">
       <input id="custcode" autocomplete="off">
-      <button class="btn-plus" onclick="openCreateSmith()" title="Create New {{ $type === 'J' ? 'Jewellery' : ($type === 'C' ? 'Customer' : 'Goldsmith') }}">+</button>
+      <button class="btn-plus" onclick="openCreateSmith()" title="Create New {{ $type === 'J' ? 'Jewellery' : (in_array($type, ['C', 'R'], true) ? 'Customer' : 'Goldsmith') }}">+</button>
     </div>
     <div id="smithDrop" class="ac-drop"></div>
   </div>
-  <div style="grid-column: span 2;"><label>Name</label><input id="custname" readonly></div>
+  <div class="smith-wrap" style="grid-column: span 2;">
+    <label>Name</label>
+    <input id="custname" autocomplete="off">
+    <div id="nameDrop" class="ac-drop"></div>
+  </div>
   <div><label>Date</label><input id="tdate" type="date"></div>
   <div><label>Rate</label><input id="rate" type="number" step="0.001" value="{{ $goldRate }}"></div>
   <div class="ac-wrap">
@@ -114,8 +124,13 @@ tfoot td { background: #f0ede5; padding: 4px 3px; }
     <div><label>Tax Amt</label><input id="taxamt" type="number" step="0.01" value="0"></div>
     <div><label>TCS %</label><input id="tcsperc" type="number" step="0.01" value="0"></div>
     <div><label>TCS Amt</label><input id="tcsamt" type="number" step="0.01" value="0"></div>
-    <div><label>Paid/Received</label><select id="pmntrcpt"><option>PAID</option><option>RECEIVED</option></select></div>
+    <div><label>Paid/Receipt</label><select id="pmntrcpt"><option value="PAID">PAID</option><option value="RECEIVED">RECEIPT</option></select></div>
     <div><label>Amount</label><input id="paid" type="number" step="0.01" value="0"></div>
+    <div><label>Cash/Bank</label><select id="cbcode">
+      @foreach($cashBanks as $b)
+        <option value="{{ $b['code'] }}">{{ $b['code'] }} - {{ $b['name'] }}</option>
+      @endforeach
+    </select></div>
     <div><label>Amt Balance</label><input id="balance" readonly></div>
     <div><label>Cl Balance</label><input id="clbalance" readonly></div>
     <div><label>Person</label><input id="person"></div>
@@ -129,8 +144,9 @@ tfoot td { background: #f0ede5; padding: 4px 3px; }
   </div>
   <div id="warn"></div>
   <div style="padding:8px 0;display:flex;gap:10px;">
-    <button class="btn btn-save" id="btnSave2">Save (F9)</button>
+    <button class="btn {{ $mode === 'cancel' ? 'btn-danger' : 'btn-save' }}" id="btnSave2"><span class="spinner" aria-hidden="true"></span><span class="btn-text">{{ $mode === 'cancel' ? 'Cancel (F9)' : 'Save (F9)' }}</span></button>
     <button class="btn btn-danger" id="btnClose2">Close</button>
+    <span id="saveStatus"></span>
   </div>
 </div>
 
@@ -155,10 +171,22 @@ const SMITH_CFG = {
   touchToEntry:    '{{ $smithCfg["TouchToSmithEntry"] ?? "N" }}' === 'Y',
   smithWastagePerc: {{ $smithWastagePerc }},
 };
+let saveBusy = false;
 
 function emptyRow(){ return {itemcode:'',itemname:'',qty:0,weight:0,stonewgt:0,givrec:'',touch:0,wastage:0,manualWastage:false,netwgt:0,stoneprice:0,mcharge:0,hmc:0,tp:0,model:'',remark:'',ordno:'',orditem:'',stktype:'',touchnote:'',bcode:0,smithmc:0,stktouch:100,wgtamt:0,sva:0,sstprice:0,bcstk:'Y'}; }
 function e(s){ return String(s||'').replaceAll('"','&quot;').replaceAll('<','&lt;'); }
 function f(n,d){ return Number(n||0).toFixed(d); }
+function setSaveBusy(on, label){
+  saveBusy = on;
+  const btn = document.getElementById('btnSave2');
+  const text = btn.querySelector('.btn-text');
+  const status = document.getElementById('saveStatus');
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  text.textContent = on ? label : (PAGE_MODE === 'cancel' ? 'Cancel (F9)' : 'Save (F9)');
+  status.textContent = on ? label + ' Please wait...' : '';
+  status.style.display = on ? 'inline' : 'none';
+}
 
 function renderTable(){
   // Save focused cell position before re-render (so Tab key works correctly)
@@ -178,7 +206,12 @@ function renderTable(){
     const tr=document.createElement('tr'); tr.dataset.idx=i;
     tr.innerHTML=`
       <td>${i+1}</td>
-      <td><input value="${e(r.itemcode)}" data-field="itemcode" onchange="onItem(${i},this.value)"></td>
+      <td><input value="${e(r.itemcode)}" id="itemCodeInp_${i}" autocomplete="off"
+            data-field="itemcode"
+            oninput="itemDropSearch(${i},this.value,'code')"
+            onkeydown="itemDropKey(event,${i})"
+            onblur="itemDropBlur()"
+            onchange="onItem(${i},this.value)"></td>
       <td><input value="${e(r.itemname)}" id="itemNameInp_${i}" autocomplete="off"
             data-field="itemname"
             oninput="itemDropSearch(${i},this.value)"
@@ -219,8 +252,11 @@ function focusCell(row,col){ const el=document.querySelector(`#detailBody tr[dat
 // ── Item Name autocomplete ────────────────────────────────────────────────────
 let _itemSugList=[], _itemSugHi=-1, _itemSugRow=-1, _itemSugTimer=null;
 
-function itemDropSearch(i, val) {
+let _itemSugSource='name';
+
+function itemDropSearch(i, val, source='name') {
   _itemSugRow = i;
+  _itemSugSource = source;
   clearTimeout(_itemSugTimer);
   const q = val.trim();
   if (!q) { itemDropClose(); return; }
@@ -239,7 +275,7 @@ function itemDropSearch(i, val) {
       </div>`
     ).join('');
     // Position under the input
-    const inp = document.getElementById(`itemNameInp_${i}`);
+    const inp = document.getElementById(source === 'code' ? `itemCodeInp_${i}` : `itemNameInp_${i}`);
     if (inp) {
       const rc = inp.getBoundingClientRect();
       drop.style.left  = rc.left + 'px';
@@ -265,6 +301,8 @@ function itemDropPick(ev, idx) {
   // Fill code + trigger full item load
   const inp = document.getElementById(`itemNameInp_${_itemSugRow}`);
   if (inp) inp.value = it.name;
+  const codeInp = document.getElementById(`itemCodeInp_${_itemSugRow}`);
+  if (codeInp) codeInp.value = it.code;
   setf(_itemSugRow, 'itemname', it.name);
   onItem(_itemSugRow, it.code);
 }
@@ -296,7 +334,7 @@ function itemDropBlur() {
 
 function itemDropClose() {
   document.getElementById('itemDropGlobal').style.display = 'none';
-  _itemSugList = []; _itemSugHi = -1;
+  _itemSugList = []; _itemSugHi = -1; _itemSugSource = 'name';
 }
 
 // ── PB-accurate row recalculation ────────────────────────────────────────────
@@ -389,6 +427,18 @@ function chgGR(i,v){
     if (v === 'G') { State.rows[i].mcharge = -Math.abs(State.rows[i].mcharge||0); State.rows[i].stoneprice = -Math.abs(State.rows[i].stoneprice||0); }
   }
   recalcRow(i); sum(); renderTable();
+  refreshNewDocNo();
+}
+
+function usesReceiptDocNo(){
+  return gv('hIstype') === 'J' && State.rows.some(r => String(r.givrec || '').toUpperCase() === 'R');
+}
+
+async function refreshNewDocNo(){
+  if (gv('hSaded') !== 'A') return;
+  const receipt = usesReceiptDocNo() ? '1' : '0';
+  const n = await fetchJson(`${API}/next-number?type=${encodeURIComponent(gv('hIstype'))}&eb=${encodeURIComponent(gv('hEb'))}&module=${encodeURIComponent(gv('hModule'))}&receipt=${receipt}`);
+  if(n.success) document.getElementById('docno').value=n.billNo||'';
 }
 
 async function onItem(i, val) {
@@ -488,12 +538,11 @@ let smithList = [], smithHi = -1;
 
 function currentClientType() {
   const istype = gv('hIstype');
-  return istype === 'J' ? 'J' : (istype === 'C' ? 'C' : 'G');
+  return istype === 'J' ? 'J' : ((istype === 'C' || istype === 'R') ? 'C' : 'G');
 }
 
 async function smithSearch(q) {
   const drop = document.getElementById('smithDrop');
-  if (!q.trim()) { drop.style.display = 'none'; smithList = []; return; }
   const data = await fetchJson(`${API}/client-help?ctype=${encodeURIComponent(currentClientType())}&q=${encodeURIComponent(q)}`);
   smithList = Array.isArray(data) ? data : [];
   smithHi = -1;
@@ -525,6 +574,44 @@ document.getElementById('smithDrop').addEventListener('mousedown', function(ev) 
   ev.preventDefault();
   const item = ev.target.closest('div[data-idx]');
   if (item) pickSmith(parseInt(item.dataset.idx, 10));
+});
+
+// ── Name search dropdown (mirrors code search, populated by typing in Name) ──
+let nameList = [], nameHi = -1;
+
+async function nameSearch(q) {
+  const drop = document.getElementById('nameDrop');
+  const data = await fetchJson(`${API}/client-help?ctype=${encodeURIComponent(currentClientType())}&q=${encodeURIComponent(q)}`);
+  nameList = Array.isArray(data) ? data : [];
+  nameHi = -1;
+  if (!nameList.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = nameList.map((s, i) =>
+    `<div data-idx="${i}"><b>${e(s.name)}</b> — ${e(s.code)}${s.mobile ? ' <span style="color:#888;font-size:11px">' + e(s.mobile) + '</span>' : ''}</div>`
+  ).join('');
+  drop.style.display = 'block';
+}
+
+function highlightName(idx) {
+  const items = document.querySelectorAll('#nameDrop div');
+  items.forEach((el, i) => el.classList.toggle('hi', i === idx));
+  nameHi = idx;
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+}
+
+function pickName(idx) {
+  const s = nameList[idx];
+  if (!s) return;
+  document.getElementById('custcode').value = s.code;
+  document.getElementById('custname').value = s.name;
+  document.getElementById('nameDrop').style.display = 'none';
+  nameList = []; nameHi = -1;
+  loadClient(s.code);
+}
+
+document.getElementById('nameDrop').addEventListener('mousedown', function(ev) {
+  ev.preventDefault();
+  const item = ev.target.closest('div[data-idx]');
+  if (item) pickName(parseInt(item.dataset.idx, 10));
 });
 
 function openCreateSmith() {
@@ -640,16 +727,52 @@ async function loadClient(code){
 }
 
 async function doSave(){
+  if (saveBusy) return;
   document.getElementById('warn').textContent='';
   syncSmanDisplay();
-  const payload={ saded:gv('hSaded'), istype:gv('hIstype'), eb:gv('hEb'), module:gv('hModule'), slno:gv('hSlno'), smithcode:gv('custcode'), smithname:gv('custname'), docno:gv('docno'), smcode:gv('smcode'), refno:gv('refno'), tdate:gv('tdate'), rate:gv('rate'), tmc:document.getElementById('tmc').textContent, paid:gv('paid'), pmntrcpt:gv('pmntrcpt'), acidcharge:gv('acidcharge'), discount:gv('discount'), tdsperc:gv('tdsperc'), tdsamt:gv('tdsamt'), taxperc:gv('taxperc'), taxamt:gv('taxamt'), tcsperc:gv('tcsperc'), tcsamt:gv('tcsamt'), statecode:gv('statecode'), placeos:gv('placeos'), duedate:gv('duedate'), transportmode:gv('transportmode'), vehno:gv('vehno'), purpose:gv('purpose'), note:gv('note'), lotno:gv('lotno'), person:gv('person'), opwgt:State.dopwgt, opamt:State.dopamt, createbc:document.getElementById('createbc').checked?'Y':'N', rows: JSON.stringify(State.rows.filter(r=>String(r.itemcode||'').trim()!=='')) };
+  const payload={ saded:gv('hSaded'), istype:gv('hIstype'), eb:gv('hEb'), module:gv('hModule'), slno:gv('hSlno'), smithcode:gv('custcode'), smithname:gv('custname'), docno:gv('docno'), smcode:gv('smcode'), refno:gv('refno'), tdate:gv('tdate'), rate:gv('rate'), tmc:document.getElementById('tmc').textContent, paid:gv('paid'), pmntrcpt:gv('pmntrcpt'), cbcode:gv('cbcode'), acidcharge:gv('acidcharge'), discount:gv('discount'), tdsperc:gv('tdsperc'), tdsamt:gv('tdsamt'), taxperc:gv('taxperc'), taxamt:gv('taxamt'), tcsperc:gv('tcsperc'), tcsamt:gv('tcsamt'), statecode:gv('statecode'), placeos:gv('placeos'), duedate:gv('duedate'), transportmode:gv('transportmode'), vehno:gv('vehno'), purpose:gv('purpose'), note:gv('note'), lotno:gv('lotno'), person:gv('person'), opwgt:State.dopwgt, opamt:State.dopamt, createbc:document.getElementById('createbc').checked?'Y':'N', rows: JSON.stringify(State.rows.filter(r=>String(r.itemcode||'').trim()!=='')) };
   if(!payload.smithcode){ alert('Enter goldsmith code'); return; }
-  const d=await fetchJson(`${API}/save`,'POST',payload);
-  if(!d.success){ document.getElementById('warn').textContent=d.message||'Not saved'; alert(d.message||'Save failed'); return; }
-  if (d.slno && (PAGE_MODE === 'transaction' || PAGE_MODE === 'bill')) {
-    window.open(`${PRINT_URL}?slno=${encodeURIComponent(d.slno)}&type=${encodeURIComponent(gv('hIstype'))}&module=${encodeURIComponent(gv('hModule'))}`, '_blank', 'width=1100,height=850,scrollbars=yes');
+  setSaveBusy(true, 'Saving...');
+  try {
+    const d=await fetchJson(`${API}/save`,'POST',payload);
+    if(!d.success){ document.getElementById('warn').textContent=d.message||'Not saved'; alert(d.message||'Save failed'); return; }
+    if (d.slno && (PAGE_MODE === 'transaction' || PAGE_MODE === 'bill')) {
+      window.open(`${PRINT_URL}?slno=${encodeURIComponent(d.slno)}&type=${encodeURIComponent(gv('hIstype'))}&module=${encodeURIComponent(gv('hModule'))}`, '_blank', 'width=1100,height=850,scrollbars=yes');
+    }
+    alert('Saved: '+(d.docno||'')); await resetForm();
+  } catch (err) {
+    const msg = err && err.message ? err.message : 'Save failed';
+    document.getElementById('warn').textContent = msg;
+    alert(msg);
+  } finally {
+    setSaveBusy(false);
   }
-  alert('Saved: '+(d.docno||'')); await resetForm();
+}
+
+async function doCancel(){
+  if (saveBusy) return;
+  document.getElementById('warn').textContent='';
+  const slno = parseInt(document.getElementById('hSlno').value, 10) || 0;
+  const docno = gv('docno');
+  if (!slno) { alert('Load a transaction first'); return; }
+  if (!confirm('Cancel transaction ' + docno + '?')) return;
+  setSaveBusy(true, 'Cancelling...');
+  try {
+    const d = await fetchJson(`${API}/delete`, 'POST', { slno });
+    if (!d.success) {
+      document.getElementById('warn').textContent = d.message || 'Cancel failed';
+      alert(d.message || 'Cancel failed');
+      return;
+    }
+    alert('Cancelled: ' + docno);
+    await resetForm();
+  } catch (err) {
+    const msg = err && err.message ? err.message : 'Cancel failed';
+    document.getElementById('warn').textContent = msg;
+    alert(msg);
+  } finally {
+    setSaveBusy(false);
+  }
 }
 
 async function resetForm(){
@@ -660,8 +783,7 @@ async function resetForm(){
   document.getElementById('paid').value='0';
   document.getElementById('rate').value=GOLD_RATE;
   State.rows=[emptyRow()]; State.dopwgt=0; State.dopamt=0;
-  const n=await fetchJson(`${API}/next-number?type=${encodeURIComponent(gv('hIstype'))}&eb=${encodeURIComponent(gv('hEb'))}&module=${encodeURIComponent(gv('hModule'))}`);
-  if(n.success) document.getElementById('docno').value=n.billNo||'';
+  await refreshNewDocNo();
   renderTable();
 }
 
@@ -706,6 +828,7 @@ function applyMaster(m, eb) {
   const pamt = Number(m.pamt || 0);
   document.getElementById('pmntrcpt').value = pamt < 0 ? 'RECEIVED' : 'PAID';
   document.getElementById('paid').value     = Math.abs(pamt).toFixed(2);
+  document.getElementById('cbcode').value   = m.cbcode || 'CASH';
   document.getElementById('opbal').value    = Number(m.opwgt||0).toFixed(3) + ' / ' + Number(m.opamt||0).toFixed(2);
   State.dopwgt = Number(m.opwgt || 0);
   State.dopamt = Number(m.opamt || 0);
@@ -738,13 +861,17 @@ async function nextBill() {
 
 document.getElementById('btnAdd').onclick=()=>{ const last=State.rows[State.rows.length-1]; if(last && !last.itemcode) return; State.rows.push(emptyRow()); renderTable(); };
 document.getElementById('btnDel').onclick=()=>{ if(State.rows.length>1) State.rows.pop(); else State.rows=[emptyRow()]; renderTable(); };
-document.getElementById('btnSave2').onclick=doSave;
+document.getElementById('btnSave2').onclick=PAGE_MODE === 'cancel' ? doCancel : doSave;
 document.getElementById('btnPrev').onclick=prevBill;
 document.getElementById('btnNext').onclick=nextBill;
 document.getElementById('btnPrint').onclick=()=>{ const slno = parseInt(document.getElementById('hSlno').value,10)||0; if(!slno){ alert('Save or load a transaction first'); return; } window.open(`${PRINT_URL}?slno=${encodeURIComponent(slno)}&type=${encodeURIComponent(gv('hIstype'))}&module=${encodeURIComponent(gv('hModule'))}`,'_blank','width=1100,height=850,scrollbars=yes'); };
 document.getElementById('btnClose2').onclick=()=>window.parent.postMessage({type:'goldapp:close-module-frame'},'*');
 const custcodeEl = document.getElementById('custcode');
 custcodeEl.addEventListener('input', () => smithSearch(custcodeEl.value));
+custcodeEl.addEventListener('focus', () => smithSearch(custcodeEl.value));
+custcodeEl.addEventListener('click', () => {
+  if (document.getElementById('smithDrop').style.display === 'none') smithSearch(custcodeEl.value);
+});
 custcodeEl.addEventListener('keydown', ev => {
   const drop = document.getElementById('smithDrop');
   const items = drop.querySelectorAll('div');
@@ -763,8 +890,29 @@ custcodeEl.addEventListener('blur', () => {
     if (c) loadClient(c);
   }, 200);
 });
+
+const custnameEl = document.getElementById('custname');
+custnameEl.addEventListener('input', () => nameSearch(custnameEl.value));
+custnameEl.addEventListener('focus', () => nameSearch(custnameEl.value));
+custnameEl.addEventListener('click', () => {
+  if (document.getElementById('nameDrop').style.display === 'none') nameSearch(custnameEl.value);
+});
+custnameEl.addEventListener('keydown', ev => {
+  const drop = document.getElementById('nameDrop');
+  const items = drop.querySelectorAll('div');
+  if (ev.key === 'ArrowDown') { ev.preventDefault(); highlightName(Math.min(nameHi + 1, items.length - 1)); }
+  else if (ev.key === 'ArrowUp') { ev.preventDefault(); highlightName(Math.max(nameHi - 1, 0)); }
+  else if (ev.key === 'Enter' && nameHi >= 0) { ev.preventDefault(); pickName(nameHi); }
+  else if (ev.key === 'Escape') { drop.style.display = 'none'; nameList = []; nameHi = -1; }
+});
+custnameEl.addEventListener('blur', () => {
+  setTimeout(() => {
+    document.getElementById('nameDrop').style.display = 'none';
+    nameList = []; nameHi = -1;
+  }, 200);
+});
 ['acidcharge','discount','tdsamt','taxamt','tcsamt','paid','pmntrcpt'].forEach(id=>document.getElementById(id).addEventListener('change',sum));
-document.addEventListener('keydown',e=>{ if(e.key==='F9'){ e.preventDefault(); doSave(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='F9'){ e.preventDefault(); (PAGE_MODE === 'cancel' ? doCancel : doSave)(); } });
 
 function applyRowInputChange(rowIdx, field, value) {
   if (rowIdx < 0 || !State.rows[rowIdx]) return;
@@ -818,10 +966,11 @@ function focusNextGridField(rowIdx, field) {
 
 document.getElementById('detailBody').addEventListener('keydown', async function(ev) {
   if (ev.key !== 'Enter') return;
+  if (ev.defaultPrevented) return;
   const el = ev.target;
   if (!el.matches('input[data-field], select[data-field]')) return;
   const field = el.dataset.field || '';
-  if (field === 'itemname' && document.getElementById('itemDropGlobal').style.display !== 'none') return;
+  if ((field === 'itemname' || field === 'itemcode') && document.getElementById('itemDropGlobal').style.display !== 'none') return;
   ev.preventDefault();
 
   const row = el.closest('tr[data-idx]');

@@ -31,8 +31,10 @@ class BackupController extends Controller
         $dbName = $this->backupManager->primaryDatabaseName();
         $secondaryDbName = $this->backupManager->secondaryDatabaseName();
         $dbSize = $this->getDbSize();
+        $mode = (string) $request->query('mode', '');
+        $localMode = $mode === 'local';
 
-        return view('backup.index', compact('backups', 'autoEnabled', 'autoTime', 'autoTimes', 'localDiskPath', 'dbName', 'secondaryDbName', 'dbSize'));
+        return view('backup.index', compact('backups', 'autoEnabled', 'autoTime', 'autoTimes', 'localDiskPath', 'dbName', 'secondaryDbName', 'dbSize', 'localMode'));
     }
 
     public function runBackup(Request $request)

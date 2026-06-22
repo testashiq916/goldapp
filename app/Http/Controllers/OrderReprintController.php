@@ -13,12 +13,55 @@ class OrderReprintController extends Controller
     public function index(Request $request): View
     {
         abort_unless($request->session()->has('user_code'), 401);
-        return view('order-reprint.index', ['title' => 'Order Reprint']);
+        $mode = strtolower(trim((string) $request->query('mode', 'order')));
+        $orderSaleMode = in_array($mode, ['order-sale', 'sale', 'sales'], true);
+
+        return view('order-reprint.index', [
+            'title' => (string) $request->query('title', $orderSaleMode ? 'Order Sale Reprint' : 'Order Reprint'),
+            'orderSaleMode' => $orderSaleMode,
+        ]);
     }
 
     public function search(Request $request): JsonResponse
     {
         abort_unless($request->session()->has('user_code'), 401);
+
+        $mode = strtolower(trim((string) $request->query('mode', 'order')));
+        $orderSaleMode = in_array($mode, ['order-sale', 'sale', 'sales'], true);
+
+        if ($orderSaleMode) {
+            if (!$this->hasTable('salesm')) {
+                return response()->json(['ok' => true, 'rows' => []]);
+            }
+
+            $gilevel = max(1, (int) $request->session()->get('gilevel', 1));
+            $q = trim((string) $request->query('q', ''));
+
+            $rows = DB::table('salesm')
+                ->where('control', '<=', $gilevel)
+                ->whereNotNull('orderno')
+                ->whereRaw('LENGTH(TRIM(orderno)) > 0')
+                ->when($q !== '', function ($qb) use ($q) {
+                    $qb->where(function ($w) use ($q) {
+                        $w->where('billno', 'like', "%{$q}%")
+                          ->orWhere('custname', 'like', "%{$q}%")
+                          ->orWhere('orderno', 'like', "%{$q}%");
+                    });
+                })
+                ->orderByDesc('slno')
+                ->limit(80)
+                ->get(['billno', 'orderno', 'custname', 'tdate'])
+                ->map(fn($r) => [
+                    'docno' => trim((string) ($r->billno ?? '')),
+                    'ordno' => trim((string) ($r->orderno ?? '')),
+                    'custname' => trim((string) ($r->custname ?? '')),
+                    'tdate' => (string) ($r->tdate ?? ''),
+                ])
+                ->values()
+                ->all();
+
+            return response()->json(['ok' => true, 'rows' => $rows]);
+        }
 
         if (!$this->hasTable('orderm')) {
             return response()->json(['ok' => true, 'rows' => []]);

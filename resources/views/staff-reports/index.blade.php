@@ -6,21 +6,21 @@
 <title>{{ $title }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Segoe UI",system-ui,sans-serif;background:#f0f4fa;color:#1e293b;font-size:13px}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:#f0f4fa;color:#1e293b;font-size:20px}
 .wrap{max-width:1300px;margin:0 auto;padding:10px 14px 30px}
 
 /* Header */
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .hdr h1{font-size:17px;color:#173b63;font-weight:800}
 .hdr h1 small{font-size:12px;color:#64748b;font-weight:500;margin-left:8px}
-button.exit-btn{height:30px;padding:0 14px;border-radius:5px;font-size:12px;font-weight:700;border:1px solid #bfd0e6;background:#fff;color:#375b84;cursor:pointer}
+button.exit-btn{height:30px;padding:0 14px;border-radius:5px;font-size:18px;font-weight:700;border:1px solid #bfd0e6;background:#fff;color:#375b84;cursor:pointer}
 
 /* Toolbar */
 .strip{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;background:#fff;border:1px solid #d7e4f0;border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .strip .field{display:flex;flex-direction:column;gap:3px}
-.strip label{font-size:10px;font-weight:700;color:#375b84;text-transform:uppercase}
-.strip input,.strip select{height:28px;border:1px solid #bfd0e6;border-radius:5px;padding:0 8px;font-size:12px;background:#fff}
-.btn{height:28px;padding:0 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;border:none}
+.strip label{font-size:17px;font-weight:700;color:#375b84;text-transform:uppercase}
+.strip input,.strip select{height:28px;border:1px solid #bfd0e6;border-radius:5px;padding:0 8px;font-size:18px;background:#fff}
+.btn{height:28px;padding:0 14px;border-radius:5px;font-size:18px;font-weight:700;cursor:pointer;border:none}
 .btn-primary{background:#1e5799;color:#fff}
 .btn-primary:hover{background:#174a82}
 .btn-print{background:#e8f0fb;color:#1e5799;border:1px solid #bfd0e6}
@@ -38,12 +38,12 @@ button.exit-btn{height:30px;padding:0 14px;border-radius:5px;font-size:12px;font
 
 /* Table */
 .tbl-wrap{background:#fff;border:1px solid #d7e4f0;border-radius:8px;overflow:hidden;margin-bottom:14px}
-.tbl-title{font-size:12px;font-weight:700;color:#1e3a5f;padding:10px 14px;border-bottom:1px solid #e8f0fb;background:#f7faff;display:flex;justify-content:space-between;align-items:center}
+.tbl-title{font-size:18px;font-weight:700;color:#1e3a5f;padding:10px 14px;border-bottom:1px solid #e8f0fb;background:#f7faff;display:flex;justify-content:space-between;align-items:center}
 table{width:100%;border-collapse:collapse}
-th{background:#f1f7ff;color:#375b84;font-size:11px;font-weight:700;padding:7px 10px;text-align:left;border-bottom:1px solid #d7e4f0;white-space:nowrap}
+th{background:#f1f7ff;color:#375b84;font-size:16px;font-weight:700;padding:7px 10px;text-align:left;border-bottom:1px solid #d7e4f0;white-space:nowrap}
 th.r,td.r{text-align:right}
 th.c,td.c{text-align:center}
-td{padding:6px 10px;font-size:12px;border-bottom:1px solid #edf2fb;vertical-align:middle}
+td{padding:6px 10px;font-size:18px;border-bottom:1px solid #edf2fb;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f7faff}
 .tfoot td{font-weight:700;background:#f1f7ff;color:#1e3a5f;border-top:2px solid #bfd0e6;border-bottom:none}
@@ -54,7 +54,7 @@ tr:hover td{background:#f7faff}
 .badge-orange{background:#ffedd5;color:#c2410c}
 
 /* Group header */
-.grp-hdr td{background:#e8f0fb;font-weight:700;color:#1e3a5f;font-size:12px;padding:7px 10px}
+.grp-hdr td{background:#e8f0fb;font-weight:700;color:#1e3a5f;font-size:18px;padding:7px 10px}
 
 /* Bar chart */
 .bar-wrap{display:flex;align-items:center;gap:6px}
@@ -69,7 +69,7 @@ tr:hover td{background:#f7faff}
 .rank-3{background:#b45309}
 
 /* Loading */
-.loading{text-align:center;padding:40px;color:#94a3b8;font-size:13px}
+.loading{text-align:center;padding:40px;color:#94a3b8;font-size:20px}
 .spin{display:inline-block;width:18px;height:18px;border:2px solid #bfd0e6;border-top-color:#1e5799;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -80,8 +80,10 @@ tr:hover td{background:#f7faff}
   body{background:#fff}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">

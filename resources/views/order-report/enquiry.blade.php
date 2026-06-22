@@ -79,7 +79,9 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
     th{position:static}
 }
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 
@@ -281,7 +283,7 @@ document.querySelector('input[name="ordno"]').addEventListener('keydown', functi
     if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('reportForm').submit(); }
 });
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>
 ReportExport.initFromTable('btnSaveAs', '.order-card',
   'order_enquiry_{{ $ordno }}');

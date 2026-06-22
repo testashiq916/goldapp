@@ -82,6 +82,8 @@ class MonthlySalesReportController extends Controller
             ->select('slno', 'tdate', 'billno', 'custcode', 'custname')
             ->selectRaw($this->colExpr('billamt', '0'))
             ->selectRaw($this->colExpr('eamt', '0'))
+            ->selectRaw($this->colExpr('sgst', '0'))
+            ->selectRaw($this->colExpr('cgst', '0'))
             ->selectRaw($this->colExpr('staxamt', '0'))
             ->selectRaw($this->colExpr('discount', '0'))
             ->selectRaw($this->colExpr('ramt', '0'))
@@ -107,6 +109,7 @@ class MonthlySalesReportController extends Controller
 
         return $q->orderBy('tdate')->orderBy('slno')->get()->map(function ($r) {
             $row = (array) $r;
+            $this->applyTaxSplit($row);
             // PB balance: billamt + staxamt - eamt - sretamt - advance - discount + round - ramt - ramtafter
             $row['balance'] = (float)($row['billamt'] ?? 0)
                 + (float)($row['staxamt'] ?? 0)
@@ -139,7 +142,7 @@ class MonthlySalesReportController extends Controller
             ->selectRaw('DISTINCT salesm.tdate');
 
         // Subquery sums matching PB exactly
-        $sumCols = ['billamt', 'eamt', 'staxamt', 'discount', 'ramt', 'sretamt', 'round', 'advance'];
+        $sumCols = ['billamt', 'eamt', 'sgst', 'cgst', 'staxamt', 'discount', 'ramt', 'sretamt', 'round', 'advance'];
         foreach ($sumCols as $col) {
             if ($this->hasCol($col)) {
                 $alias = $col === 'round' ? 'round_amt' : $col;
@@ -190,6 +193,7 @@ class MonthlySalesReportController extends Controller
 
         return $q->orderBy('salesm.tdate')->get()->map(function ($r) {
             $row = (array) $r;
+            $this->applyTaxSplit($row);
             $row['balance'] = (float)($row['billamt'] ?? 0)
                 + (float)($row['staxamt'] ?? 0)
                 - (float)($row['eamt'] ?? 0)
@@ -206,7 +210,7 @@ class MonthlySalesReportController extends Controller
     /* ── Totals ────────────────────────────────────────────────────── */
     private function buildTotals(array $rows, string $mode): array
     {
-        $keys = ['billamt', 'eamt', 'sretamt', 'discount', 'tramt', 'balance'];
+        $keys = ['billamt', 'eamt', 'sretamt', 'sgst', 'cgst', 'staxamt', 'discount', 'tramt', 'balance'];
         if ($mode === 'daysummary') {
             $keys = array_merge($keys, ['totwgt', 'totexwgt', 'totretwgt']);
         }
@@ -218,6 +222,17 @@ class MonthlySalesReportController extends Controller
         }
         $totals['count'] = count($rows);
         return $totals;
+    }
+
+    private function applyTaxSplit(array &$row): void
+    {
+        $row['sgst'] = (float) ($row['sgst'] ?? 0);
+        $row['cgst'] = (float) ($row['cgst'] ?? 0);
+        $row['staxamt'] = (float) ($row['staxamt'] ?? 0);
+        if (abs($row['sgst']) < 0.0001 && abs($row['cgst']) < 0.0001 && abs($row['staxamt']) > 0.0001) {
+            $row['sgst'] = round($row['staxamt'] / 2, 2);
+            $row['cgst'] = round($row['staxamt'] - $row['sgst'], 2);
+        }
     }
 
     /* ── Column helpers ────────────────────────────────────────────── */

@@ -112,7 +112,7 @@ td.num,th.num{text-align:right}
 
                 <div class="actions">
                     <button class="btn ghost" type="button" id="selectAllBtn">Select All</button>
-                    <button class="btn ghost" type="button" id="clearBtn">Clear</button>
+                    <button class="btn ghost" type="button" id="clearBtn">Clear All</button>
                     <button class="btn secondary" type="button" id="previewBtn">Preview</button>
                     <button class="btn primary" type="button" id="runBtn">Transfer</button>
                     <button class="btn ghost" type="button" id="exitBtn">Exit</button>

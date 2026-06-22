@@ -53,7 +53,9 @@ tfoot td{position:sticky;bottom:0;background:#e0f2fe;font-weight:700;color:#0c4a
 .count-bar{text-align:right;font-size:11px;color:var(--muted);margin-top:4px}
 @media print{.top{display:none}body{background:#fff}.window{margin:0;box-shadow:none;border-radius:0}.tbl-wrap{max-height:none;overflow:visible;border:0}th,tfoot td{position:static}.summary-bar{background:#f0f0f0;color:#000;border-radius:0}.summary-bar .lbl{color:#555}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 @php
@@ -160,7 +162,7 @@ tfoot td{position:sticky;bottom:0;background:#e0f2fe;font-weight:700;color:#0c4a
 var bso=document.getElementById('btnSort');
 if(bso){var ss={col:null,asc:true};bso.addEventListener('click',function(){var tb=document.querySelector('#svTable tbody');if(!tb)return;var cols=[0,1,2,3,6,7,10,11];var ci=ss.col===null?0:(cols.indexOf(ss.col)+1)%cols.length;ss.col=cols[ci];ss.asc=!ss.asc;var rows=Array.from(tb.querySelectorAll('tr'));rows.sort(function(a,b){var va=(a.children[ss.col]||{}).textContent||'';var vb=(b.children[ss.col]||{}).textContent||'';var na=parseFloat(va.replace(/,/g,''));var nb=parseFloat(vb.replace(/,/g,''));if(!isNaN(na)&&!isNaN(nb))return ss.asc?na-nb:nb-na;return ss.asc?va.localeCompare(vb):vb.localeCompare(va)});rows.forEach(function(r){tb.appendChild(r)})})}
 </script>
-<script src="{{ asset('js/report-export.js') }}?v=6"></script>
+<script src="{{ asset('js/report-export.js') }}?v=7"></script>
 <script>ReportExport.initFromTable('btnSaveAs','#svTable','bc_stock_verify_{{ $date }}');</script>
 </body>
 </html>

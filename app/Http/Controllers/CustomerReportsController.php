@@ -55,8 +55,8 @@ class CustomerReportsController extends Controller
         if (!$this->auth($request)) return redirect('/login');
         return view('customers.credit-bill-details', [
             'title'  => 'Credit Bill Details',
-            'date1'  => $this->startDate($request),
-            'date2'  => date('Y-m-d'),
+            'date1'  => $this->nd((string) $request->query('date1', $this->startDate($request))),
+            'date2'  => $this->nd((string) $request->query('date2', date('Y-m-d'))),
             'rlevel' => $this->gilevel($request),
         ]);
     }

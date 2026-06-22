@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Dump Cleaner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #181c27;
+    --bg3: #1e2336;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555a6e;
+    --accent: #4f9cf9;
+    --accent2: #2563eb;
+    --success: #22c55e;
+    --success-bg: rgba(34,197,94,0.1);
+    --danger: #f87171;
+    --danger-bg: rgba(248,113,113,0.1);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251,191,36,0.1);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167,139,250,0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    animation: fadeDown 0.5s ease;
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(79,156,249,0.12);
+    border: 1px solid rgba(79,156,249,0.25);
+    border-radius: 100px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .header h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .header p {
+    font-size: 15px;
+    color: var(--text2);
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 720px;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(79,156,249,0.05);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon {
+    width: 52px; height: 52px;
+    background: rgba(79,156,249,0.1);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 24px;
+  }
+  .drop-zone h3 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .drop-zone p { font-size: 13px; color: var(--text2); }
+  .drop-zone .browse { color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+  .file-loaded {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--success);
+  }
+  .file-loaded.show { display: flex; }
+  .file-loaded-name { font-weight: 600; font-family: var(--mono); }
+
+  .fixes-section { margin-top: 1.5rem; }
+  .fixes-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 1rem;
+  }
+  .fix-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+  }
+  .fix-row.active { border-color: rgba(79,156,249,0.3); background: rgba(79,156,249,0.04); }
+  .fix-row.active.purple-active { border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.05); }
+  .fix-toggle {
+    width: 36px; height: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 100px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    margin-top: 2px;
+  }
+  .fix-toggle.on { background: var(--accent2); border-color: var(--accent2); }
+  .fix-toggle.on.purple { background: #7c3aed; border-color: #7c3aed; }
+  .fix-toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: left 0.2s;
+  }
+  .fix-toggle.on::after { left: 18px; }
+  .fix-info { flex: 1; }
+  .fix-info strong { font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 3px; }
+  .fix-info span { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .new-badge {
+    display: inline-block;
+    background: rgba(167,139,250,0.2);
+    color: var(--purple);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
+  }
+
+  .btn-clean {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 14px;
+    background: var(--accent2);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-clean:hover { opacity: 0.9; }
+  .btn-clean:active { transform: scale(0.99); }
+  .btn-clean:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .results { display: none; margin-top: 1.5rem; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--bg3);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-val { font-size: 26px; font-weight: 700; color: #fff; }
+  .stat-val.red   { color: var(--danger); }
+  .stat-val.green { color: var(--success); }
+  .stat-val.blue  { color: var(--accent); }
+  .stat-val.purple{ color: var(--purple); }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .issues-list { margin-bottom: 1.25rem; }
+  .issue-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .issue-item.removed { background: var(--danger-bg); }
+  .issue-item.fixed   { background: var(--success-bg); }
+  .issue-item.warn    { background: var(--warning-bg); }
+  .issue-item.patched { background: var(--purple-bg); }
+  .issue-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .removed .issue-dot { background: var(--danger); }
+  .fixed   .issue-dot { background: var(--success); }
+  .warn    .issue-dot { background: var(--warning); }
+  .patched .issue-dot { background: var(--purple); }
+  .issue-item .lnum { color: var(--text2); flex-shrink: 0; font-family: var(--mono); font-size: 11px; margin-top: 1px; }
+  .issue-item .itxt { color: var(--text); font-family: var(--mono); font-size: 11px; word-break: break-all; }
+  .issue-item .itype { color: var(--text2); font-size: 11px; margin-top: 2px; }
+
+  .no-issues {
+    background: var(--success-bg);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    color: var(--success);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .btn-row { display: flex; gap: 10px; }
+  .btn-download {
+    flex: 1;
+    padding: 12px;
+    background: var(--success);
+    color: #0f1117;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-download:hover { opacity: 0.88; }
+  .btn-reset {
+    padding: 12px 20px;
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-reset:hover { background: #252a3a; }
+
+  .preview-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+    margin-top: 1rem;
+  }
+  .preview-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+    font-size: 11px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:none; } }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(12px);  } to { opacity:1; transform:none; } }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-badge">&#9670; SQL Dump Cleaner</div>
+  <h1>Fix your SQL before import</h1>
+  <p>Automatically removes all phpMyAdmin import errors &mdash; mysqldump headers, mixed collations, date defaults, and more.</p>
+</div>
+
+<div class="card" id="main-card">
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".sql" onchange="onFileSelected(this.files[0])">
+    <div class="drop-icon">&#128196;</div>
+    <h3>Drop your .sql file here</h3>
+    <p>or <span class="browse">browse to select</span> &mdash; works entirely in your browser, nothing is uploaded</p>
+  </div>
+  <div class="file-loaded" id="file-loaded">
+    <span>&#10003;</span>
+    <span class="file-loaded-name" id="file-loaded-name"></span>
+    <span style="color:var(--text2); margin-left:auto;" id="file-size"></span>
+  </div>
+
+  <!-- FIXES -->
+  <div class="fixes-section">
+    <div class="fixes-title">Fixes applied</div>
+
+    <div class="fix-row active" id="row-1">
+      <div class="fix-toggle on" id="tog-1" onclick="toggleFix(1)"></div>
+      <div class="fix-info">
+        <strong>Remove mysqldump / mysqlpump header lines</strong>
+        <span>Strips warning and error lines like <code style="color:var(--accent);font-size:11px">mysqldump: [Warning]...</code> and <code style="color:var(--danger);font-size:11px">mysqldump: Error: Access denied...</code> that cause #1064 syntax errors.</span>
+      </div>
+    </div>
+
+    <div class="fix-row active" id="row-2">
+      <div class="fix-toggle on" id="tog-2" onclick="toggleFix(2)"></div>
+      <div class="fix-info">
+        <strong>Fix mixed collation conflicts</strong>
+        <span>Unifies <code style="color:var(--danger);font-size:11px">utf8mb4_0900_ai_ci</code> &rarr; <code style="color:var(--success);font-size:11px">utf8mb4_unicode_ci</code> so MariaDB / older MySQL 5.7 can import without collation mismatch errors.</span>
+      </div>
+    </div>
+
+    <div class="fix-row active" id="row-3">
+      <div class="fix-toggle on" id="tog-3" onclick="toggleFix(3)"></div>
+      <div class="fix-info">
+        <strong>Remove blank lines at start of file</strong>
+        <span>Trims leading blank lines that can confuse some MySQL parsers on import.</span>
+      </div>
+    </div>
+
+    <div class="fix-row active" id="row-4">
+      <div class="fix-toggle on" id="tog-4" onclick="toggleFix(4)"></div>
+      <div class="fix-info">
+        <strong>Remove trailing whitespace</strong>
+        <span>Strips trailing spaces and carriage returns from each line for clean UNIX-style line endings.</span>
+      </div>
+    </div>
+
+    <!-- NEW FIX #5 — curdate() -->
+    <div class="fix-row active purple-active" id="row-5">
+      <div class="fix-toggle on purple" id="tog-5" onclick="toggleFix(5)"></div>
+      <div class="fix-info">
+        <strong>Fix <code style="color:var(--purple);font-size:12px">DEFAULT curdate()</code>, <code style="color:var(--purple);font-size:12px">DEFAULT curtime()</code> &amp; <code style="color:var(--purple);font-size:12px">DEFAULT now()</code> <span class="new-badge">New</span></strong>
+        <span>
+          Replaces <code style="color:var(--danger);font-size:11px">DEFAULT curdate()</code>, <code style="color:var(--danger);font-size:11px">DEFAULT curtime()</code>, <code style="color:var(--danger);font-size:11px">DEFAULT current_date()</code>, <code style="color:var(--danger);font-size:11px">DEFAULT current_time()</code> and <code style="color:var(--danger);font-size:11px">DEFAULT now()</code> with
+          <code style="color:var(--success);font-size:11px">DEFAULT NULL</code>.
+          These function-based defaults require MySQL&nbsp;8.0.13+ &mdash; on XAMPP / MySQL&nbsp;5.7 they cause <strong>#1067</strong> errors (e.g. <code style="font-size:11px">daybook.tdate</code>, <code style="font-size:11px">purchasem.ttime</code>).
+        </span>
+      </div>
+    </div>
+
+    <!-- NEW FIX #6 — now() / current_timestamp as DATE default -->
+    <div class="fix-row active purple-active" id="row-6">
+      <div class="fix-toggle on purple" id="tog-6" onclick="toggleFix(6)"></div>
+      <div class="fix-info">
+        <strong>Fix <code style="color:var(--purple);font-size:12px">date DEFAULT now()</code> columns <span class="new-badge">New</span></strong>
+        <span>
+          A <code style="color:var(--danger);font-size:11px">date</code> column with <code style="color:var(--danger);font-size:11px">DEFAULT now()</code> also fails on MySQL&nbsp;&lt;&nbsp;8.0.13.
+          Replaces with <code style="color:var(--success);font-size:11px">DEFAULT NULL</code> to keep the column a pure DATE type while avoiding the syntax error.
+        </span>
+      </div>
+    </div>
+
+    <!-- NEW FIX #7 — NOT NULL DEFAULT NULL contradiction -->
+    <div class="fix-row active purple-active" id="row-7">
+      <div class="fix-toggle on purple" id="tog-7" onclick="toggleFix(7)"></div>
+      <div class="fix-info">
+        <strong>Fix <code style="color:var(--purple);font-size:12px">NOT NULL DEFAULT NULL</code> contradiction <span class="new-badge">New</span></strong>
+        <span>
+          Fixes <code style="color:var(--danger);font-size:11px">#1067 - Invalid default value</code> errors caused by columns declared
+          <code style="color:var(--danger);font-size:11px">NOT NULL DEFAULT NULL</code> (e.g. <code style="font-size:11px">orderm.tdate</code>).
+          Removes the contradictory <code style="color:var(--success);font-size:11px">DEFAULT NULL</code>, leaving the column as <code style="color:var(--success);font-size:11px">NOT NULL</code> only.
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="btn-clean" id="btn-clean" onclick="runClean()" disabled>
+    &#9881;&nbsp; Select a file to begin
+  </button>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div> Line removed</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div> Line fixed</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Date default patched</div>
+    </div>
+
+    <div id="issues-output"></div>
+
+    <div class="preview-label" id="preview-label" style="display:none">Preview &mdash; first 60 lines of cleaned SQL</div>
+    <div class="preview-box" id="preview-box" style="display:none"></div>
+
+    <div class="btn-row" style="margin-top:1.25rem">
+      <button class="btn-download" id="btn-dl" onclick="downloadFile()" style="display:none">
+        &#8659;&nbsp; Download cleaned .sql
+      </button>
+      <button class="btn-reset" onclick="resetTool()">&#8635;&nbsp; New file</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let rawText = '';
+  let cleanedText = '';
+  let fileName = '';
+  let fixes = { 1:true, 2:true, 3:true, 4:true, 5:true, 6:true, 7:true };
+
+  /* ---- drag & drop ---- */
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.toLowerCase().endsWith('.sql')) onFileSelected(f);
+  });
+
+  function onFileSelected(file) {
+    if (!file) return;
+    fileName = file.name;
+    const reader = new FileReader();
+    reader.onload = e => {
+      rawText = e.target.result;
+      const btn = document.getElementById('btn-clean');
+      btn.disabled = false;
+      btn.innerHTML = '&#9989;&nbsp; Clean &ldquo;' + escHtml(fileName) + '&rdquo;';
+      const fl = document.getElementById('file-loaded');
+      document.getElementById('file-loaded-name').textContent = fileName;
+      document.getElementById('file-size').textContent = formatBytes(file.size);
+      fl.classList.add('show');
+      document.getElementById('results').style.display = 'none';
+    };
+    reader.readAsText(file);
+  }
+
+  function toggleFix(n) {
+    fixes[n] = !fixes[n];
+    const tog = document.getElementById('tog-' + n);
+    const row = document.getElementById('row-' + n);
+    const isPurple = (n === 5 || n === 6 || n === 7);
+    tog.classList.toggle('on', fixes[n]);
+    if (isPurple) tog.classList.toggle('purple', fixes[n]);
+    row.classList.toggle('active', fixes[n]);
+    if (isPurple) row.classList.toggle('purple-active', fixes[n]);
+  }
+
+  /* ---- main clean logic ---- */
+  function runClean() {
+    if (!rawText) return;
+    const lines = rawText.split('\n');
+    const issues = [];
+    let result = [];
+
+    /* Pass 1 — line-by-line fixes */
+    lines.forEach((line, i) => {
+      const lineNum = i + 1;
+      let cur = line;
+      let removed = false;
+
+      /* Fix 1 — mysqldump / mysqlpump headers */
+      if (fixes[1] && /^mysql(dump|pump):\s/.test(cur)) {
+        issues.push({ type:'removed', lineNum, text: cur.trim(), desc:'mysqldump/mysqlpump header line removed' });
+        removed = true;
+      }
+
+      /* Fix 5 — DEFAULT curdate() / current_date() / curtime() / current_time() / now() */
+      if (!removed && fixes[5]) {
+        const patched = cur
+          .replace(/\bDEFAULT\s+curdate\s*\(\s*\)/gi,        'DEFAULT NULL')
+          .replace(/\bDEFAULT\s+current_date\s*\(\s*\)/gi,   'DEFAULT NULL')
+          .replace(/\bDEFAULT\s+curtime\s*\(\s*\)/gi,        'DEFAULT NULL')
+          .replace(/\bDEFAULT\s+current_time\s*\(\s*\)/gi,   'DEFAULT NULL')
+          .replace(/\bDEFAULT\s+now\s*\(\s*\)/gi,            'DEFAULT NULL');
+        if (patched !== cur) {
+          issues.push({ type:'patched', lineNum, text: cur.trim(), desc: 'DEFAULT curdate()/curtime()/now() → DEFAULT NULL (MySQL 8.0.13+ syntax removed)' });
+          cur = patched;
+        }
+      }
+
+      /* Fix 6 — date DEFAULT now() */
+      if (!removed && fixes[6]) {
+        const patched = cur.replace(/(date\s+DEFAULT\s+)now\s*\(\s*\)/gi, '$1NULL');
+        if (patched !== cur) {
+          issues.push({ type:'patched', lineNum, text: cur.trim(), desc: 'date DEFAULT now() → date DEFAULT NULL' });
+          cur = patched;
+        }
+      }
+
+      /* Fix 7 — NOT NULL DEFAULT NULL contradiction (#1067) */
+      if (!removed && fixes[7]) {
+        const patched = cur.replace(/NOT NULL\s+DEFAULT NULL/gi, 'NOT NULL');
+        if (patched !== cur) {
+          issues.push({ type:'patched', lineNum, text: cur.trim(), desc: 'NOT NULL DEFAULT NULL → NOT NULL (fixes #1067 Invalid default value)' });
+          cur = patched;
+        }
+      }
+
+      /* Fix 4 — trailing whitespace */
+      if (!removed && fixes[4]) {
+        const trimmed = cur.replace(/\r$/, '').replace(/\s+$/, '');
+        if (trimmed !== cur.replace(/\r$/, '')) {
+          issues.push({ type:'fixed', lineNum, text:'', desc:'Trailing whitespace removed' });
+        }
+        cur = trimmed;
+      }
+
+      if (!removed) result.push(cur);
+    });
+
+    /* Pass 2 — Fix 2: collation */
+    if (fixes[2]) {
+      result = result.map((line, i) => {
+        if (/ENGINE=InnoDB.*COLLATE=utf8mb4_0900_ai_ci/.test(line)) {
+          const fixed = line.replace(/COLLATE=utf8mb4_0900_ai_ci/g, 'COLLATE=utf8mb4_unicode_ci');
+          if (fixed !== line) {
+            issues.push({ type:'fixed', lineNum: i + 1, text: line.trim(), desc: 'Collation utf8mb4_0900_ai_ci → utf8mb4_unicode_ci' });
+            return fixed;
+          }
+        }
+        return line;
+      });
+    }
+
+    /* Pass 3 — Fix 3: leading blank lines */
+    if (fixes[3]) {
+      let first = 0;
+      while (first < result.length && result[first].trim() === '') first++;
+      if (first > 0) {
+        issues.push({ type:'fixed', lineNum:1, text:'', desc: first + ' leading blank line(s) removed' });
+        result = result.slice(first);
+      }
+    }
+
+    cleanedText = result.join('\n');
+
+    /* ---- Stats ---- */
+    const removedCount = issues.filter(x => x.type === 'removed').length;
+    const fixedCount   = issues.filter(x => x.type === 'fixed').length;
+    const patchedCount = issues.filter(x => x.type === 'patched').length;
+
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat"><div class="stat-val blue">${lines.length.toLocaleString()}</div><div class="stat-label">Original lines</div></div>
+      <div class="stat"><div class="stat-val red">${removedCount.toLocaleString()}</div><div class="stat-label">Lines removed</div></div>
+      <div class="stat"><div class="stat-val">${fixedCount.toLocaleString()}</div><div class="stat-label">Lines fixed</div></div>
+      <div class="stat"><div class="stat-val purple">${patchedCount.toLocaleString()}</div><div class="stat-label">Date defaults patched</div></div>
+      <div class="stat"><div class="stat-val green">${result.length.toLocaleString()}</div><div class="stat-label">Clean lines</div></div>
+    `;
+
+    /* ---- Issues list ---- */
+    const issOut = document.getElementById('issues-output');
+    document.getElementById('btn-dl').style.display = 'flex';
+
+    if (issues.length === 0) {
+      issOut.innerHTML = '<div class="no-issues">&#10003; No issues found &mdash; your file was already clean! You can still download a copy below.</div>';
+    } else {
+      let html = '<div class="issues-list">';
+      issues.forEach(iss => {
+        const short = iss.text.length > 72 ? iss.text.slice(0, 72) + '…' : iss.text;
+        html += `<div class="issue-item ${iss.type}">
+          <div class="issue-dot"></div>
+          <div style="flex:1">
+            ${short ? `<div class="itxt">${escHtml(short)}</div>` : ''}
+            <div class="itype">${escHtml(iss.desc)} &mdash; line ${iss.lineNum}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+      issOut.innerHTML = html;
+      document.getElementById('btn-dl').style.display = 'flex';
+    }
+
+    /* ---- Preview ---- */
+    document.getElementById('preview-box').textContent = result.slice(0, 60).join('\n');
+    document.getElementById('preview-label').style.display = 'block';
+    document.getElementById('preview-box').style.display  = 'block';
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  /* ---- Download ---- */
+  function downloadFile() {
+    const blob = new Blob([cleanedText], { type:'application/sql' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.sql$/i, '_fixed.sql');
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---- Reset ---- */
+  function resetTool() {
+    rawText = cleanedText = fileName = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('file-loaded').classList.remove('show');
+    const btn = document.getElementById('btn-clean');
+    btn.disabled = true;
+    btn.innerHTML = '&#9881;&nbsp; Select a file to begin';
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+
+  /* ---- Helpers ---- */
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+    return (b/(1024*1024)).toFixed(2) + ' MB';
+  }
+</script>
+</body>
+</html>

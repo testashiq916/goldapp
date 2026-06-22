@@ -71,6 +71,16 @@ class SalesRegisterController extends Controller
                 ->map(fn($r) => ['code' => trim($r->code), 'name' => trim($r->name)])->values()->all();
         }
 
+        $billtypes = [];
+        if ($this->hasTable('salestype')) {
+            $billtypes = DB::table('salestype')->select('code', 'name', 'prefix')->orderBy('code')->get()
+                ->map(fn($r) => [
+                    'code' => trim((string) $r->code),
+                    'name' => trim((string) $r->name),
+                    'prefix' => trim((string) ($r->prefix ?? '')),
+                ])->values()->all();
+        }
+
         return response()->json([
             'ok'        => true,
             'salesmen'  => $salesmen,
@@ -79,6 +89,7 @@ class SalesRegisterController extends Controller
             'stktypes'  => $stktypes,
             'groups'    => $groups,
             'subgroups' => $subgroups,
+            'billtypes' => $billtypes,
         ]);
     }
 
@@ -110,6 +121,7 @@ class SalesRegisterController extends Controller
             'type3'    => trim((string) $request->query('type3', '')),
             'grpcode'  => trim((string) $request->query('grpcode', '')),
             'subgrp'   => trim((string) $request->query('subgrp', '')),
+            'billtype' => trim((string) $request->query('billtype', '')),
             'stkcounter' => (int) $request->query('stkcounter', 0),
         ];
 
@@ -119,6 +131,8 @@ class SalesRegisterController extends Controller
 
         if ($reptype === 'itemsummary') {
             $rows = $this->itemSummaryRows($date1, $date2, $rlevel, $filters);
+        } elseif ($reptype === 'billtypesummary') {
+            $rows = $this->billTypeSummaryRows($date1, $date2, $rlevel, $filters);
         } else {
             $rows = $this->detailRows($date1, $date2, $rlevel, $filters);
         }
@@ -140,6 +154,9 @@ class SalesRegisterController extends Controller
         if ($this->hasTable('sman') && $this->hasCol('sman', 'code')) {
             $q->leftJoin('sman as s', 'm.smcode', '=', 's.code');
         }
+        if ($this->hasTable('salestype') && $this->hasCol('salestype', 'code')) {
+            $q->leftJoin('salestype as bt', 'm.billtype', '=', 'bt.code');
+        }
 
         $q = $q
             ->selectRaw('m.slno, m.tdate, m.billno, m.custname')
@@ -148,6 +165,9 @@ class SalesRegisterController extends Controller
             ->selectRaw($this->colExpr('salesm', 'sretamt', 'm', 'sretamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'discount', 'm', 'discount', '0'))
             ->selectRaw($this->colExpr('salesm', 'ramt', 'm', 'ramt', '0'))
+            ->selectRaw($this->colExpr('salesm', 'sgst', 'm', 'sgst', '0'))
+            ->selectRaw($this->colExpr('salesm', 'cgst', 'm', 'cgst', '0'))
+            ->selectRaw($this->colExpr('salesm', 'igst', 'm', 'igst', '0'))
             ->selectRaw($this->colExpr('salesm', 'staxamt', 'm', 'staxamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'astamt', 'm', 'astamt', '0'))
             ->selectRaw($this->colExpr('salesm', 'netamt', 'm', 'netamt', '0'))
@@ -156,6 +176,9 @@ class SalesRegisterController extends Controller
             ->selectRaw($this->colExpr('salesm', 'counter', 'm', 'counter', "''"))
             ->selectRaw($this->colExpr('salesm', 'ic', 'm', 'ic', "''"))
             ->selectRaw($this->colExpr('salesm', 'custcode', 'm', 'custcode', "''"))
+            ->selectRaw($this->colExpr('salesm', 'billtype', 'm', 'billtype', "''"))
+            ->selectRaw($this->colExpr('salestype', 'name', 'bt', 'billtype_name', "''"))
+            ->selectRaw($this->colExpr('salestype', 'prefix', 'bt', 'billtype_prefix', "''"))
             ->selectRaw($this->colExpr('salesm', 'status', 'm', 'status', '0'))
             ->selectRaw($this->colExpr('salesm', 'orderno', 'm', 'orderno', "''"))
             ->selectRaw('d.sno, i.name as item_name, d.code as item_code')
@@ -184,14 +207,74 @@ class SalesRegisterController extends Controller
                 if ($row['smname'] === '') {
                     $row['smname'] = $row['smcode'];
                 }
+                $row['billtype'] = trim((string) ($row['billtype'] ?? ''));
+                $row['billtype_name'] = trim((string) ($row['billtype_name'] ?? ''));
+                $row['billtype_prefix'] = trim((string) ($row['billtype_prefix'] ?? ''));
                 $row['netwgt'] = (float) ($row['weight'] ?? 0) - (float) ($row['stonewgt'] ?? 0);
                 $va = (float) ($row['mcharge'] ?? 0);
                 $row['va'] = $va;
+                $this->applyTaxSplit($row);
                 $row['balance'] = (float) ($row['netamt'] ?? 0) - (float) ($row['ramt'] ?? 0);
                 return $row;
             })->values()->all();
 
         return $rows;
+    }
+
+    private function billTypeSummaryRows(string $date1, string $date2, int $rlevel, array $filters): array
+    {
+        $detailRows = $this->detailRows($date1, $date2, $rlevel, $filters);
+        $groups = [];
+        $countedBills = [];
+
+        foreach ($detailRows as $row) {
+            $code = trim((string) ($row['billtype'] ?? ''));
+            $name = trim((string) ($row['billtype_name'] ?? ''));
+            $prefix = trim((string) ($row['billtype_prefix'] ?? ''));
+            $key = $code !== '' ? $code : 'BLANK';
+
+            if (!isset($groups[$key])) {
+                $groups[$key] = [
+                    'billtype' => $code,
+                    'billtype_name' => $name !== '' ? $name : ($code !== '' ? $code : 'No Type'),
+                    'billtype_prefix' => $prefix,
+                    'bills' => 0,
+                    'qty' => 0.0,
+                    'weight' => 0.0,
+                    'stonewgt' => 0.0,
+                    'netwgt' => 0.0,
+                    'amount' => 0.0,
+                    'billamt' => 0.0,
+                    'eamt' => 0.0,
+                    'sretamt' => 0.0,
+                    'discount' => 0.0,
+                    'sgst' => 0.0,
+                    'cgst' => 0.0,
+                    'igst' => 0.0,
+                    'staxamt' => 0.0,
+                    'ramt' => 0.0,
+                    'netamt' => 0.0,
+                    'balance' => 0.0,
+                ];
+            }
+
+            $groups[$key]['qty'] += (float) ($row['qty'] ?? 0);
+            $groups[$key]['weight'] += (float) ($row['weight'] ?? 0);
+            $groups[$key]['stonewgt'] += (float) ($row['stonewgt'] ?? 0);
+            $groups[$key]['netwgt'] += (float) ($row['netwgt'] ?? 0);
+            $groups[$key]['amount'] += (float) ($row['amount'] ?? 0);
+
+            $slno = (string) ($row['slno'] ?? '');
+            if ($slno !== '' && !isset($countedBills[$slno])) {
+                $countedBills[$slno] = true;
+                $groups[$key]['bills'] += 1;
+                foreach (['billamt', 'eamt', 'sretamt', 'discount', 'sgst', 'cgst', 'igst', 'staxamt', 'ramt', 'netamt', 'balance'] as $field) {
+                    $groups[$key][$field] += (float) ($row[$field] ?? 0);
+                }
+            }
+        }
+
+        return array_values($groups);
     }
 
     /* ── Item Summary rows ────────────────────────────────────────── */
@@ -228,6 +311,8 @@ class SalesRegisterController extends Controller
     /* ── Apply filters ─────────────────────────────────────────────── */
     private function applyFilters($q, int $rlevel, array $filters): void
     {
+        $this->applyTransferShadowDocFilter($q, 'm.billno');
+
         if ($this->hasCol('salesm', 'control'))  $q->where('m.control', '<=', $rlevel);
         if ($this->hasCol('salesm', 'opbill')) {
             $q->where(function ($sub) {
@@ -261,8 +346,10 @@ class SalesRegisterController extends Controller
             $q->where('d.stktype', $filters['stktype']);
 
         // Type1: G=Gold, S=Silver, O=Others, P=Platinum, D=Diamond
-        if ($filters['type1'] !== '' && $this->hasCol('items', 'itype'))
-            $q->where('i.itype', $filters['type1']);
+        if ($filters['type1'] !== '' && $this->hasCol('items', 'itype')) {
+            $type1 = strtoupper($filters['type1']);
+            $q->whereRaw('UPPER(TRIM(i.itype)) = ?', [$type1]);
+        }
 
         // Type2: D=Diamond, P=Platinum, G=Gold, S=Silver, O=Others, C=Color Stone, W=Watch
         if ($filters['type2'] !== '' && $this->hasCol('items', 'dmdplt'))
@@ -275,20 +362,126 @@ class SalesRegisterController extends Controller
         if ($filters['grpcode'] !== '' && $this->hasCol('items', 'grpcode'))
             $q->where('i.grpcode', $filters['grpcode']);
 
-        if ($filters['subgrp'] !== '' && $this->hasCol('items', 'subgrp'))
-            $q->where('i.subgrp', $filters['subgrp']);
+        if ($filters['subgrp'] !== '') {
+            if ($this->hasCol('items', 'subgrp')) {
+                $q->where('i.subgrp', $filters['subgrp']);
+            } elseif ($this->hasCol('items', 'subgrpcode')) {
+                $q->where('i.subgrpcode', $filters['subgrp']);
+            }
+        }
+
+        if (($filters['billtype'] ?? '') !== '' && $this->hasCol('salesm', 'billtype')) {
+            if ($filters['billtype'] === '__B2B__') {
+                $this->applyB2bBillTypeFilter($q);
+            } elseif (str_starts_with($filters['billtype'], '__B2B_TYPE_')) {
+                $itemType = substr($filters['billtype'], strlen('__B2B_TYPE_'), 1);
+                $this->applyB2bBillTypeFilter($q, $itemType);
+            } else {
+                $q->where('m.billtype', $filters['billtype']);
+            }
+        }
+    }
+
+    private function applyB2bBillTypeFilter($q, ?string $itemType = null): void
+    {
+        $b2bCodes = $this->b2bBillTypeCodes($itemType);
+        $q->where(function ($sub) use ($b2bCodes, $itemType) {
+            if (!empty($b2bCodes)) {
+                $sub->whereIn('m.billtype', $b2bCodes);
+            }
+
+            if ($itemType === null) {
+                $sub->orWhere('m.billtype', 'like', 'B2%')
+                    ->orWhere('m.billtype', 'like', 'B3%')
+                    ->orWhere('m.billno', 'like', 'B2B/%')
+                    ->orWhere('m.billno', 'like', 'B3B/%');
+            }
+        });
+    }
+
+    private function b2bBillTypeCodes(?string $itemType = null): array
+    {
+        if (!$this->hasTable('salestype')) {
+            return [];
+        }
+
+        $query = DB::table('salestype')
+            ->where(function ($q) {
+                $q->where('code', 'like', 'B2%')
+                    ->orWhere('code', 'like', 'B3%')
+                    ->orWhere('name', 'like', '%B2B%')
+                    ->orWhere('name', 'like', '%B3B%')
+                    ->orWhere('prefix', 'like', 'B2B/%')
+                    ->orWhere('prefix', 'like', 'B3B/%');
+            });
+
+        if ($itemType !== null) {
+            $itemType = strtoupper($itemType);
+            $query->where(function ($q) use ($itemType) {
+                if ($itemType === 'G') {
+                    $q->where('code', 'like', '%G%')->orWhere('name', 'like', '%GOLD%');
+                } elseif ($itemType === 'S') {
+                    $q->where('code', 'like', '%S%')->orWhere('name', 'like', '%SIL%')->orWhere('name', 'like', '%SILVER%');
+                } elseif ($itemType === 'D') {
+                    $q->where('code', 'like', '%D%')->orWhere('name', 'like', '%DIAMOND%')->orWhere('name', 'like', '%DAIMOND%');
+                } elseif ($itemType === 'O') {
+                    $q->where('code', 'like', '%P%')->orWhere('name', 'like', '%PERFUME%')->orWhere('name', 'like', '%WATCH%');
+                }
+            });
+        }
+
+        return $query
+            ->pluck('code')
+            ->map(fn ($code) => trim((string) $code))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /* ── Totals ────────────────────────────────────────────────────── */
     private function buildTotals(array $rows): array
     {
-        $keys = ['qty','weight','stonewgt','netwgt','amount','mcharge','stoneprice','va','billamt','eamt','sretamt','discount','ramt','staxamt','netamt','balance'];
+        $keys = ['bills','qty','weight','stonewgt','netwgt','amount','mcharge','stoneprice','va','billamt','eamt','sretamt','discount','sgst','cgst','igst','ramt','staxamt','netamt','balance'];
         $totals = [];
         foreach ($keys as $k) $totals[$k] = 0.0;
+        $countedBills = [];
         foreach ($rows as $row) {
-            foreach ($keys as $k) $totals[$k] += (float) ($row[$k] ?? 0);
+            $slno = (string) ($row['slno'] ?? '');
+            foreach ($keys as $k) {
+                if (in_array($k, ['billamt','eamt','sretamt','discount','sgst','cgst','igst','ramt','staxamt','netamt','balance'], true)
+                    && $slno !== '' && isset($countedBills[$slno])) {
+                    continue;
+                }
+                $totals[$k] += (float) ($row[$k] ?? 0);
+            }
+            if ($slno !== '') {
+                $countedBills[$slno] = true;
+            }
         }
         return $totals;
+    }
+
+    private function applyTaxSplit(array &$row): void
+    {
+        $sgst = (float) ($row['sgst'] ?? 0);
+        $cgst = (float) ($row['cgst'] ?? 0);
+        $igst = (float) ($row['igst'] ?? 0);
+        $taxAmount = (float) ($row['staxamt'] ?? 0);
+        if (abs($sgst) < 0.0001 && abs($cgst) < 0.0001 && abs($igst) < 0.0001) {
+            $taxable = (float) ($row['billamt'] ?? 0);
+            if (abs($taxable) > 0.0001) {
+                $sgst = round($taxable * 1.5 / 100, 2);
+                $cgst = round($taxable * 1.5 / 100, 2);
+                $taxAmount = round($sgst + $cgst, 2);
+            } elseif (abs($taxAmount) > 0.0001) {
+                $sgst = round($taxAmount / 2, 2);
+                $cgst = round($taxAmount - $sgst, 2);
+            }
+        }
+        $row['sgst'] = $sgst;
+        $row['cgst'] = $cgst;
+        $row['igst'] = $igst;
+        $row['staxamt'] = $taxAmount;
     }
 
     /* ── Column helpers ────────────────────────────────────────────── */

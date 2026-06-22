@@ -63,6 +63,8 @@ tbody tr:hover{background:#eff6ff}
 .toast.ok{background:#16a34a}
 .toast.err{background:#dc2626}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 

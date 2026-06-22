@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Database Backup</title>
+<title>{{ $localMode ? 'Local Backup' : 'Database Backup' }}</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <style>
 :root{--hdr:#1a365d;--hdr2:#2b6cb0;--border:#d0dbe8;--surface:#fff;--text:#1e293b;--muted:#64748b;--accent:#2563eb}
@@ -78,7 +78,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
 <body>
 <div class="window">
     <div class="titlebar">
-        <h1>Database Backup</h1>
+        <h1>{{ $localMode ? 'Local Backup' : 'Database Backup' }}</h1>
         <span class="today">{{ date('d/m/Y H:i') }}</span>
     </div>
 
@@ -94,6 +94,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
         </div>
 
         <div class="cards">
+            @unless($localMode)
             {{-- Manual Backup Card --}}
             <div class="card">
                 <h2>Manual Backup</h2>
@@ -106,12 +107,13 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
                 <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div>
                 <div class="status-msg" id="statusMsg"></div>
             </div>
+            @endunless
 
             {{-- Local Disk Backup Card --}}
             <div class="card">
                 <h2>Local Disk Backup</h2>
                 <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                    Create database backups for the selected company and copy the generated ZIP files to a parent folder on this computer or a mapped drive. Project backup is not included here. If a secondary database exists, the app will place files inside <strong>bk1</strong> and <strong>bk2</strong> automatically.
+                    Select a folder on this computer, then create SQL ZIP backups. DB 1 is saved inside <strong>bk1</strong>; the second configured database is saved inside <strong>bk2</strong>. Project backup is not included here.
                 </p>
                 <div class="auto-form">
                     <label>
@@ -136,6 +138,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
                 <div class="status-msg" id="localDiskStatusMsg"></div>
             </div>
 
+            @unless($localMode)
             {{-- Auto Backup Card --}}
             <div class="card">
                 <h2>Auto Backup Settings</h2>
@@ -159,6 +162,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;background:radial-gradient(circ
                 <div style="margin-top:8px;font-size:12px;color:#64748b">Example: <strong>11:00, 14:30, 18:00</strong></div>
                 <div class="status-msg" id="autoStatusMsg"></div>
             </div>
+            @endunless
         </div>
 
         {{-- Backup Files List --}}

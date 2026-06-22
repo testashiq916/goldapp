@@ -29,7 +29,9 @@ tfoot td{background:#f0f7ff;font-weight:700;color:#173b63;position:sticky;bottom
 .badge-fwd{background:#d1fae5;color:#065f46}.badge-ret{background:#fee2e2;color:#991b1b}
 @media print{.toolbar{display:none}body{background:#fff}.wrap{border:0;margin:0}.table-wrap{max-height:none;overflow:visible;border:0}th,tfoot td{position:static}}
 </style>
+<link rel="stylesheet" href="{{ asset('css/report-readable.css') }}?v={{ @filemtime(public_path('css/report-readable.css')) }}">
 @include('partials.print-layout-head')
+<script src="{{ asset('js/report-row-navigation.js') }}?v={{ @filemtime(public_path('js/report-row-navigation.js')) }}" defer></script>
 </head>
 <body>
 <div class="wrap">
