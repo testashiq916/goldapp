@@ -3,246 +3,283 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ $docTitle }} - {{ trim((string) ($master->docno ?? '')) }}</title>
+<title>Smith Receipt - {{ trim((string) ($master->docno ?? '')) }}</title>
 <style>
-body{font-family:Arial,sans-serif;margin:0;background:#f3f1ea;color:#111;font-size:13px}
-.toolbar{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;background:#fff;border-bottom:1px solid #d8d1c1;align-items:flex-start;flex-wrap:wrap;position:sticky;top:0;z-index:10}
-.toolbar button{padding:7px 12px;border:1px solid #8f7d52;background:#f2e0a8;color:#2f2818;border-radius:4px;font-weight:700;cursor:pointer;font-size:12px}
+body{margin:0;background:#eef1ed;color:#000;font-family:"Times New Roman",Times,serif;font-size:12px}
+.toolbar{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;background:#19471f;color:#f7d58b;border-bottom:1px solid rgba(0,0,0,.18);align-items:center;position:sticky;top:0;z-index:10}
+.toolbar button{height:28px;padding:0 14px;border:1px solid #a57c27;background:#f4d184;color:#241b0a;border-radius:3px;font-weight:700;cursor:pointer}
 .controls{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center}
-.controls label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a3d1f;white-space:nowrap}
-.controls input{accent-color:#8f7d52}
-.page{max-width:1180px;margin:12px auto;background:#fff;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.title{text-align:center;margin-bottom:10px}
-.title h1{margin:0;font-size:22px;line-height:1.15;letter-spacing:.35px;text-transform:uppercase;white-space:normal}
-.shop-line{font-size:12px;font-weight:700;line-height:1.35;text-transform:uppercase}
-.shop-meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
-.title .sub{margin-top:4px;font-size:17px;font-weight:700;letter-spacing:.2px}
-.title .sub2{margin-top:4px;font-size:13px;font-weight:700;letter-spacing:.2px}
-.info-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:12px;margin-bottom:12px}
-.card{border:1px solid #cfc7b5;padding:10px 12px}
-.line{display:grid;grid-template-columns:108px 10px 1fr;gap:6px;font-size:12px;padding:2px 0}
-.line b{font-weight:700}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #222;padding:5px 6px;font-size:11px}
-th{background:#efe6c8}
-.r{text-align:right}
-.c{text-align:center}
-.summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-.totals td{font-weight:700}
-.hidden{display:none}
-.foot{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;gap:20px}
-.sign{width:220px;text-align:center;padding-top:34px;border-top:1px solid #333}
-@media (max-width: 1366px){
-  body{font-size:12px}
-  .page{max-width:100%;margin:8px;padding:14px}
-  .title h1{font-size:18px}
-  .title .sub{font-size:15px}
-  .controls{gap:8px 12px}
-  .controls label{font-size:11px}
-  .info-grid{grid-template-columns:1fr 1fr;gap:10px}
-  .card{padding:8px 10px}
-  .line{grid-template-columns:96px 10px 1fr;font-size:11px}
-  th,td{padding:4px 5px;font-size:10px}
-}
-@media (max-width: 1024px){
-  .toolbar{position:static}
-  .info-grid,.summary{grid-template-columns:1fr}
-  .controls{width:100%}
-  .foot{flex-direction:column;align-items:stretch}
-  .sign{width:100%}
+.controls label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;white-space:nowrap}
+.controls input{accent-color:#f4d184}
+.tb-lbl{font-size:10px;font-weight:700;color:inherit;white-space:nowrap}
+.tb-template-select{height:28px;min-width:128px;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.95);color:#1f2937}
+.page{width:204mm;min-height:230mm;margin:56px auto 18px;background:#fff;padding:9mm 6mm;box-sizing:border-box;box-shadow:0 2px 13px rgba(0,0,0,.12);overflow:hidden}
+.shop{text-align:center;line-height:1.18;margin-bottom:4mm}
+.shop h1{font-size:17px;line-height:1.08;margin:0 0 1mm;font-weight:800;letter-spacing:0;text-transform:uppercase}
+.shop .line{font-size:12px;font-weight:700;text-transform:uppercase}
+.shop .gst{font-size:12px;font-weight:700;margin-top:.6mm}
+.doc-title{text-align:center;font-size:16px;line-height:1.1;font-weight:800;text-decoration:underline;margin:1mm 0 5mm;text-transform:uppercase}
+.top-box{border:1px solid #333;display:grid;grid-template-columns:1.15fr .85fr;margin-bottom:0}
+.party-box,.voucher-box{min-height:26mm;padding:3mm 4mm;box-sizing:border-box}
+.voucher-box{border-left:1px solid #333}
+.kv{display:grid;grid-template-columns:28mm 4mm 1fr;align-items:start;line-height:1.42;font-size:12px}
+.voucher-box .kv{grid-template-columns:28mm 4mm 1fr}
+.lbl{font-weight:800}
+.value{font-weight:700}
+.items{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;margin-top:0}
+.items th,.items td{border:1px solid #333;padding:2px 2px;font-size:10px;line-height:1.12;vertical-align:top;box-sizing:border-box;overflow-wrap:anywhere;word-break:break-word}
+.items th{font-weight:800;text-align:center;white-space:normal}
+.items td{height:8mm}
+.c{text-align:center}.r{text-align:right}.b{font-weight:800}
+.item-name{font-weight:700;text-transform:uppercase;word-break:break-word}
+.bottom{display:grid;grid-template-columns:1fr 38mm;gap:8mm;margin-top:8mm;align-items:start}
+.remarks{display:grid;grid-template-columns:26mm 4mm 1fr;font-size:13px;line-height:1.35;min-height:22mm}
+.weight-box{border:1px solid #333}
+.weight-row{display:grid;grid-template-columns:1fr 21mm;border-bottom:1px solid #333}
+.weight-row:last-child{border-bottom:0}
+.weight-row div{padding:4px 6px;font-size:13px;font-weight:800}
+.weight-row div:last-child{text-align:right;border-left:1px solid #333}
+@media (max-width:1024px){
+  .page{width:calc(100% - 24px);min-height:0;margin:18px 12px;padding:18px}
+  .top-box{grid-template-columns:1fr}
+  .voucher-box{border-left:0;border-top:1px solid #333}
 }
 @media print{
-  @page{size:A4 landscape;margin:10mm}
-  body{background:#fff}
-  .toolbar{display:none}
-  .page{margin:0;box-shadow:none;max-width:none;padding:0}
-  .title{break-inside:avoid;page-break-inside:avoid}
-  .title h1{font-size:22px;white-space:normal;overflow:visible}
-  .shop-line{font-size:12px;white-space:normal;overflow:visible}
-  table{break-inside:auto;page-break-inside:auto}
-  thead{display:table-header-group}
-  tr,.card,.summary,.foot,.sign{break-inside:avoid;page-break-inside:avoid}
+  @page{size:A4 portrait;margin:0}
+  html,body{width:210mm;margin:0!important;padding:0!important;background:#fff!important}
+  .toolbar{display:none!important}
+  .page[data-print-root="goldsmith-print"]{
+    width:204mm!important;
+    min-height:0!important;
+    margin:0 auto!important;
+    padding:7mm 5mm!important;
+    box-shadow:none!important;
+    color:#000!important;
+    font-family:"Times New Roman",Times,serif!important;
+    transform:none!important;
+  }
+  body.goldapp-print-enabled [data-print-root="goldsmith-print"]{
+    width:204mm!important;
+    max-width:204mm!important;
+    padding:7mm 5mm!important;
+    margin:0 auto!important;
+    transform:none!important;
+    color:#000!important;
+    font-family:"Times New Roman",Times,serif!important;
+  }
+  .shop,.doc-title,.top-box,.bottom{break-inside:avoid;page-break-inside:avoid}
+  .items{break-inside:auto;page-break-inside:auto}
+  .items tr{break-inside:avoid;page-break-inside:avoid}
+  .items th,.items td{font-size:8.8px!important;padding:1.6px 1.8px!important;border-color:#000!important;overflow-wrap:anywhere!important;word-break:break-word!important}
+  .shop h1{font-size:16px!important}
+  .shop .line,.shop .gst,.kv{font-size:11.2px!important}
+  .doc-title{font-size:15px!important}
 }
 </style>
 @include('partials.print-layout-head')
+<style>
+body.goldapp-print-enabled [data-print-root="goldsmith-print"],
+.page[data-print-root="goldsmith-print"]{
+  width:204mm!important;
+  max-width:204mm!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+[data-print-root="goldsmith-print"] .items{
+  width:100%!important;
+  max-width:100%!important;
+  table-layout:fixed!important;
+  border-collapse:collapse!important;
+}
+[data-print-root="goldsmith-print"] .items th,
+[data-print-root="goldsmith-print"] .items td{
+  box-sizing:border-box!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  padding:2px 2px!important;
+  font-size:10px!important;
+  line-height:1.1!important;
+}
+@media print{
+  body.goldapp-print-enabled [data-print-root="goldsmith-print"],
+  .page[data-print-root="goldsmith-print"]{
+    width:204mm!important;
+    max-width:204mm!important;
+    padding:7mm 5mm!important;
+    margin:0 auto!important;
+    transform:none!important;
+  }
+  [data-print-root="goldsmith-print"] .items th,
+  [data-print-root="goldsmith-print"] .items td{
+    padding:1.5px 1.6px!important;
+    font-size:8.6px!important;
+    line-height:1.05!important;
+  }
+}
+</style>
 </head>
 <body>
+@php
+  $fmt3 = fn ($v) => abs((float) $v) < 0.0005 ? '0.000' : number_format((float) $v, 3);
+  $fmt2 = fn ($v) => abs((float) $v) < 0.005 ? '0.00' : number_format((float) $v, 2);
+  $fmtQty = fn ($v) => abs((float) $v) < 0.0005 ? '0' : number_format((float) $v, 0);
+  $shopName = trim((string) ($company['SHOPNM'] ?? 'SALEENA GOLD AND DIAMONDS'));
+  $shopAddr = trim((string) ($company['SHOPADDR'] ?? ''));
+  $shopGstin = trim((string) ($company['GSTIN'] ?? $company['GSTNO'] ?? $company['KGST'] ?? ''));
+  $partyName = trim((string) ($master->party_name ?? $master->smithcode ?? ''));
+  $docDate = !empty($master->tdate) ? \Carbon\Carbon::parse($master->tdate)->format('d-F-Y') : '';
+  $voucherNo = trim((string) ($master->docno ?? ''));
+  $defaultPrintTemplate = '1';
+  $printTemplate = in_array((string) request('template', $defaultPrintTemplate), ['1', '2', '3', '4', '5'], true)
+      ? (string) request('template', $defaultPrintTemplate)
+      : $defaultPrintTemplate;
+  $purityText = function ($row) {
+      $stktouch = (float) ($row['stktouch'] ?? 0);
+      if ($stktouch > 0 && $stktouch < 100) return rtrim(rtrim(number_format($stktouch, 2), '0'), '.');
+      $code = strtoupper(trim((string) ($row['stktype'] ?? '')));
+      return $code !== '' ? $code : '';
+  };
+@endphp
 <div class="toolbar">
   <div class="controls">
+    <span class="tb-lbl">Template</span>
+    <select class="tb-template-select" id="printTemplateSelect">
+      <option value="1" {{ $printTemplate === '1' ? 'selected' : '' }}>Template 1</option>
+      <option value="2" {{ $printTemplate === '2' ? 'selected' : '' }}>Template 2</option>
+      <option value="3" {{ $printTemplate === '3' ? 'selected' : '' }}>Template 3</option>
+      <option value="4" {{ $printTemplate === '4' ? 'selected' : '' }}>Template 4</option>
+      <option value="5" {{ $printTemplate === '5' ? 'selected' : '' }}>Template 5</option>
+    </select>
     <label><input type="checkbox" id="cbShowShop" checked> Show Shop Info</label>
     <label><input type="checkbox" id="cbDc"> Delivery Challan</label>
     <label><input type="checkbox" id="cbRefinery"> Refinery</label>
     <label><input type="checkbox" id="cbMelt"> Melting</label>
-    <label><input type="checkbox" id="cbAfter"> After Job Work</label>
+    <label><input type="checkbox" id="cbAfter" checked> After Job Work</label>
   </div>
   <button type="button" onclick="printOnlyPreview()">Print</button>
 </div>
 
-<div class="page" data-print-root="goldsmith-print">
-  <div class="title">
-    <div id="shopInfo" data-print-app-header="goldsmith-shop">
-      @if(!empty($company['SHOPNM']))
-        <h1>{{ $company['SHOPNM'] }}</h1>
-      @endif
-      @if(!empty($company['SHOPADDR']))
-        <div class="shop-line">{{ $company['SHOPADDR'] }}</div>
-      @endif
-      @php
-        $shopPhone = trim((string) ($company['SHOPPHONE'] ?? ''));
-        $shopMobile = trim((string) ($company['Mobile'] ?? $company['MOBILE'] ?? ''));
-        $shopGstin = trim((string) ($company['GSTIN'] ?? $company['GSTNO'] ?? $company['KGST'] ?? ''));
-      @endphp
-      @if($shopPhone !== '' || $shopMobile !== '' || $shopGstin !== '')
-        <div class="shop-line shop-meta">
-          @if($shopPhone !== '')<span>Ph: {{ $shopPhone }}</span>@endif
-          @if($shopMobile !== '')<span>Mobile: {{ $shopMobile }}</span>@endif
-          @if($shopGstin !== '')<span>GSTIN: {{ $shopGstin }}</span>@endif
-        </div>
-      @endif
-    </div>
-    <div class="sub" id="docTitle">{{ $docTitle }}</div>
-    <div class="sub2" id="docSubTitle" style="display:none"></div>
+<div class="page" data-print-root="goldsmith-print" data-print-template="{{ $printTemplate }}">
+  <div class="shop" id="shopInfo">
+    <h1>{{ $shopName }}</h1>
+    @if($shopAddr !== '')
+      <div class="line">{{ $shopAddr }}</div>
+    @endif
+    @if($shopGstin !== '')
+      <div class="gst">GSTIN-{{ $shopGstin }}</div>
+    @endif
   </div>
 
-  <div class="info-grid">
-    <div class="card">
-      <div class="line"><b>Party</b><span>:</span><span>{{ trim((string) ($master->party_name ?? $master->smithcode ?? '')) }}</span></div>
-      <div class="line"><b>Code</b><span>:</span><span>{{ trim((string) ($master->smithcode ?? '')) }}</span></div>
-      <div class="line"><b>Address</b><span>:</span><span>{{ $address }}</span></div>
-      <div class="line"><b>Mobile</b><span>:</span><span>{{ trim((string) ($master->mobile ?? '')) }}</span></div>
-      <div class="line"><b>GSTIN</b><span>:</span><span>{{ trim((string) ($master->tin ?? '')) }}</span></div>
-      <div class="line"><b>State</b><span>:</span><span>{{ trim((string) ($master->statecode ?? '')) }} {{ trim((string) ($master->state_name ?? '')) }}</span></div>
+  <div class="doc-title" id="docTitle">RECEIPT AFTER JOBWORK</div>
+
+  <div class="top-box">
+    <div class="party-box">
+      <div class="kv"><div class="lbl">Party Name</div><div>:</div><div class="value">{{ $partyName }}</div></div>
+      <div class="kv"><div class="lbl"></div><div></div><div>{{ trim((string) ($master->smithcode ?? '')) }}</div></div>
+      @if(trim((string) ($master->tin ?? '')) !== '')
+        <div class="kv"><div class="lbl">GSTIN-PANNO</div><div>:</div><div>{{ trim((string) ($master->tin ?? '')) }}</div></div>
+      @else
+        <div class="kv"><div class="lbl">GSTIN-PANNO</div><div>:</div><div></div></div>
+      @endif
     </div>
-    <div class="card">
-      <div class="line"><b id="docNoLabel">Doc No</b><span>:</span><span>{{ trim((string) ($master->docno ?? '')) }}</span></div>
-      <div class="line"><b id="docDateLabel">Date</b><span>:</span><span>{{ !empty($master->tdate) ? \Carbon\Carbon::parse($master->tdate)->format('d/m/Y') : '' }}</span></div>
-      <div class="line"><b>Time</b><span>:</span><span>{{ trim((string) ($master->ttime ?? '')) }}</span></div>
-      <div class="line"><b>Rate</b><span>:</span><span>{{ number_format((float) ($master->rate ?? 0), 2) }}</span></div>
-      <div class="line"><b>Salesman</b><span>:</span><span>{{ trim((string) ($master->smcode ?? '')) }}{{ !empty($master->sman_name) ? ' - '.trim((string) $master->sman_name) : '' }}</span></div>
-      <div class="line"><b>Person</b><span>:</span><span>{{ trim((string) ($master->person ?? '')) }}</span></div>
+    <div class="voucher-box">
+      <div class="kv"><div class="lbl" id="docNoLabel">Voucher No</div><div>:</div><div>{{ $voucherNo }}</div></div>
+      <div class="kv"><div class="lbl" id="docDateLabel">Voucher Date</div><div>:</div><div>{{ $docDate }}</div></div>
+      <div class="kv"><div class="lbl">Emp Code</div><div>:</div><div>{{ trim((string) ($master->person ?? $master->smcode ?? '')) }}</div></div>
+      <div class="kv"><div class="lbl">Opn. Wt</div><div>:</div><div class="b">{{ $fmt3((float) ($master->opwgt ?? 0)) }}</div></div>
     </div>
   </div>
 
-  <table>
+  <table class="items">
+    <colgroup>
+      <col style="width:4%">
+      <col style="width:6%">
+      <col style="width:20%">
+      <col style="width:6%">
+      <col style="width:6%">
+      <col style="width:6%">
+      <col style="width:4%">
+      <col style="width:7%">
+      <col style="width:6%">
+      <col style="width:8%">
+      <col style="width:6%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+    </colgroup>
     <thead>
       <tr>
-        <th class="c">Sl</th>
-        <th>Item Details</th>
-        <th class="c">HSN/SAC</th>
-        <th class="c">Qty</th>
-        <th class="r">Issued Gr.Wgt</th>
-        <th class="r">Received Gr.Wgt</th>
-        <th class="r">St.Wgt</th>
-        <th class="r">Net Wgt</th>
-        <th class="r">Touch</th>
-        <th class="r">MC</th>
-        <th class="r">St.Price</th>
-        <th class="r">HMC</th>
-        <th class="r">Issued TM Wgt</th>
-        <th class="r">Received TM Wgt</th>
+        <th>Sl.No</th>
+        <th>Branch</th>
+        <th>ItemName</th>
+        <th>Touch</th>
+        <th>WstWt</th>
+        <th>Purity</th>
+        <th>Nos</th>
+        <th>Gwt</th>
+        <th>StWt</th>
+        <th>StoneAmt</th>
+        <th>DiaWt</th>
+        <th>DmAmt</th>
+        <th>ActualWt</th>
+        <th>NetWt</th>
       </tr>
     </thead>
     <tbody>
       @foreach($rows as $i => $row)
-      <tr>
-        <td class="c">{{ $i + 1 }}</td>
-        <td>{{ $row['item'] }}{{ $row['model'] !== '' ? ' / '.$row['model'] : '' }}{{ $row['remark'] !== '' ? ' / '.$row['remark'] : '' }}</td>
-        <td class="c">{{ $row['hsn'] }}</td>
-        <td class="c">{{ $row['qty'] == 0 ? '' : number_format($row['qty'], 0) }}</td>
-        <td class="r">{{ $row['issue_wgt'] == 0 ? '' : number_format($row['issue_wgt'], 3) }}</td>
-        <td class="r">{{ $row['recv_wgt'] == 0 ? '' : number_format($row['recv_wgt'], 3) }}</td>
-        <td class="r">{{ $row['stone_wgt'] == 0 ? '' : number_format($row['stone_wgt'], 3) }}</td>
-        <td class="r">{{ ($row['net_wgt'] ?? 0) == 0 ? '' : number_format($row['net_wgt'], 3) }}</td>
-        <td class="r">{{ $row['touch'] == 0 ? '' : number_format($row['touch'], 3) }}</td>
-        <td class="r">{{ $row['mc'] == 0 ? '' : number_format($row['mc'], 2) }}</td>
-        <td class="r">{{ $row['stone_price'] == 0 ? '' : number_format($row['stone_price'], 2) }}</td>
-        <td class="r">{{ $row['hmc'] == 0 ? '' : number_format($row['hmc'], 2) }}</td>
-        <td class="r">{{ $row['issue_net'] == 0 ? '' : number_format($row['issue_net'], 3) }}</td>
-        <td class="r">{{ $row['recv_net'] == 0 ? '' : number_format($row['recv_net'], 3) }}</td>
-      </tr>
+        @php
+          $grossWgt = (float) ($row['issue_wgt'] ?? 0) + (float) ($row['recv_wgt'] ?? 0);
+          $actualWgt = max(0.0, $grossWgt - (float) ($row['stone_wgt'] ?? 0));
+          $netWgt = (float) ($row['issue_net'] ?? 0) + (float) ($row['recv_net'] ?? 0);
+          if (abs($netWgt) < 0.0005) $netWgt = (float) ($row['net_wgt'] ?? $actualWgt);
+          $itemText = trim((string) ($row['item'] ?? ''));
+          if (trim((string) ($row['model'] ?? '')) !== '') $itemText .= ' / '.trim((string) $row['model']);
+        @endphp
+        <tr>
+          <td class="c">{{ $i + 1 }}</td>
+          <td class="c">{{ trim((string) ($row['stktype'] ?? '')) }}</td>
+          <td class="item-name">{{ $itemText }}</td>
+          <td class="r">{{ $fmt3($row['touch'] ?? 0) }}</td>
+          <td class="r">{{ $fmt3($row['wastage'] ?? 0) }}</td>
+          <td class="c">{{ $purityText($row) }}</td>
+          <td class="c">{{ $fmtQty($row['qty'] ?? 0) }}</td>
+          <td class="r">{{ $fmt3($grossWgt) }}</td>
+          <td class="r">{{ $fmt3($row['stone_wgt'] ?? 0) }}</td>
+          <td class="r">{{ $fmt2($row['stone_price'] ?? 0) }}</td>
+          <td class="r">0.000</td>
+          <td class="r">{{ $fmt2($row['mc'] ?? 0) }}</td>
+          <td class="r">{{ $fmt3($actualWgt) }}</td>
+          <td class="r">{{ $fmt3($netWgt) }}</td>
+        </tr>
       @endforeach
     </tbody>
-    <tfoot class="totals">
+    <tfoot>
       <tr>
-        <td colspan="3">TOTAL</td>
-        <td class="c">{{ number_format(collect($rows)->sum('qty'), 0) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('issue_wgt'), 3) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('recv_wgt'), 3) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('stone_wgt'), 3) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('net_wgt'), 3) }}</td>
-        <td></td>
-        <td class="r">{{ number_format(collect($rows)->sum('mc'), 2) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('stone_price'), 2) }}</td>
-        <td class="r">{{ number_format(collect($rows)->sum('hmc'), 2) }}</td>
-        <td class="r">{{ number_format($issuedWgt, 3) }}</td>
-        <td class="r">{{ number_format($receivedWgt, 3) }}</td>
+        <td colspan="12" class="b c">Total</td>
+        <td class="r b">{{ $fmt3(collect($rows)->sum(fn ($row) => max(0.0, ((float) ($row['issue_wgt'] ?? 0) + (float) ($row['recv_wgt'] ?? 0)) - (float) ($row['stone_wgt'] ?? 0)))) }}</td>
+        <td class="r b">{{ $fmt3($issuedWgt + $receivedWgt) }}</td>
       </tr>
     </tfoot>
   </table>
 
-  <div class="summary">
-    <table>
-      <tr><td>Op. Wgt. Bal.</td><td class="r">{{ number_format((float) ($master->opwgt ?? 0), 3) }}</td></tr>
-      <tr><td>Wgt Issued</td><td class="r">{{ number_format($issuedWgt, 3) }}</td></tr>
-      <tr><td>Wgt Received</td><td class="r">{{ number_format($receivedWgt, 3) }}</td></tr>
-      <tr><td>Cl. Wgt. Bal.</td><td class="r">{{ number_format($closingWgt, 3) }}</td></tr>
-    </table>
-    <table>
-      <tr><td>Op. Amt. Bal.</td><td class="r">{{ number_format((float) ($master->opamt ?? 0), 2) }}</td></tr>
-      <tr><td>Amt Debited</td><td class="r">{{ number_format($dbAmt, 2) }}</td></tr>
-      <tr><td>Amt Credited</td><td class="r">{{ number_format($crAmt, 2) }}</td></tr>
-      <tr><td>Cl. Amt. Bal.</td><td class="r">{{ number_format($closingAmt, 2) }}</td></tr>
-    </table>
-  </div>
-
-  <div class="summary hidden" id="taxBlock">
-    <table>
-      <tr><td>Gross Amount</td><td class="r">{{ number_format($grossAmount, 2) }}</td></tr>
-      <tr id="igstRow"><td id="igstLabel">{{ $igstLabel }}</td><td class="r">{{ number_format($igstAmount, 2) }}</td></tr>
-      <tr id="cgstRow"><td id="cgstLabel">{{ $cgstLabel }}</td><td class="r">{{ number_format($cgstAmount, 2) }}</td></tr>
-      <tr id="sgstRow"><td id="sgstLabel">{{ $sgstLabel }}</td><td class="r">{{ number_format($sgstAmount, 2) }}</td></tr>
-      <tr><td>Discount</td><td class="r">{{ number_format((float) ($master->discount ?? 0), 2) }}</td></tr>
-      <tr><td>TDS</td><td class="r">{{ number_format((float) ($master->tdsamt ?? 0), 2) }}</td></tr>
-      <tr><td>TCS</td><td class="r">{{ number_format((float) ($master->tcsamt ?? 0), 2) }}</td></tr>
-      <tr><td>Acid Charge</td><td class="r">{{ number_format((float) ($master->acidcharge ?? 0), 2) }}</td></tr>
-      <tr><td><b>Total</b></td><td class="r"><b>{{ number_format($finalAmount, 2) }}</b></td></tr>
-    </table>
-    <table>
-      <tr><td>Tax %</td><td class="r">{{ number_format((float) ($master->taxperc ?? 0), 2) }}</td></tr>
-      <tr><td>Tax Amount</td><td class="r">{{ number_format((float) ($master->taxamt ?? 0), 2) }}</td></tr>
-      <tr><td>Interstate</td><td>{{ strtoupper(trim((string) ($master->interstate ?? 'N'))) === 'Y' ? 'Yes' : 'No' }}</td></tr>
-      <tr><td>Reverse Tax</td><td>{{ strtoupper(trim((string) ($master->taxreverse ?? 'N'))) === 'Y' ? 'Yes' : 'No' }}</td></tr>
-      <tr><td>Rate</td><td class="r">{{ number_format((float) ($master->rate ?? 0), 2) }}</td></tr>
-      <tr><td>Person</td><td>{{ trim((string) ($master->person ?? '')) }}</td></tr>
-      <tr><td>Salesman</td><td>{{ trim((string) ($master->smcode ?? '')) }}{{ !empty($master->sman_name) ? ' - '.trim((string) $master->sman_name) : '' }}</td></tr>
-      <tr><td>Place of Supply</td><td>{{ trim((string) ($master->placeos ?? '')) }}</td></tr>
-    </table>
-  </div>
-
-  @if(!empty($master->transportmode) || !empty($master->vehno) || !empty($master->placeos) || !empty($master->purpose) || !empty($master->note))
-  <div class="summary" id="transportBlock">
-    <table>
-      <tr><td>Transport Mode</td><td>{{ trim((string) ($master->transportmode ?? '')) }}</td></tr>
-      <tr><td>Vehicle No</td><td>{{ trim((string) ($master->vehno ?? '')) }}</td></tr>
-      <tr><td>Place of Supply</td><td>{{ trim((string) ($master->placeos ?? '')) }}</td></tr>
-      <tr><td>Purpose</td><td>{{ trim((string) ($master->purpose ?? '')) }}</td></tr>
-    </table>
-    <table>
-      <tr><td>Note</td><td>{{ trim((string) ($master->note ?? '')) }}</td></tr>
-    </table>
-  </div>
-  @endif
-
-  <div class="foot">
-    <div class="sign">Receiver's Signature</div>
-    <div class="sign">{{ $company['SHOPNM'] ?? 'Authorized Signatory' }}</div>
+  <div class="bottom">
+    <div>
+      <div class="remarks">
+        <div class="lbl">Remarks</div><div>:</div><div>{{ trim((string) ($master->note ?? '')) }}</div>
+      </div>
+      <div class="kv"><div class="lbl">Cls.W</div><div>:</div><div class="b">{{ $fmt3($closingWgt) }}</div></div>
+    </div>
+    <div class="weight-box">
+      <div class="weight-row"><div>Opn. Wt</div><div>{{ $fmt3((float) ($master->opwgt ?? 0)) }}</div></div>
+      <div class="weight-row"><div>Cls.W</div><div>{{ $fmt3($closingWgt) }}</div></div>
+    </div>
   </div>
 </div>
 
 <script>
-const baseTitle = @json($docTitle);
 const isJewellery = @json(strtoupper(trim((string) ($master->ctype ?? ''))) === 'J');
 const els = {
+  template: document.getElementById('printTemplateSelect'),
   showShop: document.getElementById('cbShowShop'),
   dc: document.getElementById('cbDc'),
   refinery: document.getElementById('cbRefinery'),
@@ -250,14 +287,8 @@ const els = {
   after: document.getElementById('cbAfter'),
   shopInfo: document.getElementById('shopInfo'),
   title: document.getElementById('docTitle'),
-  subTitle: document.getElementById('docSubTitle'),
   docNoLabel: document.getElementById('docNoLabel'),
-  docDateLabel: document.getElementById('docDateLabel'),
-  transportBlock: document.getElementById('transportBlock'),
-  taxBlock: document.getElementById('taxBlock'),
-  igstRow: document.getElementById('igstRow'),
-  cgstRow: document.getElementById('cgstRow'),
-  sgstRow: document.getElementById('sgstRow')
+  docDateLabel: document.getElementById('docDateLabel')
 };
 
 function refreshPreview() {
@@ -268,43 +299,20 @@ function refreshPreview() {
   const isAfter = els.after.checked;
 
   els.shopInfo.style.display = showShop ? '' : 'none';
-  els.docNoLabel.textContent = isDc ? 'Delivery Challan No' : 'Doc No';
-  els.docDateLabel.textContent = isDc ? 'Delivery Challan Date' : 'Date';
+  els.docNoLabel.textContent = isDc ? 'Delivery Challan No' : 'Voucher No';
+  els.docDateLabel.textContent = isDc ? 'Delivery Challan Date' : 'Voucher Date';
 
-  let title = baseTitle;
-  let subTitle = '';
-
+  let title = 'GOLDSMITH TRANSACTION';
   if (isDc) {
     title = 'GST DELIVERY CHALLAN';
-    if (isAfter) subTitle = 'ISSUE AFTER JOB WORK';
-  } else if (isJewellery && isRefinery) {
-    subTitle = 'ISSUE FOR REFINING';
-  } else if (isJewellery && isMelt) {
-    subTitle = 'ISSUE FOR MELTING';
+  } else if (isRefinery) {
+    title = 'ISSUE FOR REFINING';
+  } else if (isMelt) {
+    title = 'ISSUE FOR MELTING';
   } else if (isAfter) {
-    subTitle = 'ISSUE AFTER JOB WORK';
+    title = 'RECEIPT AFTER JOBWORK';
   }
-
   els.title.textContent = title;
-  els.subTitle.textContent = subTitle;
-  els.subTitle.style.display = subTitle ? '' : 'none';
-
-  if (els.transportBlock) {
-    els.transportBlock.style.display = isDc ? '' : '';
-  }
-
-  if (els.taxBlock) {
-    els.taxBlock.classList.toggle('hidden', !isDc);
-  }
-  if (els.igstRow) {
-    els.igstRow.style.display = isDc && {{ $igstAmount > 0 ? 'true' : 'false' }} ? '' : 'none';
-  }
-  if (els.cgstRow) {
-    els.cgstRow.style.display = isDc && {{ $cgstAmount > 0 ? 'true' : 'false' }} ? '' : 'none';
-  }
-  if (els.sgstRow) {
-    els.sgstRow.style.display = isDc && {{ $sgstAmount > 0 ? 'true' : 'false' }} ? '' : 'none';
-  }
 }
 
 function handleExclusive(source) {
@@ -313,6 +321,11 @@ function handleExclusive(source) {
   refreshPreview();
 }
 
+els.template.addEventListener('change', () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set('template', els.template.value);
+  window.location.replace(url.toString());
+});
 els.showShop.addEventListener('change', refreshPreview);
 els.dc.addEventListener('change', refreshPreview);
 els.after.addEventListener('change', refreshPreview);
@@ -327,16 +340,11 @@ if (!isJewellery) {
 refreshPreview();
 
 function printOnlyPreview() {
-  const printWin = window.open('', '_blank', 'width=1100,height=850,scrollbars=yes');
+  const printWin = window.open('', '_blank', 'width=900,height=850,scrollbars=yes');
   if (!printWin) return;
-
-  const styles = Array.from(document.querySelectorAll('style'))
-    .map((el) => el.outerHTML)
-    .join('');
-
+  const styles = Array.from(document.querySelectorAll('style')).map((el) => el.outerHTML).join('');
   const pageHtml = document.querySelector('.page').outerHTML;
   const title = document.title.replace(/"/g, '&quot;');
-
   printWin.document.open();
   printWin.document.write(`<!DOCTYPE html>
 <html lang="en">
@@ -345,15 +353,12 @@ function printOnlyPreview() {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title}</title>
 ${styles}
-
 </head>
 <body>
 ${pageHtml}
 <script>
 window.addEventListener('load', function () {
-  setTimeout(function () {
-    window.print();
-  }, 300);
+  setTimeout(function () { window.print(); }, 300);
 });
 <\/script>
 </body>
