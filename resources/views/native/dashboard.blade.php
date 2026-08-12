@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2020,6 +2020,8 @@ const menuSpec = [
         ]},
         { label: 'Item Master', icon: 'fa-box', children: [
             m('Item Add/Edit', 'item-add-edit', 'fa-gem'),
+            m('Item Types', 'item-types', 'fa-tags'),
+            m('Display Categories', 'display-categories', 'fa-table-cells-large'),
             m('Other Items', 'other-items', 'fa-boxes-stacked'),
             m('Groups', 'groups', 'fa-layer-group'),
             m('Sub Groups', 'sub-groups', 'fa-sitemap'),
@@ -2087,17 +2089,8 @@ const menuSpec = [
             m('Edit Transactions', 'accounts-edit-rcpt-pmnt-entry', 'fa-pen')
         ]},
         { label: 'Barcode Management', icon: 'fa-barcode', children: [
-            m('Bulk Barcode', 'barcode-multi-entry', 'fa-bars-staggered'),
-            m('Counter Issue', 'counter-issue', 'fa-desktop'),
             m('Single Barcode', 'barcode-single-entry', 'fa-barcode', 'Shift+Alt+B'),
             m('Stock Check', 'stock-verification', 'fa-clipboard-check')
-        ]},
-        { label: 'Chit Scheme', icon: 'fa-list-check', children: [
-            m('Add Members', 'kuri-details-enter-customers', 'fa-users'),
-            m('Collection Entry', 'kuri-details-kuri-collection', 'fa-money-bill-wave', 'Alt+K'),
-            m('Close Scheme', 'kuri-details-kuri-finish', 'fa-flag-checkered'),
-            m('Draw Process', 'kuri-details-kuri-draw', 'fa-ticket'),
-            m('Interest Calculation', 'kuri-details-interest-posting', 'fa-percent')
         ]},
         m('Customer Greetings', 'crm-greetings-campaigns', 'fa-bullhorn'),
         { label: 'Customer Weight Deposit', icon: 'fa-scale-balanced', children: [
@@ -2132,22 +2125,18 @@ const menuSpec = [
             m('Cancel Entry', 'jewellery-bill-cancel', 'fa-ban'),
             m('Edit Entry', 'jewellery-bill-edit', 'fa-pen'),
             m('Jewellery Entry', 'jewellery-bill', 'fa-right-left', 'Ctrl+J'),
-            m('Print Entry', 'jewellery-bill-reprint', 'fa-print'),
-            m('Sync from Head Office', 'jewellery-bill-update-from-ho', 'fa-building-circle-arrow-right')
+            m('Print Entry', 'jewellery-bill-reprint', 'fa-print')
         ]},
         { label: 'Order Management', icon: 'fa-clipboard-list', children: [
+            m('Cancel Order', 'order-bill-cancel', 'fa-ban', 'Shift+Alt+X'),
+            m('Edit Order', 'order-bill-edit-order-entry', 'fa-pen'),
             m('New Order', 'order-bill-new-order', 'fa-file-circle-plus', 'Shift+Alt+O'),
-            m('Edit Order Entry', 'order-bill-edit-order-entry', 'fa-pen'),
             m('Reprint Order', 'order-bill-reprint', 'fa-print'),
             m('Advance After', 'order-bill-advance-after', 'fa-money-bill-wave'),
-            m('Order Sale', 'order-bill-order-sale', 'fa-cart-plus', 'Shift+Alt+V'),
-            m('Direct Sale', 'order-bill-sale-without-order', 'fa-cart-shopping'),
-            m('Edit Order Sale', 'order-bill-edit-order-sale', 'fa-pen-to-square'),
-            m('Reprint Order Sale', 'order-bill-reprint-order-sale', 'fa-print'),
-            m('Cancel Order', 'order-bill-cancel', 'fa-ban', 'Shift+Alt+X'),
+            m('Convert to Sale', 'order-bill-order-sale', 'fa-cart-plus', 'Shift+Alt+V'),
+            m('Edit Sale', 'order-bill-edit-order-sale', 'fa-pen-to-square'),
             m('Fix Rate', 'order-bill-order-rate-fix', 'fa-wrench'),
-            m('Order Control', 'order-bill-block-unblock', 'fa-lock-open'),
-            m('Sync Orders', 'order-bill-update-from-jewelleries', 'fa-building-circle-arrow-right', 'Ctrl+Shift+J')
+            m('Order Control', 'order-bill-block-unblock', 'fa-lock-open')
         ]},
         { label: 'Other Item Transactions', icon: 'fa-right-left', children: [
             { label: 'Other Purchase', icon: 'fa-bag-shopping', children: [
@@ -2178,56 +2167,23 @@ const menuSpec = [
         ]},
         { label: 'Refinery Operations', icon: 'fa-fire', children: [
             m('Cancel Entry', 'refinery-bill-cancel', 'fa-ban'),
-            m('Combined Entry', 'refinery-bill-all-in-one', 'fa-layer-group'),
             m('Edit Entry', 'refinery-bill-edit', 'fa-pen'),
             m('New Refinery Entry', 'refinery-bill-new-entry', 'fa-file-circle-plus', 'Shift+Alt+Y'),
             m('Refinery Return', 'refinery-bill-returns', 'fa-rotate-left', 'Ctrl+Shift+Y'),
             m('Edit Return', 'refinery-bill-returns-edit', 'fa-pen-to-square')
         ]},
         { label: 'Repair & Remake', icon: 'fa-recycle', children: [
-            { label: 'Repair Slip', icon: 'fa-receipt', children: [
-                { label: 'Receive from Customer', icon: 'fa-file-import', children: [
-                    m('New', 'repair-slip-receive-customer', 'fa-file-circle-plus'),
-                    m('Edit', 'repair-slip-receive-customer-edit', 'fa-pen'),
-                    m('Cancel', 'repair-slip-receive-customer-cancel', 'fa-ban'),
-                    m('Reprint', 'repair-slip-receive-customer-reprint', 'fa-print')
-                ]},
-                { label: 'Return to Customer', icon: 'fa-file-export', children: [
-                    m('New', 'repair-slip-return-customer', 'fa-file-circle-plus'),
-                    m('Edit', 'repair-slip-return-customer-edit', 'fa-pen'),
-                    m('Cancel', 'repair-slip-return-customer-cancel', 'fa-ban'),
-                    m('Reprint', 'repair-slip-return-customer-reprint', 'fa-print')
-                ]}
-            ]},
-            { label: 'Issue to Goldsmith', icon: 'fa-file-export', children: [
-                m('New', 'remake-issue-memo-to-smith', 'fa-file-circle-plus'),
-                m('Edit', 'remake-issue-memo-to-smith-edit', 'fa-pen'),
-                m('Cancel', 'remake-issue-memo-to-smith-cancel', 'fa-ban'),
-                m('Reprint', 'remake-issue-memo-to-smith-reprint', 'fa-print')
-            ]},
             { label: 'Receive from Customer', icon: 'fa-file-import', children: [
-                m('New', 'remake-rcpt-memo-to-party', 'fa-file-circle-plus'),
-                m('Edit', 'remake-rcpt-memo-to-party-edit', 'fa-pen'),
-                m('Cancel', 'remake-rcpt-memo-to-party-cancel', 'fa-ban'),
-                m('Reprint', 'remake-rcpt-memo-to-party-reprint', 'fa-print')
-            ]},
-            { label: 'Receive from Goldsmith', icon: 'fa-file-import', children: [
-                m('New', 'remake-rcpt-memo-from-smith', 'fa-file-circle-plus'),
-                m('Edit', 'remake-rcpt-memo-from-smith-edit', 'fa-pen'),
-                m('Cancel', 'remake-rcpt-memo-from-smith-cancel', 'fa-ban'),
-                m('Reprint', 'remake-rcpt-memo-from-smith-reprint', 'fa-print')
-            ]},
-            { label: 'Repair Completion', icon: 'fa-rotate-left', children: [
-                m('New', 'remake-repair-return', 'fa-file-circle-plus'),
-                m('Edit', 'remake-repair-return-edit', 'fa-pen'),
-                m('Cancel', 'remake-repair-return-cancel', 'fa-ban'),
-                m('Reprint', 'remake-repair-return-reprint', 'fa-print')
+                m('New', 'repair-slip-receive-customer', 'fa-file-circle-plus'),
+                m('Edit', 'repair-slip-receive-customer-edit', 'fa-pen'),
+                m('Cancel', 'repair-slip-receive-customer-cancel', 'fa-ban'),
+                m('Reprint', 'repair-slip-receive-customer-reprint', 'fa-print')
             ]},
             { label: 'Return to Customer', icon: 'fa-file-export', children: [
-                m('New', 'remake-issue-memo-to-party', 'fa-file-circle-plus'),
-                m('Edit', 'remake-issue-memo-to-party-edit', 'fa-pen'),
-                m('Cancel', 'remake-issue-memo-to-party-cancel', 'fa-ban'),
-                m('Reprint', 'remake-issue-memo-to-party-reprint', 'fa-print')
+                m('New', 'repair-slip-return-customer', 'fa-file-circle-plus'),
+                m('Edit', 'repair-slip-return-customer-edit', 'fa-pen'),
+                m('Cancel', 'repair-slip-return-customer-cancel', 'fa-ban'),
+                m('Reprint', 'repair-slip-return-customer-reprint', 'fa-print')
             ]}
         ]},
         { label: 'Sales Invoice', icon: 'fa-cart-shopping', children: [
@@ -2249,24 +2205,25 @@ const menuSpec = [
             m('Print Return', 'sales-return-bill-reprint', 'fa-print'),
             m('Cancel Return', 'sales-return-bill-cancel', 'fa-ban')
         ]},
-        { label: 'Chitty Management', icon: 'fa-list', children: [
-            m('Close Scheme', 'scheme-details-scheme-finished', 'fa-check-double'),
-            m('Collection', 'scheme-details-scheme-collection', 'fa-money-bill-wave', 'Ctrl+L'),
-            m('Interest', 'scheme-details-interest-posting', 'fa-percent'),
-            m('POS Sync', 'scheme-details-pos-upload', 'fa-upload'),
-            m('Passbook Print', 'scheme-details-pass-book-print', 'fa-book-open'),
-            m('Refund', 'scheme-details-scheme-part-refund', 'fa-money-bill-transfer'),
-            m('Register Customer', 'scheme-details-customer-registration', 'fa-user-plus', 'Ctrl+M')
-        ]},
         { label: 'Staff Management', icon: 'fa-user-tie', children: [
+            m('Staff Master', 'staff-adding', 'fa-user-plus'),
             m('Attendance Log', 'staff-log-update', 'fa-clipboard-check'),
             m('Leave Management', 'staff-leave-entry', 'fa-calendar-minus'),
             m('Staff Entry', 'staff-transaction', 'fa-right-left'),
-            m('Weight Handling', 'staff-wgt-transaction', 'fa-weight-scale')
+            m('Weight Handling', 'staff-wgt-transaction', 'fa-weight-scale'),
+            m('Staff Payroll', 'staff-payroll', 'fa-money-check-dollar'),
+            { label: 'HR & Recruitment', icon: 'fa-address-card', children: [
+                m('Candidate Register', 'hr-candidates', 'fa-users'),
+                m('Offer Letter', 'hr-offer-letter', 'fa-envelope-open-text'),
+                m('Appointment Letter', 'hr-appointment-letter', 'fa-file-signature'),
+                m('Resignation Letter', 'hr-resignation-letter', 'fa-person-walking-arrow-right'),
+                m('Relieving Letter', 'hr-relieving-letter', 'fa-file-circle-check'),
+                m('Experience Letter', 'hr-experience-letter', 'fa-certificate')
+            ]},
+            m('Staff Reports', 'staff-reports', 'fa-chart-column')
         ]},
         { label: 'Stock Management', icon: 'fa-arrows-rotate', children: [
             m('Barcode Transfer', 'item-stock-adjustment-stock-transfer-barcode', 'fa-barcode', 'Ctrl+Alt+A'),
-            m('Bulk Transfer', 'item-stock-adjustment-stock-transfer-multi-entry', 'fa-table-list'),
             m('Cancel Adjustment', 'item-stock-adjustment-cancel', 'fa-ban'),
             m('Edit Adjustment', 'item-stock-adjustment-edit', 'fa-pen-to-square'),
             m('Stock Adjustment', 'item-stock-adjustment-stock-add-less', 'fa-plus-minus', 'Shift+Alt+K'),
@@ -2308,10 +2265,8 @@ const menuSpec = [
             m('Deposit Transactions', 'party-wgt-deposit-reports-transactions', 'fa-right-left')
         ]},
         { label: 'Goldsmith Analytics', icon: 'fa-hammer', children: [
-            m('Fixing Status', 'goldsmith-reports-fix-unfix-report', 'fa-wrench'),
             m('Goldsmith Ledger', 'goldsmith-reports-smith-ledger', 'fa-book'),
             m('Goldsmith List', 'goldsmith-reports-smith-list', 'fa-users'),
-            m('Lot Tracking', 'goldsmith-reports-lot-no-report', 'fa-hashtag'),
             m('Pending Work Ageing', 'goldsmith-reports-ageing-report', 'fa-hourglass-half'),
             m('Work Summary', 'goldsmith-reports-smith-trans-summary', 'fa-chart-simple'),
             m('Work Transactions', 'goldsmith-reports-transactions', 'fa-right-left'),
@@ -2331,13 +2286,10 @@ const menuSpec = [
             m('Stock Register', 'tax-reports-stock-register', 'fa-boxes-stacked')
         ]},
         { label: 'Inventory Reports', icon: 'fa-box', children: [
-            m('Cost List', 'item-reports-cost-list', 'fa-list'),
             m('Item History', 'stock-item-history', 'fa-clock-rotate-left'),
             m('Item Profit', 'item-reports-itemwise-profit', 'fa-chart-pie'),
-            m('Model Transfer', 'item-reports-model-transfer-report', 'fa-right-left'),
             m('Rate History', 'item-reports-rate-history', 'fa-timeline'),
             m('Rate Report', 'item-reports-item-rate-report', 'fa-indian-rupee-sign'),
-            m('Reorder Alert', 'item-reports-reorder-level', 'fa-arrow-down-short-wide'),
             m('Stock & Weight', 'item-reports-item-stock-party-wgt-report', 'fa-scale-balanced'),
             m('Stock Adjustment', 'item-reports-item-adjustment', 'fa-sliders'),
             m('Stock Change Report', 'item-reports-item-add-less-report', 'fa-plus-minus'),
@@ -2349,14 +2301,9 @@ const menuSpec = [
         ]},
         { label: 'Jewellery Analytics', icon: 'fa-ring', children: [
             m('Account Summary', 'jewellery-reports-ac-summary', 'fa-book'),
-            m('Email Jewellery Report', 'jewellery-reports-send-mail-to-jewl', 'fa-envelope'),
-            m('Extra Charges Report', 'jewellery-reports-extra-amt-report', 'fa-indian-rupee-sign'),
-            m('Item Movement Report', 'jewellery-reports-sales-purchase-item-report', 'fa-file-invoice'),
             m('Jewellery Ledger', 'jewellery-reports-jewellery-ledger', 'fa-book'),
             m('Jewellery Summary', 'jewellery-reports-jewl-trans-summary', 'fa-chart-simple'),
             m('Jewellery Transactions', 'jewellery-reports-transactions', 'fa-right-left'),
-            m('Profit Analysis', 'jewellery-reports-profit-report', 'fa-chart-pie'),
-            m('Stock Ageing', 'jewellery-reports-ageing-report', 'fa-hourglass-half'),
             m('TDS Report', 'jewellery-reports-tds-report', 'fa-file-circle-check'),
             m('Weight Analysis', 'jewellery-reports-wgt-amt-analysis', 'fa-chart-line'),
             m('Weight Summary', 'jewellery-reports-wgt-amt-summary', 'fa-scale-balanced')
@@ -2370,9 +2317,7 @@ const menuSpec = [
             m('Order Search', 'order-reports-order-enquiry', 'fa-magnifying-glass'),
             m('Pending Details', 'order-reports-pending-details', 'fa-list-ul'),
             m('Pending Orders', 'order-reports-pending-register', 'fa-clock'),
-            m('Returned Orders', 'order-reports-order-returns', 'fa-rotate-left'),
-            m('Sample Stock', 'order-reports-sample-stock-register', 'fa-boxes-stacked'),
-            m('Send to Head Office', 'order-reports-send-mail-to-ho', 'fa-envelope', 'Ctrl+E')
+            m('Returned Orders', 'order-reports-order-returns', 'fa-rotate-left')
         ]},
         { label: 'Other Item Reports', icon: 'fa-folder-open', children: [
             m('Purchase Ledger', 'other-item-reports-purchase-book', 'fa-book-open'),
@@ -2388,6 +2333,7 @@ const menuSpec = [
             m('Daily Report', 'other-reports-day-report', 'fa-calendar-day'),
             m('Daily Summary', 'other-reports-daily-all-report', 'fa-print', 'Ctrl+F12'),
             m('Financial Summary', 'other-reports-stock-asset-liablity-expense-report', 'fa-scale-balanced'),
+            m('Detailed Balance Sheet', 'other-reports-detailed-balance-sheet', 'fa-scale-balanced'),
             m('Malayalam Report', 'other-reports-daysummary-malayalam', 'fa-language'),
             m('Month End Report', 'other-reports-month-end-report', 'fa-calendar-check'),
             m('Print All Reports', 'other-reports-all-report-print', 'fa-print'),
@@ -2395,11 +2341,10 @@ const menuSpec = [
             m('Term Report', 'other-reports-term-summary-malayalam', 'fa-language')
         ]},
         { label: 'Purchase Analytics', icon: 'fa-chart-column', children: [
-            m('Credit Purchase Balance', 'supplier-reports-ac-payable', 'fa-money-bill-transfer'),
-            m('Purchase Ledger', 'purchase-reports-purchase-book', 'fa-book'),
             m('Purchase Register', 'purchase-reports-purchase-register', 'fa-clipboard-list'),
+            m('Purchase Ledger', 'purchase-reports-purchase-book', 'fa-book'),
             m('Purchase Return Register', 'purchase-reports-purchase-return-register', 'fa-clipboard-check'),
-            m('Purchase Verification', 'purchase-reports-purchase-check-list', 'fa-list-check')
+            m('Credit Purchase Balance', 'supplier-reports-ac-payable', 'fa-money-bill-transfer')
         ]},
         { label: 'Receipt Analytics', icon: 'fa-hand-holding-dollar', children: [
             m('Receipts & Payments', 'receipt-analytics-rcpt-pmnt-report', 'fa-receipt'),
@@ -2418,6 +2363,7 @@ const menuSpec = [
         { label: 'Refinery Analytics', icon: 'fa-fire', children: [
             m('Account Summary', 'refinery-reports-ac-summary', 'fa-book'),
             m('Loss Comparison Report', 'refinery-reports-less-comparison-report', 'fa-scale-balanced'),
+            m('Refinery Profit Report', 'refinery-reports-profit-report', 'fa-chart-line'),
             m('Refinery Analysis', 'refinery-reports-analysis', 'fa-magnifying-glass-chart'),
             m('Refinery Summary', 'refinery-reports-refiners-summary', 'fa-chart-pie'),
             m('Refinery Transactions', 'refinery-reports-entry-report', 'fa-file-lines')
@@ -2428,22 +2374,17 @@ const menuSpec = [
             m('Returned Repairs', 'remake-reports-remake-returns', 'fa-rotate-left')
         ]},
         { label: 'Sales Analytics', icon: 'fa-chart-line', children: [
+            m('Sales Register', 'sales-reports-sales-register', 'fa-clipboard-list'),
+            m('Sales Ledger', 'sales-reports-sales-book', 'fa-book', 'Shift+Alt+R'),
+            m('Sales Return Register', 'sales-reports-sales-return-register', 'fa-clipboard-check'),
+            m('Sales Return Ledger', 'sales-reports-sales-return-book', 'fa-rotate-left'),
             m('Barcode Profit Analysis', 'sales-reports-barcode-profit-report', 'fa-chart-pie'),
             m('Barcode Sales Register', 'sales-reports-barcode-register', 'fa-barcode'),
-            m('Delivery Tracking', 'sales-reports-delivery-status-report', 'fa-truck-fast'),
-            m('Loyalty Points Report', 'sales-reports-point-card-points', 'fa-credit-card'),
             m('Making Charge Profit', 'sales-reports-mc-profit-report', 'fa-percent'),
+            m('MC Percentage Report', 'sales-reports-mc-percentage-report', 'fa-percent'),
             m('Monthly Sales Report', 'sales-reports-monthly-sales', 'fa-calendar-days'),
-            m('Net Sales Summary', 'sales-reports-net-sales-report', 'fa-chart-column'),
             m('Salesman Category Report', 'sales-reports-salesman-category', 'fa-user-tag'),
-            m('Sales Ledger', 'sales-reports-sales-book', 'fa-book', 'Shift+Alt+R'),
-            m('Sales Register', 'sales-reports-sales-register', 'fa-clipboard-list'),
-            m('Sales Return Ledger', 'sales-reports-sales-return-book', 'fa-rotate-left'),
-            m('Sales Return Register', 'sales-reports-sales-return-register', 'fa-clipboard-check'),
-            m('Sales Verification', 'sales-reports-sales-check-list', 'fa-list-check'),
-            m('Tagged Items List', 'sales-reports-marked-list', 'fa-list'),
-            m('VA Report', 'sales-reports-va-check-report', 'fa-file-lines'),
-            m('VA Verification', 'sales-reports-va-check-list', 'fa-list-check')
+            m('VA Report', 'sales-reports-va-check-report', 'fa-file-lines')
         ]},
         { label: 'Staff Analytics', icon: 'fa-user-tie', children: [
             m('Activity Log', 'staff-reports-staff-log-report', 'fa-clipboard-check'),
@@ -2462,14 +2403,7 @@ const menuSpec = [
         ]},
         { label: 'Stock List', icon: 'fa-list', children: [
             m('Group List', 'stock-list-group', 'fa-layer-group'),
-            m('Item List', 'stock-list-items', 'fa-box', 'Shift+Alt+T'),
-            m('Stock As On Date', 'stock-list-upto-date', 'fa-calendar-check'),
-            m('Stock Checklist', 'stock-list-stock-check-list', 'fa-list-check'),
-            m('Stock Type', 'stock-list-stock-type-wise', 'fa-tags', 'Ctrl+Alt+T'),
-            { label: 'Stock Audit', icon: 'fa-clipboard-check', children: [
-                m('Verification Report', 'stock-list-stock-verification-report', 'fa-file-lines'),
-                m('Verification Entry', 'stock-list-stock-verification-entry', 'fa-pen-to-square')
-            ]}
+            m('Item List', 'stock-list-items', 'fa-box', 'Shift+Alt+T')
         ]},
         { label: 'Supplier Analytics', icon: 'fa-truck', children: [
             m('Account Summary', 'supplier-reports-ac-summary', 'fa-book'),
@@ -2477,6 +2411,25 @@ const menuSpec = [
             m('Due Date Report', 'supplier-reports-duedate-report', 'fa-calendar-check'),
             m('Payables', 'supplier-reports-ac-payable', 'fa-money-bill-transfer'),
             m('Supplier List', 'supplier-reports-supplier-list', 'fa-list')
+        ]},
+        { label: 'CRM', icon: 'fa-users-gear', children: [
+            m('AI-powered Customer Persona Creation', 'crm-customer-personas', 'fa-user-tag'),
+            m('AI-enabled Campaigns', 'crm-campaigns', 'fa-bullhorn'),
+            m('Lead & Data Management', 'crm-lead-data', 'fa-database'),
+            m('Visitor & Caller Insights', 'crm-visitor-caller-insights', 'fa-phone-volume'),
+            m('Sales & Vendor Performance Analysis', 'crm-performance', 'fa-chart-line'),
+            m('Multi-platform Chatbot', 'crm-chatbot', 'fa-comments')
+        ]},
+        { label: 'Inventory Optimization', icon: 'fa-boxes-stacked', children: [
+            m('Optimization Dashboard', 'inventory-optimization-dashboard', 'fa-gauge-high'),
+            m('Identify & Liquidate Non-moving Stock', 'inventory-dead-stock', 'fa-box-open'),
+            m('Replace Slow-moving with High-performing Items', 'inventory-fast-movers', 'fa-arrow-trend-up'),
+            m('Stock Turnover & Cash Flow', 'inventory-stock-turnover', 'fa-coins'),
+            m('Automatic Task Creation & Assignment', 'inventory-auto-tasks', 'fa-list-check'),
+            m('Department Task Tracking', 'inventory-task-tracking', 'fa-diagram-project'),
+            m('Real-time Updates & Alerts', 'inventory-alerts', 'fa-bell'),
+            m('Vendor Performance Management', 'inventory-vendor-performance', 'fa-truck-fast'),
+            m('Owner / Manager Dashboard', 'inventory-owner-dashboard', 'fa-chart-pie')
         ]},
         m('Term Report', 'term-summary', 'fa-calendar-days', 'Ctrl+T'),
         { label: 'GST Reports', icon: 'fa-file-invoice-dollar', children: [
@@ -2487,11 +2440,34 @@ const menuSpec = [
         ]},
     ]},
     { label: 'Accounts Reports', items: [
-        m('Day Book', 'day-book', 'fa-calendar-day'),
-        m('Ledger', 'ledger', 'fa-book'),
-        m('Trial Balance', 'trial-balance', 'fa-scale-balanced'),
-        m('Profit & Loss', 'profit-loss', 'fa-chart-pie'),
-        m('Balance Sheet', 'balance-sheet', 'fa-file-invoice-dollar')
+        m('Cash Book', 'accounts-reports-cash-book', 'fa-money-bill-wave', 'Alt+H'),
+        m('Bank Statement', 'accounts-reports-bank-book', 'fa-building-columns'),
+        m('Account Ledger', 'accounts-reports-ac-ledger', 'fa-book-open'),
+        m('Daybook', 'day-book', 'fa-calendar-day'),
+        m('All Transactions', 'accounts-reports-all-trans-report', 'fa-file-lines'),
+        m('Journal Report', 'accounts-reports-journal', 'fa-bookmark'),
+        m('Post Dated Cheque', 'accounts-reports-pdc-report', 'fa-money-check'),
+        { label: 'Trial Balance', icon: 'fa-scale-balanced', children: [
+            m('Upto a date', 'accounts-reports-trial-balance-upto-date', 'fa-calendar-check'),
+            m('Between two dates', 'accounts-reports-trial-balance-between-dates', 'fa-calendar-week')
+        ]},
+        { label: 'Profit & Loss', icon: 'fa-chart-pie', children: [
+            m('Upto a Date', 'accounts-reports-profit-loss-upto-date', 'fa-calendar-check'),
+            m('For a Period', 'accounts-reports-profit-loss-for-period', 'fa-calendar-week')
+        ]},
+        m('Balance Sheet', 'accounts-reports-balance-sheet', 'fa-file-invoice-dollar'),
+        m('Customer Balance', 'accounts-reports-ac-receivable-payable-summary', 'fa-scale-balanced', 'Alt+F5'),
+        m('Receipts & Payments', 'accounts-reports-rcpt-pmnt-report', 'fa-receipt', 'Alt+P'),
+        m('Yearly Cash Balance', 'accounts-reports-yearly-cash-balance', 'fa-calendar-days'),
+        m('Cash Flow Statement', 'accounts-reports-cash-flow-statement', 'fa-chart-line'),
+        m('Average Profit', 'accounts-reports-avg-rate-profit', 'fa-chart-pie'),
+        m('Chart of Accounts', 'accounts-reports-chart-of-accounts', 'fa-chart-bar'),
+        m('Group Ledger', 'accounts-reports-group-ledger', 'fa-layer-group'),
+        m('Group Summary', 'accounts-reports-group-ac-summary', 'fa-object-group', 'Alt+F9'),
+        m('Detailed Group List', 'accounts-reports-groupwise-expanded-list', 'fa-list'),
+        m('Suspense Ledger', 'accounts-reports-suspense-ac-ledger', 'fa-circle-question'),
+        m('Inactive Days', 'accounts-reports-non-transactional-days-report', 'fa-calendar-xmark'),
+        m('Data Validation', 'accounts-reports-integrity-checking', 'fa-shield-halved')
     ]},
     { label: 'Sheme/Chitty', items: [
         { label: 'Chit Scheme', icon: 'fa-list-check', children: [
@@ -2505,6 +2481,7 @@ const menuSpec = [
             m('Close Scheme', 'scheme-details-scheme-finished', 'fa-check-double'),
             m('Collection', 'scheme-details-scheme-collection', 'fa-money-bill-wave', 'Ctrl+L'),
             m('Interest', 'scheme-details-interest-posting', 'fa-percent'),
+            m('POS Sync', 'scheme-details-pos-upload', 'fa-upload'),
             m('Passbook Print', 'scheme-details-pass-book-print', 'fa-book-open'),
             m('Refund', 'scheme-details-scheme-part-refund', 'fa-money-bill-transfer'),
             m('Register Customer', 'scheme-details-customer-registration', 'fa-user-plus', 'Ctrl+M')
@@ -2512,7 +2489,9 @@ const menuSpec = [
         { label: 'Scheme Analytics', icon: 'fa-diagram-project', children: [
             m('Collection Report', 'scheme-reports-scheme-collection', 'fa-money-bill-wave'),
             m('Commission Report', 'scheme-reports-colln-commision-report', 'fa-percent'),
-            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul')
+            m('Maturity Report', 'scheme-reports-scheme-maturity', 'fa-calendar-check'),
+            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul'),
+            m('Scheme Ledger', 'scheme-reports-scheme-book', 'fa-book')
         ]},
         { label: 'Chit Reports', icon: 'fa-list-ul', children: [
             m('Collection Chart', 'kuri-reports-chart', 'fa-chart-line'),
@@ -2533,7 +2512,7 @@ const menuSpec = [
         m('Contact Directory', 'phone-book', 'fa-address-book'),
         m('Data Backup & Restore', 'backup', 'fa-database'),
         m('Local Backup', 'local-backup', 'fa-hard-drive'),
-        m('Day Lock', 'data-transfer', 'fa-lock'),
+        m('Data Transfer', 'data-transfer', 'fa-right-left'),
         m('Financial Year Closing', 'year-end-account-close', 'fa-calendar-check'),
         m('System Administration', 'administration', 'fa-user-gear'),
         m('Task Reminders', 'reminder', 'fa-bell'),
@@ -2628,11 +2607,6 @@ const operationsPriorityOrder = [
     'Staff Management',
     'Other Item Transactions',
     'Refinery Operations',
-    'Customer Greetings',
-    'Customer Weight Deposit',
-    'Repair & Remake',
-    'Stock Management',
-    'Chitty Management',
 ];
 
 const reportsPriorityOrder = [
@@ -2641,27 +2615,18 @@ const reportsPriorityOrder = [
     'Receipt Analytics',
     'Payment Analytics',
     'Order Analytics',
+    'Diamond Reports',
     'Goldsmith Analytics',
     'Jewellery Analytics',
+    'Financial Reports',
     'Barcode Reports',
     'Stock Ledger',
     'Stock List',
     'Inventory Reports',
+    'Chitty Management Analytics',
     'Staff Analytics',
     'Refinery Analytics',
     'Repair Analytics',
-    'Cash Balance',
-    'Customer Analytics',
-    'Deposit Analytics',
-    'GST & Tax Reports',
-    'Other Item Reports',
-    'Other Reports',
-    'Supplier Analytics',
-    'CRM',
-    'Inventory Optimization',
-    'Term Report',
-    'GST Reports',
-    'Branch Reports',
 ];
 
 (function applyOperationsPriority() {
