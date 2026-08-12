@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Purchase Bill{% endblock %}
+{% block extra_head %}
+<style>
+  .pb-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px 16px; }
+  .pb-grid .field { margin-bottom: 0; }
+  #itemsTable input { padding: 4px 6px; font-size: .82rem; }
+  #itemsTable th { font-size: .74rem; white-space: nowrap; }
+  #itemsTable td { padding: 3px; }
+  .totals { display:flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: .92rem; }
+  .totals strong { color: var(--gold); }
+</style>
+{% endblock %}
+{% block content %}
+<h1>Purchase Bill</h1>
+<div id="msg"></div>
+
+<div class="card">
+  <h3>Bill Header</h3>
+  <div class="pb-grid">
+    <div class="field"><label>Doc No (blank = auto)</label><input id="doc_no"></div>
+    <div class="field"><label>Bill Date</label><input type="date" id="bill_date"></div>
+    <div class="field"><label>Supplier Bill No</label><input id="supp_bill_no"></div>
+    <div class="field"><label>Supplier Code</label><input id="sup_code" list="supplierList" autocomplete="off"></div>
+    <datalist id="supplierList"></datalist>
+    <div class="field"><label>Supplier Name</label><input id="sup_name"></div>
+    <div class="field"><label>Address</label><input id="address"></div>
+    <div class="field"><label>Mobile</label><input id="mobile"></div>
+    <div class="field"><label>PAN</label><input id="pan"></div>
+    <div class="field"><label>State Code</label><input id="state_code"></div>
+    <div class="field"><label>Salesman Code (required)</label><input id="sm_code" required></div>
+    <div class="field"><label>Counter</label><input id="counter"></div>
+    <div class="field"><label>Bill Type</label><input id="btype"></div>
+    <div class="field"><label>Gold Rate</label><input id="gold_rate" type="number" step="0.01" value="{{ gold_rate }}"></div>
+    <div class="field"><label>Tax %</label><input id="tax_perc" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Discount %</label><input id="disc_perc" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Discount Amt</label><input id="discount" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Round</label><input id="round" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>HMC</label><input id="hmc" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>TCS %</label><input id="tcs_perc" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Paid Amount</label><input id="paid_amt" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Others</label><input id="others" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Cheque Amount</label><input id="chq_amt" type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Cheque Bank</label><input id="chq_bank"></div>
+    <div class="field"><label>Cheque No</label><input id="chq_no"></div>
+    <div class="field"><label>Cheque Date</label><input type="date" id="chq_date"></div>
+    <div class="field"><label>Due Date</label><input type="date" id="due_date"></div>
+    <div class="field"><label>Note</label><input id="note"></div>
+    <div class="field"><label><input type="checkbox" id="interstate" style="width:auto;"> Interstate</label></div>
+    <div class="field"><label><input type="checkbox" id="tax_external" style="width:auto;"> Tax External</label></div>
+    <div class="field"><label><input type="checkbox" id="tax_on_mc" style="width:auto;"> Tax on MC only</label></div>
+    <div class="field"><label><input type="checkbox" id="chq_pdc" style="width:auto;"> Cheque PDC</label></div>
+    <div class="field"><label><input type="checkbox" id="manual_bill_no" style="width:auto;"> Manual Bill No</label></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Items</h3>
+  <div style="overflow-x:auto;">
+  <table id="itemsTable">
+    <thead><tr>
+      <th>Code</th><th>Name</th><th>Purity</th><th>Qty</th><th>Weight</th><th>Rate</th>
+      <th>Less Wgt</th><th>Less %</th><th>MC</th><th>Stone Wgt</th><th>Stone Price</th><th>Amount</th><th></th>
+    </tr></thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
+  </div>
+  <button type="button" class="btn btn-sm" onclick="addItemRow()">+ Add Item Row</button>
+</div>
+
+<div class="card">
+  <h3>Exchange (Old Gold) Items</h3>
+  <div style="overflow-x:auto;">
+  <table id="exchTable">
+    <thead><tr><th>Code</th><th>Name</th><th>Qty</th><th>Weight</th><th>Rate</th><th>Amount</th><th></th></tr></thead>
+    <tbody id="exchBody"></tbody>
+  </table>
+  </div>
+  <button type="button" class="btn btn-sm" onclick="addExchRow()">+ Add Exchange Row</button>
+</div>
+
+<div class="card">
+  <div class="totals">
+    <div>Bill Total: <strong id="totBillTotal">0.00</strong></div>
+    <div>Exchange Total: <strong id="totExchTotal">0.00</strong></div>
+  </div>
+  <button type="button" class="btn" onclick="saveBill()" style="margin-top:14px;">Save Purchase Bill</button>
+</div>
+
+<script>
+function csrfToken() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+function itemRowHtml() {
+  return `<tr>
+    <td><input class="i-code" style="width:80px;"></td>
+    <td><input class="i-name" style="width:110px;"></td>
+    <td><input class="i-purity" style="width:60px;"></td>
+    <td><input class="i-qty" type="number" style="width:55px;" value="1"></td>
+    <td><input class="i-weight" type="number" step="0.001" style="width:75px;" oninput="recalcRow(this)"></td>
+    <td><input class="i-rate" type="number" step="0.01" style="width:75px;" oninput="recalcRow(this)"></td>
+    <td><input class="i-lesswgt" type="number" step="0.001" style="width:65px;"></td>
+    <td><input class="i-lessperc" type="number" step="0.01" style="width:55px;"></td>
+    <td><input class="i-mcharge" type="number" step="0.01" style="width:65px;" value="0"></td>
+    <td><input class="i-stwgt" type="number" step="0.001" style="width:65px;" value="0"></td>
+    <td><input class="i-stprice" type="number" step="0.01" style="width:65px;" value="0"></td>
+    <td><input class="i-amount" type="number" step="0.01" style="width:80px;" oninput="recalcTotals()"></td>
+    <td><button type="button" class="btn btn-sm danger" onclick="this.closest('tr').remove(); recalcTotals();">x</button></td>
+  </tr>`;
+}
+function exchRowHtml() {
+  return `<tr>
+    <td><input class="e-code" style="width:80px;"></td>
+    <td><input class="e-name" style="width:110px;"></td>
+    <td><input class="e-qty" type="number" style="width:55px;" value="1"></td>
+    <td><input class="e-weight" type="number" step="0.001" style="width:75px;" oninput="recalcExchRow(this)"></td>
+    <td><input class="e-rate" type="number" step="0.01" style="width:75px;" oninput="recalcExchRow(this)"></td>
+    <td><input class="e-amount" type="number" step="0.01" style="width:80px;" oninput="recalcTotals()"></td>
+    <td><button type="button" class="btn btn-sm danger" onclick="this.closest('tr').remove(); recalcTotals();">x</button></td>
+  </tr>`;
+}
+function addItemRow() { document.getElementById('itemsBody').insertAdjacentHTML('beforeend', itemRowHtml()); }
+function addExchRow() { document.getElementById('exchBody').insertAdjacentHTML('beforeend', exchRowHtml()); }
+function recalcRow(el) {
+  const tr = el.closest('tr');
+  const wgt = parseFloat(tr.querySelector('.i-weight').value) || 0;
+  const rate = parseFloat(tr.querySelector('.i-rate').value) || 0;
+  tr.querySelector('.i-amount').value = (wgt * rate).toFixed(2);
+  recalcTotals();
+}
+function recalcExchRow(el) {
+  const tr = el.closest('tr');
+  const wgt = parseFloat(tr.querySelector('.e-weight').value) || 0;
+  const rate = parseFloat(tr.querySelector('.e-rate').value) || 0;
+  tr.querySelector('.e-amount').value = (wgt * rate).toFixed(2);
+  recalcTotals();
+}
+function recalcTotals() {
+  let bt = 0;
+  document.querySelectorAll('#itemsBody .i-amount').forEach(i => bt += parseFloat(i.value) || 0);
+  let et = 0;
+  document.querySelectorAll('#exchBody .e-amount').forEach(i => et += parseFloat(i.value) || 0);
+  document.getElementById('totBillTotal').textContent = bt.toFixed(2);
+  document.getElementById('totExchTotal').textContent = et.toFixed(2);
+}
+addItemRow();
+
+document.getElementById('sup_code').addEventListener('change', async function() {
+  const q = this.value.trim();
+  if (!q) return;
+  const res = await fetch(`{% url 'purchase_supplier_search' %}?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  if (data.results && data.results.length) {
+    const r = data.results.find(r => r.code.trim().toUpperCase() === q.toUpperCase()) || data.results[0];
+    document.getElementById('sup_code').value = r.code.trim();
+    document.getElementById('sup_name').value = r.name.trim();
+    document.getElementById('address').value = r.addr1 || '';
+    document.getElementById('mobile').value = r.mobile || '';
+  }
+});
+
+function collectItems(bodyId, prefix) {
+  const rows = [];
+  document.querySelectorAll(`#${bodyId} tr`).forEach(tr => {
+    const get = cls => (tr.querySelector(`.${prefix}-${cls}`) || {}).value || '';
+    if (!get('code').trim()) return;
+    rows.push({
+      code: get('code'), name: get('name'), purity: get('purity'),
+      qty: get('qty'), weight: get('weight'), rate: get('rate'),
+      lesswgt: get('lesswgt'), lessperc: get('lessperc'), mcharge: get('mcharge'),
+      stwgt: get('stwgt'), stprice: get('stprice'), amount: get('amount'),
+    });
+  });
+  return rows;
+}
+
+async function saveBill() {
+  const val = id => document.getElementById(id).value;
+  const checked = id => document.getElementById(id).checked;
+
+  const payload = {
+    mode: 'bill', doc_no: val('doc_no'), supp_bill_no: val('supp_bill_no'),
+    bill_date: val('bill_date'), sup_code: val('sup_code'), sup_name: val('sup_name'),
+    address: val('address'), mobile: val('mobile'), pan: val('pan'), state_code: val('state_code'),
+    sm_code: val('sm_code'), counter: val('counter'), btype: val('btype'), note: val('note'),
+    due_date: val('due_date'), chq_bank: val('chq_bank'), chq_no: val('chq_no'), chq_date: val('chq_date'),
+    chq_pdc: checked('chq_pdc') ? 'Y' : 'N', interstate: checked('interstate') ? 'Y' : 'N',
+    tax_external: checked('tax_external') ? 'Y' : 'N', tax_on_mc: checked('tax_on_mc') ? 'Y' : 'N',
+    manual_bill_no: checked('manual_bill_no'),
+    gold_rate: val('gold_rate'), tax_perc: val('tax_perc'), disc_perc: val('disc_perc'),
+    discount: val('discount'), round: val('round'), hmc: val('hmc'), tcs_perc: val('tcs_perc'),
+    chq_amt: val('chq_amt'), paid_amt: val('paid_amt'), ob: 0, others: val('others'),
+    items: collectItems('itemsBody', 'i'),
+    exchange_items: collectItems('exchBody', 'e'),
+  };
+
+  const res = await fetch("{% url 'purchase_bill_save' %}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken()},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  const msg = document.getElementById('msg');
+  if (data.ok) {
+    msg.innerHTML = `<ul class="messages"><li>Saved as ${data.doc_no} (slno ${data.slno})</li></ul>`;
+  } else {
+    msg.innerHTML = `<ul class="messages"><li class="error">${data.message}</li></ul>`;
+  }
+}
+</script>
+{% endblock %}
