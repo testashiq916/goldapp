@@ -340,14 +340,206 @@ const ReportExport = (() => {
     init(btnId, getHeadersFromTable, getRowsFromTable, filenameFn);
   }
 
+  function autoInitReports() {
+    if (typeof document === 'undefined') return;
+    if (!isReportPage()) return;
+
+    polishReportToolbar();
+
+    var table = findExportTable();
+    if (!table) return;
+
+    var btn = findSaveAsButton();
+    if (!btn) btn = addSaveAsButton();
+    if (!btn || btn._reportExportAutoBound || btn._reportExportHandler) return;
+
+    btn._reportExportAutoBound = true;
+    init(btn, function () {
+      return getHeadersFromElement(table);
+    }, function () {
+      return getRowsFromElement(table);
+    }, function () {
+      return buildAutoFilename();
+    });
+  }
+
+  function isReportPage() {
+    var path = String(location.pathname || '').toLowerCase();
+    if (/\/(reports|order-report|item-reports|barcode-list|deposit-reports|staff-reports|tax-report|tds-report)(\/|$)/.test(path)) {
+      return true;
+    }
+    return !!(document.querySelector('table') && (
+      document.querySelector('#btnSaveAs, .btn-save, .report-table, .report-wrap') ||
+      /report|register|book|ledger|summary|list/.test(String(document.title || '').toLowerCase())
+    ));
+  }
+
+  function polishReportToolbar() {
+    hideUnwantedReportFilters();
+    injectReportToolbarStyle();
+  }
+
+  function injectReportToolbarStyle() {
+    if (document.getElementById('report-export-auto-style')) return;
+    var style = document.createElement('style');
+    style.id = 'report-export-auto-style';
+    style.textContent =
+      '.toolbar,.report-toolbar,.filter-toolbar,.top-toolbar,.qbar{color:#fff!important}' +
+      '.toolbar label,.toolbar .tb-lbl,.toolbar .tb-check,.toolbar .title,.toolbar h1,.toolbar h2,.toolbar h3,' +
+      '.report-toolbar label,.report-toolbar .tb-lbl,.report-toolbar .tb-check,.filter-toolbar label,.filter-toolbar .tb-lbl,.filter-toolbar .tb-check{color:#fff!important}' +
+      '.toolbar input,.toolbar select,.toolbar textarea,.toolbar button,.toolbar .btn,' +
+      '.report-toolbar input,.report-toolbar select,.report-toolbar textarea,.report-toolbar button,.report-toolbar .btn{color:initial}' +
+      '.toolbar button,.toolbar .btn,.report-toolbar button,.report-toolbar .btn{color:inherit}' +
+      '.goldapp-report-hidden-filter{display:none!important}' +
+      '.goldapp-auto-saveas{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:6px;background:#176f4a;color:#fff!important;font-weight:700;padding:7px 14px;cursor:pointer}' +
+      '.goldapp-auto-saveas:hover{background:#0f5a3a}';
+    document.head.appendChild(style);
+  }
+
+  function hideUnwantedReportFilters() {
+    var unwanted = ['counter', 'counter and stk cntr', 'stk cntr', 'ic', 'stk type'];
+    var roots = Array.from(document.querySelectorAll('.toolbar,.report-toolbar,.filter-toolbar,.top-toolbar,.qbar,form'));
+
+    roots.forEach(function (root) {
+      Array.from(root.querySelectorAll('label,.tb-lbl,.tb-check,span,div')).forEach(function (node) {
+        var text = normalizeText(node.textContent);
+        if (!text || unwanted.indexOf(text) === -1) return;
+
+        var wrapper = closestFilterWrapper(node, root);
+        if (!wrapper) return;
+
+        clearFilterInputs(wrapper, text);
+        wrapper.classList.add('goldapp-report-hidden-filter');
+      });
+    });
+  }
+
+  function normalizeText(value) {
+    return String(value || '')
+      .replace(/\s*:\s*$/, '')
+      .replace(/\bon\b/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  function closestFilterWrapper(node, root) {
+    var selectors = ['.f-group', '.field', '.form-group', '.filter', '.tb-field', '.input-group', 'label'];
+    for (var i = 0; i < selectors.length; i++) {
+      var found = node.closest(selectors[i]);
+      if (found && root.contains(found)) return found;
+    }
+    return node.parentElement && root.contains(node.parentElement) ? node.parentElement : node;
+  }
+
+  function clearFilterInputs(wrapper, labelText) {
+    Array.from(wrapper.querySelectorAll('input,select,textarea')).forEach(function (input) {
+      if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+      else input.value = '';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    var fieldMap = {
+      counter: ['counter', 'selCounter', 'fCounter'],
+      'counter and stk cntr': ['counter', 'selCounter', 'fCounter', 'cbStkCounter'],
+      'stk cntr': ['cbStkCounter'],
+      ic: ['ic', 'cbIc'],
+      'stk type': ['stktype', 'stkType']
+    };
+    (fieldMap[labelText] || []).forEach(function (id) {
+      var input = document.getElementById(id);
+      if (!input) return;
+      if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+      else input.value = '';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
+
+  function findSaveAsButton() {
+    var byId = document.getElementById('btnSaveAs');
+    if (byId) return byId;
+    return Array.from(document.querySelectorAll('button,input[type="button"],input[type="submit"],a')).find(function (el) {
+      return normalizeText(el.textContent || el.value) === 'save as';
+    }) || null;
+  }
+
+  function addSaveAsButton() {
+    var holder = document.querySelector('.toolbar,.report-toolbar,.filter-toolbar,.top-toolbar,.qbar,form') || document.body;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'btnSaveAs';
+    btn.className = 'goldapp-auto-saveas';
+    btn.textContent = 'Save As';
+    holder.appendChild(btn);
+    return btn;
+  }
+
+  function findExportTable() {
+    var tables = Array.from(document.querySelectorAll('table')).filter(function (table) {
+      return table.offsetParent !== null && getHeadersFromElement(table).length && getRowsFromElement(table).length;
+    });
+    if (!tables.length) return null;
+    tables.sort(function (a, b) {
+      return getRowsFromElement(b).length - getRowsFromElement(a).length;
+    });
+    return tables[0];
+  }
+
+  function getHeadersFromElement(table) {
+    var ths = table.querySelectorAll('thead th, thead td');
+    if (!ths.length) ths = table.querySelectorAll('tr:first-child th, tr:first-child td');
+    return Array.from(ths).filter(isVisibleCell).map(function (th, i) {
+      var label = th.textContent.trim() || ('Column ' + (i + 1));
+      var isNum = th.classList.contains('num') || th.classList.contains('right') || th.style.textAlign === 'right';
+      return [label, '_col' + i, isNum ? 1 : 0];
+    });
+  }
+
+  function getRowsFromElement(table) {
+    var headerCount = getHeadersFromElement(table).length;
+    var bodyRows = table.querySelectorAll('tbody tr');
+    var trs = bodyRows.length ? bodyRows : table.querySelectorAll('tr:not(:first-child)');
+    return Array.from(trs).filter(function (tr) {
+      return tr.offsetParent !== null && tr.querySelectorAll('td,th').length;
+    }).map(function (tr) {
+      var obj = {};
+      var cells = Array.from(tr.querySelectorAll('td,th')).filter(isVisibleCell);
+      cells.slice(0, headerCount || cells.length).forEach(function (td, i) {
+        obj['_col' + i] = td.textContent.trim();
+      });
+      return obj;
+    });
+  }
+
+  function isVisibleCell(cell) {
+    return cell.offsetParent !== null && getComputedStyle(cell).display !== 'none';
+  }
+
+  function getReportTitle() {
+    var titleNode = document.querySelector('.report-title,h1,h2,.title,.page-title');
+    return (titleNode ? titleNode.textContent : document.title || 'Report').replace(/\s+/g, ' ').trim();
+  }
+
+  function buildAutoFilename() {
+    return getReportTitle().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'report';
+  }
+
   var api = {
     init: init,
     open: open,
-    initFromTable: initFromTable
+    initFromTable: initFromTable,
+    autoInitReports: autoInitReports
   };
 
   if (typeof window !== 'undefined') {
     window.ReportExport = api;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(autoInitReports, 0);
+      });
+    } else {
+      setTimeout(autoInitReports, 0);
+    }
   }
 
   return api;
