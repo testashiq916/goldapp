@@ -393,7 +393,7 @@
     background: #e9edf2;
     padding: 5px 8px;
     display: grid;
-    grid-template-columns: 200px 390px 215px 270px 260px;
+    grid-template-columns: 230px 390px 215px 270px 260px;
     gap: 0 12px;
     padding-right: 250px; /* reserve space for right action panel */
     font-size: 14px;
@@ -456,6 +456,32 @@
   .bottom-section input.w50 { width: 50px; }
   .bottom-section input.w80 { width: 82px; }
   .bottom-section select { width: 118px; }
+  .bottom-section #fBillTotal,
+  .bottom-section #fGrandAmt {
+    width: 96px;
+    min-width: 96px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .bottom-section #fTaxPerc,
+  .bottom-section #fTaxAmt {
+    width: 58px;
+    min-width: 58px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .bottom-section #fDiscount {
+    width: 94px;
+    min-width: 94px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .bottom-section #fDiscountPerc {
+    width: 58px;
+    min-width: 58px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
   .bottom-section .row input[type="checkbox"] {
     width: 18px;
     height: 18px;
