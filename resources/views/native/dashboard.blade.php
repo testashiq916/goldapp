@@ -2215,36 +2215,6 @@ const menuSpec = [
         ]},
     ]},
     { label: 'Reports', items: [
-        { label: 'Accounts Reports', icon: 'fa-book', children: [
-            m('Account Ledger', 'accounts-reports-ac-ledger', 'fa-book-open'),
-            m('All Transactions', 'accounts-reports-all-trans-report', 'fa-file-lines'),
-            m('Average Profit', 'accounts-reports-avg-rate-profit', 'fa-chart-pie'),
-            m('Balance Sheet', 'accounts-reports-balance-sheet', 'fa-file-invoice-dollar'),
-            m('Bank Statement', 'accounts-reports-bank-book', 'fa-building-columns'),
-            m('Cash Book', 'accounts-reports-cash-book', 'fa-money-bill-wave', 'Alt+H'),
-            m('Cash Flow Statement', 'accounts-reports-cash-flow-statement', 'fa-chart-line'),
-            m('Chart of Accounts', 'accounts-reports-chart-of-accounts', 'fa-chart-bar'),
-            m('Data Validation', 'accounts-reports-integrity-checking', 'fa-shield-halved'),
-            m('Daybook', 'day-book', 'fa-calendar-day'),
-            m('Detailed Group List', 'accounts-reports-groupwise-expanded-list', 'fa-list'),
-            m('Group Ledger', 'accounts-reports-group-ledger', 'fa-layer-group'),
-            m('Group Summary', 'accounts-reports-group-ac-summary', 'fa-object-group', 'Alt+F9'),
-            m('Inactive Days', 'accounts-reports-non-transactional-days-report', 'fa-calendar-xmark'),
-            m('Journal Report', 'accounts-reports-journal', 'fa-bookmark'),
-            m('Post Dated Cheque', 'accounts-reports-pdc-report', 'fa-money-check'),
-            { label: 'Profit & Loss', icon: 'fa-chart-pie', children: [
-                m('Upto a Date', 'accounts-reports-profit-loss-upto-date', 'fa-calendar-check'),
-                m('For a Period', 'accounts-reports-profit-loss-for-period', 'fa-calendar-week')
-            ]},
-            m('Receipts & Payments', 'accounts-reports-rcpt-pmnt-report', 'fa-receipt', 'Alt+P'),
-            m('Customer Balance', 'accounts-reports-ac-receivable-payable-summary', 'fa-scale-balanced', 'Alt+F5'),
-            m('Suspense Ledger', 'accounts-reports-suspense-ac-ledger', 'fa-circle-question'),
-            { label: 'Trial Balance', icon: 'fa-scale-balanced', children: [
-                m('Upto a date', 'accounts-reports-trial-balance-upto-date', 'fa-calendar-check'),
-                m('Between two dates', 'accounts-reports-trial-balance-between-dates', 'fa-calendar-week')
-            ]},
-            m('Yearly Cash Balance', 'accounts-reports-yearly-cash-balance', 'fa-calendar-days')
-        ]},
         { label: 'Barcode Reports', icon: 'fa-barcode', children: [
             m('Barcode History', 'barcode-reports-barcode-history', 'fa-clock-rotate-left'),
             m('Barcode List', 'barcode-reports-barcode-list', 'fa-list'),
@@ -2255,10 +2225,6 @@ const menuSpec = [
             m('Verification Report', 'barcode-reports-stock-verification-report', 'fa-clipboard-check')
         ]},
         m('Cash Balance', 'cash-balance', 'fa-money-bill-wave', 'Ctrl+H'),
-        { label: 'Chit Reports', icon: 'fa-list-ul', children: [
-            m('Collection Chart', 'kuri-reports-chart', 'fa-chart-line'),
-            m('Collection Summary', 'kuri-reports-collection-report', 'fa-money-bill-wave')
-        ]},
         { label: 'Customer Analytics', icon: 'fa-users', children: [
             m('Account Summary', 'customers-reports-ac-summary', 'fa-book'),
             m('Billwise Receivables', 'customers-reports-billwise-receivable', 'fa-file-circle-dollar'),
@@ -2409,13 +2375,6 @@ const menuSpec = [
             m('Tagged Items List', 'sales-reports-marked-list', 'fa-list'),
             m('VA Report', 'sales-reports-va-check-report', 'fa-file-lines'),
             m('VA Verification', 'sales-reports-va-check-list', 'fa-list-check')
-        ]},
-        { label: 'Chitty Management Analytics', icon: 'fa-diagram-project', children: [
-            m('Collection Report', 'scheme-reports-scheme-collection', 'fa-money-bill-wave'),
-            m('Commission Report', 'scheme-reports-colln-commision-report', 'fa-percent'),
-            m('Maturity Report', 'scheme-reports-scheme-maturity', 'fa-calendar-check'),
-            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul'),
-            m('Scheme Ledger', 'scheme-reports-scheme-book', 'fa-book')
         ]},
         { label: 'Staff Analytics', icon: 'fa-user-tie', children: [
             m('Activity Log', 'staff-reports-staff-log-report', 'fa-clipboard-check'),
@@ -2632,8 +2591,6 @@ const reportsPriorityOrder = [
     'Term Report',
     'GST Reports',
     'Branch Reports',
-    'Accounts Reports',
-    'Chitty Management Analytics',
 ];
 
 (function applyOperationsPriority() {
