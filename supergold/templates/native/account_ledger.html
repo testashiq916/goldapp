@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Account Ledger{% endblock %}
+{% block content %}
+<h1>Account Ledger</h1>
+
+<div class="card">
+  <form method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+    <div class="field" style="margin:0;"><label>Account Code</label><input name="accode" value="{{ code }}" list="acList" autocomplete="off"></div>
+    <datalist id="acList"></datalist>
+    <div class="field" style="margin:0;"><label>From</label><input type="date" name="date1" value="{{ date_from }}"></div>
+    <div class="field" style="margin:0;"><label>To</label><input type="date" name="date2" value="{{ date_to }}"></div>
+    <div class="field" style="margin:0;"><label>Search Particulars</label><input name="search" value="{{ search }}"></div>
+    <div class="field" style="margin:0;"><label>Amount</label><input name="amount" value="{{ amount_search }}"></div>
+    <input type="hidden" name="show" value="1">
+    <button type="submit" class="btn">Show</button>
+  </form>
+</div>
+
+{% if show %}
+  {% if ledger %}
+  <div class="card">
+    <h2>{{ ledger.account.name }} ({{ ledger.account.accode }})</h2>
+    <p>Opening Balance: <strong>{{ ledger.opening_balance|floatformat:2 }}</strong> &nbsp;
+       Closing Balance: <strong>{{ ledger.closing_balance|floatformat:2 }}</strong> &nbsp;
+       Total Debit: <strong>{{ ledger.totals.debit|floatformat:2 }}</strong> &nbsp;
+       Total Credit: <strong>{{ ledger.totals.credit|floatformat:2 }}</strong></p>
+    <table>
+      <thead><tr><th>Date</th><th>Vch No</th><th>Opposite A/C</th><th>Particulars</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+      <tbody>
+        {% for r in ledger.rows %}
+        <tr>
+          <td>{{ r.date }}</td><td>{{ r.vchno }}</td><td>{{ r.othacname }}</td><td>{{ r.part }}</td>
+          <td>{{ r.debit|floatformat:2 }}</td><td>{{ r.credit|floatformat:2 }}</td>
+          <td>{{ r.running_balance|floatformat:2 }} {{ r.running_side }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="7">No transactions in this range.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card"><p>Account not found.</p></div>
+  {% endif %}
+{% endif %}
+
+<script>
+document.querySelector('input[name="accode"]').addEventListener('input', async function() {
+  const q = this.value.trim();
+  if (q.length < 2) return;
+  const res = await fetch(`{% url 'account_search_api' %}?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  const dl = document.getElementById('acList');
+  dl.innerHTML = '';
+  (data.results || []).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.code;
+    opt.label = r.name;
+    dl.appendChild(opt);
+  });
+});
+</script>
+{% endblock %}

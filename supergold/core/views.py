@@ -11,6 +11,7 @@ import datetime
 
 from core.audit import log_delpart
 from core.auth.legacy import authenticate_legacy
+from core.modules.account_ledger import build_ledger, search_accounts
 from core.modules.daybook import build_report as daybook_build_report
 from core.modules.item_master import can_delete_item, rename_item_code
 from core.nav import (
@@ -328,3 +329,40 @@ def daybook_view(request):
             "form5": report["form5"],
         },
     )
+
+
+@_login_required
+def account_ledger_view(request):
+    today = datetime.date.today().isoformat()
+    date_from = request.GET.get("date1") or datetime.date.today().replace(day=1).isoformat()
+    date_to = request.GET.get("date2", today)
+    code = request.GET.get("accode", "").strip().upper()
+    search = request.GET.get("search", "").strip()
+    amount_search = request.GET.get("amount", "").strip()
+    show = "show" in request.GET
+
+    ledger = None
+    if show and code:
+        ledger = build_ledger(code, date_from, date_to, gilevel=1, search=search, amount_search=amount_search)
+
+    return render(
+        request,
+        "native/account_ledger.html",
+        {
+            "date_from": date_from,
+            "date_to": date_to,
+            "code": code,
+            "search": search,
+            "amount_search": amount_search,
+            "show": show,
+            "ledger": ledger,
+        },
+    )
+
+
+@_login_required
+def account_search_api(request):
+    q = request.GET.get("q", "").strip()
+    from django.http import JsonResponse
+
+    return JsonResponse({"results": search_accounts(q)})
