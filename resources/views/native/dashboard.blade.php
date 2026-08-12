@@ -798,7 +798,9 @@ body.company-secondary .sb-hi{color:#ffd5c8}
         <div class="sb-link" data-label="Jewellery Entry" onclick="openModule('jewellery-bill','Jewellery Entry')"><i class="fas fa-ring"></i> Jewellery Entry</div>
         <div class="sb-link" data-label="Repair Slip" onclick="openModule('repair-slip-receive-customer','Repair Slip')"><i class="fas fa-receipt"></i> Repair Slip</div>
         <div class="sb-link" data-label="Repair Voucher" onclick="openModule('remake-repair-return','Repair Voucher')"><i class="fas fa-screwdriver-wrench"></i> Repair Voucher</div>
-        <div class="sb-link" data-label="Order" onclick="openModule('order-bill','Order')"><i class="fas fa-clipboard-list"></i> Order</div>
+        <div class="sb-link" data-label="New Order" onclick="openModule('order-bill-new-order','New Order')"><i class="fas fa-file-circle-plus"></i> New Order</div>
+        <div class="sb-link" data-label="Edit Order Entry" onclick="openModule('order-bill-edit-order-entry','Edit Order Entry')"><i class="fas fa-pen"></i> Edit Order</div>
+        <div class="sb-link" data-label="Reprint Order" onclick="openModule('order-bill-reprint','Reprint Order')"><i class="fas fa-print"></i> Reprint Order</div>
         <div class="sb-link" data-label="Advance After" onclick="openModule('order-bill-advance-after','Advance After')"><i class="fas fa-money-bill-wave"></i> Advance After</div>
         <div class="sb-link" data-label="Order Sale" onclick="openModule('order-bill-order-sale','Order Sale')"><i class="fas fa-tag"></i> Order Sale</div>
         <div class="sb-link" data-label="Receipt" onclick="openModule('accounts-receipt','Receipt')"><i class="fas fa-hand-holding-dollar"></i> Receipt</div>
@@ -2051,14 +2053,15 @@ const menuSpec = [
             m('Sync from Head Office', 'jewellery-bill-update-from-ho', 'fa-building-circle-arrow-right')
         ]},
         { label: 'Order Management', icon: 'fa-clipboard-list', children: [
-            m('Cancel Order', 'order-bill-cancel', 'fa-ban', 'Shift+Alt+X'),
-            m('Edit Order', 'order-bill-edit-order-entry', 'fa-pen'),
             m('New Order', 'order-bill-new-order', 'fa-file-circle-plus', 'Shift+Alt+O'),
+            m('Edit Order Entry', 'order-bill-edit-order-entry', 'fa-pen'),
             m('Reprint Order', 'order-bill-reprint', 'fa-print'),
             m('Advance After', 'order-bill-advance-after', 'fa-money-bill-wave'),
-            m('Convert to Sale', 'order-bill-order-sale', 'fa-cart-plus', 'Shift+Alt+V'),
+            m('Order Sale', 'order-bill-order-sale', 'fa-cart-plus', 'Shift+Alt+V'),
             m('Direct Sale', 'order-bill-sale-without-order', 'fa-cart-shopping'),
-            m('Edit Sale', 'order-bill-edit-order-sale', 'fa-pen-to-square'),
+            m('Edit Order Sale', 'order-bill-edit-order-sale', 'fa-pen-to-square'),
+            m('Reprint Order Sale', 'order-bill-reprint-order-sale', 'fa-print'),
+            m('Cancel Order', 'order-bill-cancel', 'fa-ban', 'Shift+Alt+X'),
             m('Fix Rate', 'order-bill-order-rate-fix', 'fa-wrench'),
             m('Order Control', 'order-bill-block-unblock', 'fa-lock-open'),
             m('Sync Orders', 'order-bill-update-from-jewelleries', 'fa-building-circle-arrow-right', 'Ctrl+Shift+J')
