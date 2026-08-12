@@ -5,7 +5,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from django.db import transaction
+
+from core.audit import log_delpart
 from core.auth.legacy import authenticate_legacy
+from core.modules.item_master import can_delete_item, rename_item_code
 from core.nav import (
     GROUP_LABELS,
     GROUP_ORDER,
@@ -176,7 +180,8 @@ def module_add(request, group, slug):
     if request.method == "POST":
         form = FormClass(request.POST)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            log_delpart(request, f"{model._meta.verbose_name.title()}({obj.pk}) Added", utype="A")
             messages.success(request, f"{model._meta.verbose_name.title()} created.")
             return redirect("module_list", group=group, slug=slug)
     else:
@@ -204,6 +209,7 @@ def module_edit(request, group, slug, pk):
         form = FormClass(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            log_delpart(request, f"{model._meta.verbose_name.title()}({pk}) Updated", utype="E")
             messages.success(request, f"{model._meta.verbose_name.title()} updated.")
             return redirect("module_list", group=group, slug=slug)
     else:
@@ -233,8 +239,22 @@ def module_delete(request, group, slug, pk):
         return redirect("module_home")
 
     obj = get_object_or_404(model, pk=pk)
+
     if request.method == "POST":
+        # Item Master carries the same delete-safety rule as
+        # ItemMasterController::delete(): reserved items, and items with any
+        # non-zero net weight in a transaction table, cannot be removed.
+        if group == "masters" and slug == "items":
+            reserve = (getattr(obj, "reserve", "") or "").strip().upper()
+            if reserve == "Y":
+                messages.error(request, "This item is reserved. You cannot delete it.")
+                return redirect("module_list", group=group, slug=slug)
+            if not can_delete_item(str(pk).strip().upper()):
+                messages.error(request, "Some entries exist with this item. You cannot delete this item.")
+                return redirect("module_list", group=group, slug=slug)
+
         obj.delete()
+        log_delpart(request, f"{model._meta.verbose_name.title()}({pk}) Deleted", utype="D")
         messages.success(request, f"{model._meta.verbose_name.title()} deleted.")
         return redirect("module_list", group=group, slug=slug)
 
@@ -243,3 +263,32 @@ def module_delete(request, group, slug, pk):
         "native/module_confirm_delete.html",
         {"object": obj, "verbose_name": model._meta.verbose_name.title(), "group": group, "slug": slug},
     )
+
+
+@_login_required
+@require_http_methods(["GET", "POST"])
+def item_rename_code(request):
+    """Port of ItemMasterController::renameCode — cascades an item code
+    change across every table that references it (purchase/sales/order/
+    smith/refinery lines, barcodes, item adjustments, etc.)."""
+    result = None
+    if request.method == "POST":
+        old_code = request.POST.get("old_code", "")
+        new_code = request.POST.get("new_code", "")
+        merge_existing = request.POST.get("merge_existing") == "on"
+        with transaction.atomic():
+            result = rename_item_code(old_code, new_code, merge_existing)
+            if result.get("success"):
+                log_delpart(
+                    request,
+                    f"Item Code Renamed {result['old_code']} to {result['new_code']}",
+                    utype="E",
+                )
+        if result.get("success"):
+            messages.success(request, result["message"])
+        else:
+            messages.error(request, result["message"])
+        if result and result.get("counts"):
+            result = {**result, "counts_list": list(result["counts"].items())}
+
+    return render(request, "native/item_rename.html", {"result": result})

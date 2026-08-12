@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Rename Item Code{% endblock %}
+{% block content %}
+<h1>Rename Item Code</h1>
+<p><a href="{% url 'module_list' 'masters' 'items' %}">&larr; Back to Items</a></p>
+
+<div class="card" style="max-width:520px;">
+  <p style="color:#7a6a4a;">Renames an item code and cascades the change across every purchase, sales, order, smith, refinery, repair, barcode and adjustment record that references it.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label>Old Code</label>
+      <input type="text" name="old_code" maxlength="10" required>
+    </div>
+    <div class="field">
+      <label>New Code</label>
+      <input type="text" name="new_code" maxlength="10" required>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" name="merge_existing" style="width:auto;"> Merge into existing item if new code already exists</label>
+    </div>
+    <button type="submit" class="btn">Rename</button>
+  </form>
+
+  {% if result.success %}
+  <div class="card" style="margin-top:16px; background:#f5faf5;">
+    <strong>Renamed {{ result.old_code }} &rarr; {{ result.new_code }}</strong>
+    <ul>
+      {% for table, count in result.counts_list %}
+      <li>{{ table }}: {{ count }} row(s) updated</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

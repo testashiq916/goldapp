@@ -9,6 +9,9 @@
   <form method="get" style="display:flex; gap:10px; margin-bottom:14px;">
     <input type="text" name="q" value="{{ q }}" placeholder="Search...">
     <button class="btn" type="submit">Search</button>
+    {% if group == 'masters' and slug == 'items' %}
+    <a class="btn secondary" href="{% url 'item_rename_code' %}">Rename Code</a>
+    {% endif %}
     {% if not readonly %}
     <a class="btn" href="{% url 'module_add' group slug %}" style="margin-left:auto;">+ Add</a>
     {% endif %}
