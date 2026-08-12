@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Day Book{% endblock %}
+{% block content %}
+<h1>Day Book</h1>
+
+<div class="card">
+  <form method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+    <div class="field" style="margin:0;"><label>From</label><input type="date" name="date1" value="{{ date_from }}"></div>
+    <div class="field" style="margin:0;"><label>To</label><input type="date" name="date2" value="{{ date_to }}"></div>
+    <div class="field" style="margin:0;">
+      <label>Report</label>
+      <select name="form">
+        <option value="form1" {% if form_type == 'form1' %}selected{% endif %}>Form 1 — Cash Book</option>
+        <option value="form2" {% if form_type == 'form2' %}selected{% endif %}>Form 2 — Grouped by Voucher</option>
+        <option value="form3" {% if form_type == 'form3' %}selected{% endif %}>Form 3 — Detailed A/C Code</option>
+        <option value="form4" {% if form_type == 'form4' %}selected{% endif %}>Form 4 — Receipt/Payment by Date</option>
+        <option value="form5" {% if form_type == 'form5' %}selected{% endif %}>Form 5 — Full Daily Report</option>
+      </select>
+    </div>
+    <div class="field" style="margin:0;"><label><input type="checkbox" name="withdiff" style="width:auto;" {% if with_diff %}checked{% endif %}> Only mismatched (Form 2)</label></div>
+    <input type="hidden" name="show" value="1">
+    <button type="submit" class="btn">Run Report</button>
+  </form>
+</div>
+
+{% if show_data %}
+{% if form_type == 'form1' %}
+<div class="card">
+  <p>Opening Balance: <strong>{{ opbal|floatformat:2 }}</strong> &nbsp; Closing Balance: <strong>{{ clbal|floatformat:2 }}</strong></p>
+  <table>
+    <thead><tr><th>Date</th><th>A/C Code</th><th>Account</th><th>Vch No</th><th>Amount</th><th>Particulars</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr><td>{{ r.tdate }}</td><td>{{ r.accode }}</td><td>{{ r.accountm_name }}</td><td>{{ r.vchno }}</td><td>{{ r.daybook_amount|floatformat:2 }}</td><td>{{ r.part }}</td></tr>
+      {% empty %}<tr><td colspan="6">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% elif form_type == 'form2' %}
+<div class="card">
+  {% for slno, g in groups_list %}
+  <table style="margin-bottom:14px;">
+    <thead><tr><th colspan="4">Voucher {{ g.vchno }} — {{ g.particular }} (Slno {{ slno }})</th></tr>
+      <tr><th>A/C Code</th><th>Account</th><th>Amount</th><th>Particular</th></tr></thead>
+    <tbody>
+      {% for r in g.rows %}
+      <tr><td>{{ r.daybook_accode }}</td><td>{{ r.accountm_name }}</td><td>{{ r.daybook_amount|floatformat:2 }}</td><td>{{ r.daybookpart_particular }}</td></tr>
+      {% endfor %}
+      <tr><td colspan="2"><strong>Total</strong></td><td colspan="2">Dr {{ g.db|floatformat:2 }} / Cr {{ g.cr|floatformat:2 }}</td></tr>
+    </tbody>
+  </table>
+  {% empty %}<p>No data.</p>{% endfor %}
+</div>
+{% elif form_type == 'form3' %}
+<div class="card">
+  <table>
+    <thead><tr><th>Date</th><th>A/C Code</th><th>Account</th><th>Vch No</th><th>Amount</th><th>Particular</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr><td>{{ r.daybook_tdate }}</td><td>{{ r.daybook_accode }}</td><td>{{ r.accountm_name }}</td><td>{{ r.daybookpart_vchno }}</td><td>{{ r.daybook_amount|floatformat:2 }}</td><td>{{ r.daybookpart_particular }}</td></tr>
+      {% empty %}<tr><td colspan="6">No data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% elif form_type == 'form4' %}
+<div class="card">
+  {% for tdate, g in groups_list %}
+  <table style="margin-bottom:14px;">
+    <thead><tr><th colspan="4">{{ tdate }}</th></tr>
+      <tr><th>#</th><th>Particulars</th><th>Debit</th><th>Credit</th></tr></thead>
+    <tbody>
+      {% for r in g.rows %}
+      <tr><td>{{ r.sno }}</td><td>{{ r.acname }} — {{ r.particular }}</td><td>{{ r.dbamt|floatformat:2 }}</td><td>{{ r.cramt|floatformat:2 }}</td></tr>
+      {% endfor %}
+      <tr><td colspan="2"><strong>Total</strong></td><td>{{ g.totdb|floatformat:2 }}</td><td>{{ g.totcr|floatformat:2 }}</td></tr>
+    </tbody>
+  </table>
+  {% empty %}<p>No data.</p>{% endfor %}
+</div>
+{% elif form_type == 'form5' and form5 %}
+<div class="grid" style="margin-bottom:16px;">
+  <div class="stat"><div class="num">{{ form5.totals.sales_count }}</div><div class="label">Sales ({{ form5.totals.sales_amt|floatformat:2 }})</div></div>
+  <div class="stat"><div class="num">{{ form5.totals.sret_count }}</div><div class="label">Sales Returns ({{ form5.totals.sret_amt|floatformat:2 }})</div></div>
+  <div class="stat"><div class="num">{{ form5.totals.purch_count }}</div><div class="label">Purchases ({{ form5.totals.purch_amt|floatformat:2 }})</div></div>
+  <div class="stat"><div class="num">{{ form5.totals.pret_count }}</div><div class="label">Purchase Returns ({{ form5.totals.pret_amt|floatformat:2 }})</div></div>
+  <div class="stat"><div class="num">{{ form5.totals.receipts_count }}</div><div class="label">Receipts ({{ form5.totals.receipts_amt|floatformat:2 }})</div></div>
+  <div class="stat"><div class="num">{{ form5.totals.payments_count }}</div><div class="label">Payments ({{ form5.totals.payments_amt|floatformat:2 }})</div></div>
+</div>
+<p>Opening Balance: <strong>{{ opbal|floatformat:2 }}</strong> &nbsp; Closing Balance: <strong>{{ clbal|floatformat:2 }}</strong></p>
+
+<div class="card"><h3>Sales</h3><table><thead><tr><th>Bill No</th><th>Date</th><th>Customer</th><th>Net Amt</th></tr></thead><tbody>
+{% for r in form5.sales %}<tr><td>{{ r.billno }}</td><td>{{ r.tdate }}</td><td>{{ r.custname }}</td><td>{{ r.netamt|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4">None</td></tr>{% endfor %}
+</tbody></table></div>
+
+<div class="card"><h3>Purchases</h3><table><thead><tr><th>Doc No</th><th>Date</th><th>Supplier</th><th>Net Amt</th></tr></thead><tbody>
+{% for r in form5.purchases %}<tr><td>{{ r.docno }}</td><td>{{ r.tdate }}</td><td>{{ r.name }}</td><td>{{ r.netamt|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4">None</td></tr>{% endfor %}
+</tbody></table></div>
+
+<div class="card"><h3>Receipts</h3><table><thead><tr><th>Date</th><th>Account</th><th>Amount</th><th>Particular</th></tr></thead><tbody>
+{% for r in form5.receipts %}<tr><td>{{ r.tdate }}</td><td>{{ r.acname }}</td><td>{{ r.amount|floatformat:2 }}</td><td>{{ r.particular }}</td></tr>{% empty %}<tr><td colspan="4">None</td></tr>{% endfor %}
+</tbody></table></div>
+
+<div class="card"><h3>Payments</h3><table><thead><tr><th>Date</th><th>Account</th><th>Amount</th><th>Particular</th></tr></thead><tbody>
+{% for r in form5.payments %}<tr><td>{{ r.tdate }}</td><td>{{ r.acname }}</td><td>{{ r.amount|floatformat:2 }}</td><td>{{ r.particular }}</td></tr>{% empty %}<tr><td colspan="4">None</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endif %}
+{% endblock %}

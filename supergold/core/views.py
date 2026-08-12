@@ -7,8 +7,11 @@ from django.views.decorators.http import require_http_methods
 
 from django.db import transaction
 
+import datetime
+
 from core.audit import log_delpart
 from core.auth.legacy import authenticate_legacy
+from core.modules.daybook import build_report as daybook_build_report
 from core.modules.item_master import can_delete_item, rename_item_code
 from core.nav import (
     GROUP_LABELS,
@@ -292,3 +295,36 @@ def item_rename_code(request):
             result = {**result, "counts_list": list(result["counts"].items())}
 
     return render(request, "native/item_rename.html", {"result": result})
+
+
+@_login_required
+def daybook_view(request):
+    today = datetime.date.today().isoformat()
+    date_from = request.GET.get("date1", today)
+    date_to = request.GET.get("date2", today)
+    form_type = request.GET.get("form", "form1")
+    with_diff = "withdiff" in request.GET
+    show_data = "show" in request.GET
+
+    report = {"rows": [], "groups": {}, "opbal": 0, "clbal": 0, "form5": None}
+    if show_data:
+        report = daybook_build_report(form_type, date_from, date_to, with_diff)
+
+    groups_list = list(report["groups"].items()) if report["groups"] else []
+
+    return render(
+        request,
+        "native/daybook.html",
+        {
+            "date_from": date_from,
+            "date_to": date_to,
+            "form_type": form_type,
+            "with_diff": with_diff,
+            "show_data": show_data,
+            "rows": report["rows"],
+            "groups_list": groups_list,
+            "opbal": report["opbal"],
+            "clbal": report["clbal"],
+            "form5": report["form5"],
+        },
+    )
