@@ -142,14 +142,7 @@ body.goldapp-print-enabled [data-print-root="goldsmith-print"],
 @endphp
 <div class="toolbar">
   <div class="controls">
-    <span class="tb-lbl">Template</span>
-    <select class="tb-template-select" id="printTemplateSelect">
-      <option value="1" {{ $printTemplate === '1' ? 'selected' : '' }}>Template 1</option>
-      <option value="2" {{ $printTemplate === '2' ? 'selected' : '' }}>Template 2</option>
-      <option value="3" {{ $printTemplate === '3' ? 'selected' : '' }}>Template 3</option>
-      <option value="4" {{ $printTemplate === '4' ? 'selected' : '' }}>Template 4</option>
-      <option value="5" {{ $printTemplate === '5' ? 'selected' : '' }}>Template 5</option>
-    </select>
+    <input type="hidden" id="printTemplateSelect" value="{{ $printTemplate }}">
     <label><input type="checkbox" id="cbShowShop" checked> Show Shop Info</label>
     <label><input type="checkbox" id="cbDc"> Delivery Challan</label>
     <label><input type="checkbox" id="cbRefinery"> Refinery</label>
