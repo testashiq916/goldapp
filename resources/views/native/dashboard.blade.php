@@ -153,6 +153,11 @@ body{font-family:var(--ff-body);background:var(--bg);color:var(--ink);font-size:
 .sb-user-menu a:last-child{border-bottom:none}
 .sb-user-menu a:hover{background:var(--surface2);color:var(--ink);padding-left:18px}
 .sb-user-menu a i{color:var(--teal);width:14px;text-align:center;font-size:11px}
+.sb-logout{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;padding:9px 10px;border-radius:var(--r-xs);border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(255,255,255,.75);text-decoration:none;font-size:14px;font-weight:600;letter-spacing:.3px;transition:all .18s}
+.sb-logout:hover{background:rgba(184,50,50,.9);border-color:rgba(184,50,50,.95);color:#fff}
+.sb-logout i{font-size:13px}
+.shell.tab-open .sb-logout-txt{display:none}
+.shell.tab-open .sb-logout{padding:9px 4px;margin-top:6px}
 
 /* MAIN */
 .main{display:grid;grid-template-rows:52px 44px minmax(0,1fr) 26px;overflow:hidden;background:var(--bg);min-width:0;min-height:0}
@@ -165,6 +170,8 @@ body{font-family:var(--ff-body);background:var(--bg);color:var(--ink);font-size:
 .topbar-right{display:flex;align-items:center;gap:10px}
 .tb-icon-btn{width:38px;height:38px;border-radius:var(--r-xs);border:1px solid var(--line);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--ink3);transition:all .18s;position:relative}
 .tb-icon-btn:hover{background:var(--teal-pale);border-color:var(--teal3);color:var(--teal);transform:translateY(-1px);box-shadow:var(--s2)}
+.tb-logout{text-decoration:none}
+.tb-logout:hover{background:var(--red-pale);border-color:rgba(184,50,50,.4);color:var(--red)}
 .theme-toggle-btn.active{background:var(--teal-pale);border-color:var(--teal3);color:var(--teal);box-shadow:var(--s2)}
 .theme-toggle-btn.company-close-btn{background:var(--red-pale);border-color:rgba(184,50,50,.24);color:var(--red);box-shadow:none}
 .theme-toggle-btn.company-close-btn:hover{background:var(--red-pale);border-color:rgba(184,50,50,.34);color:var(--red);box-shadow:var(--s2)}
@@ -219,7 +226,7 @@ body{font-family:var(--ff-body);background:var(--bg);color:var(--ink);font-size:
 
 /* CONTENT */
 .content{overflow:hidden;position:relative;background:var(--bg);display:flex;flex-direction:column;min-width:0;min-height:0}
-.home-screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:clamp(14px,1.8vw,26px) clamp(16px,2.2vw,32px) 28px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.home-screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:clamp(14px,1.8vw,26px) clamp(16px,2.2vw,32px) 28px;display:flex;flex-direction:column;gap:16px;min-width:0}
 .access-denied-wrap{flex:1;min-height:60vh;display:flex;align-items:center;justify-content:center;padding:32px}
 .access-denied-box{width:min(520px,100%);background:var(--surface);border:1px solid var(--line2);border-radius:var(--r-sm);box-shadow:var(--s3);padding:30px 34px;text-align:center}
 .access-denied-icon{width:64px;height:64px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--red-pale);color:var(--red);font-size:28px;margin-bottom:16px}
@@ -311,7 +318,7 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 .rc-num{font-family:var(--ff-head);font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1}
 .rg22 .rc-num{color:var(--gold)}.rg18 .rc-num{color:var(--amber)}.rgag .rc-num{color:var(--ink2)}.rgth .rc-num{color:var(--purple)}
 .rc-unit{font-size:13px;color:var(--ink4);margin-top:5px;font-weight:500}
-.analytics-row{display:grid;grid-template-columns:1.7fr 1fr;gap:18px}
+.analytics-row{display:grid;grid-template-columns:1.7fr 1fr;gap:16px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--s1);transition:box-shadow .22s}
 .panel:hover{box-shadow:var(--s2)}
 .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -320,8 +327,8 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 .panel-pills{display:flex;gap:4px}
 .ppill{font-size:11.5px;font-weight:700;font-family:var(--ff-head);padding:4px 12px;border-radius:var(--r-pill);background:var(--surface3);border:1px solid var(--line);color:var(--ink3);cursor:pointer;transition:all .15s}
 .ppill.active,.ppill:hover{background:var(--teal);border-color:var(--teal);color:#fff}
-.chart-wrap{position:relative;height:265px}
-.bottom-row{display:grid;grid-template-columns:1fr 1fr .85fr;gap:18px}
+.chart-wrap{position:relative;height:240px;min-height:180px}
+.bottom-row{display:grid;grid-template-columns:1fr 1fr .85fr;gap:16px}
 .info-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--s1);display:flex;flex-direction:column;min-height:192px;transition:box-shadow .22s}
 .info-panel:hover{box-shadow:var(--s2)}
 .ip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
@@ -367,6 +374,20 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 .startup-btn{height:32px;border:1px solid var(--line2);border-radius:var(--r-xs);background:var(--surface);color:var(--ink2);font-size:12px;font-weight:800;padding:0 12px;cursor:pointer}
 .startup-btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
 .startup-btn:hover{box-shadow:var(--s2);transform:translateY(-1px)}
+.erp-notify-btn{position:relative}
+.erp-notify-count{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;padding:0 5px;border:2px solid var(--surface);border-radius:999px;background:var(--red);color:#fff;font:800 10px/14px var(--ff-head);display:none;align-items:center;justify-content:center}
+.erp-notify-count.show{display:flex}
+.erp-notify-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.erp-notify-list{display:grid;gap:8px}
+.erp-notify-item{border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:var(--r-sm);background:var(--surface2);padding:11px 12px;cursor:pointer}
+.erp-notify-item:hover{box-shadow:var(--s2);transform:translateY(-1px)}
+.erp-notify-item.critical{border-left-color:var(--red)}.erp-notify-item.reminder{border-left-color:var(--blue)}
+.erp-notify-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.erp-notify-item-title{font-size:13px;font-weight:900;color:var(--ink)}
+.erp-notify-item-text{font-size:12px;color:var(--ink3);line-height:1.4;margin-top:3px}
+.erp-notify-tag{font-size:10px;font-weight:900;text-transform:uppercase;border-radius:999px;padding:3px 7px;background:var(--amber-pale);color:var(--amber);white-space:nowrap}
+.erp-notify-item.critical .erp-notify-tag{background:var(--red-pale);color:var(--red)}
+.erp-notify-item.reminder .erp-notify-tag{background:#e8f1ff;color:var(--blue)}
 @media(max-width:760px){.startup-rate-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}
 .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;flex:1}
 .qa-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:13px 6px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface2);cursor:pointer;font-family:var(--ff-body);transition:all .2s var(--ez)}
@@ -417,7 +438,7 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 .stat-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px -10px rgba(0,0,0,.18)}
 .rate-card{padding:22px 26px}
 .rate-card:hover{transform:translateY(-4px);box-shadow:0 16px 32px -10px rgba(0,0,0,.15)}
-.info-panel{padding:24px 26px}
+.info-panel{padding:24px}
 .qa-btn:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 12px 24px -8px rgba(0,0,0,.14)}
 
 /* Shimmer sweep on stat progress bars */
@@ -442,6 +463,37 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 /* Number tick on hover */
 @keyframes numberPop{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 .stat-card:hover .stat-val,.rate-card:hover .rc-num{animation:numberPop .4s var(--ez)}
+
+/* ---- MODERN MINIMAL - CARDS ONLY (override) ---- */
+.stat-row,.rate-grid{gap:16px}
+.stat-card,.rate-card{border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);background:var(--surface)}
+.stat-card{padding:22px 24px}
+.rate-card{padding:18px 22px}
+.stat-card::before{display:none}
+.rate-card::after{display:none}
+.stat-card:hover,.rate-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px -8px rgba(0,0,0,.12);border-color:var(--line2)}
+.stat-card:hover .stat-icon{animation:none;transform:none}
+.stat-card:hover .stat-val,.rate-card:hover .rc-num{animation:none}
+.stat-val{font-size:34px;letter-spacing:-.4px;font-weight:700;background:none;-webkit-background-clip:initial;background-clip:initial;-webkit-text-fill-color:var(--ink);color:var(--ink)}
+.rc-num{font-size:34px;letter-spacing:-.4px;font-weight:700;text-shadow:none}
+.stat-label{font-size:12px;letter-spacing:.8px;font-weight:600;color:var(--ink4)}
+.rc-lbl{font-size:12px;letter-spacing:.8px;font-weight:600;color:var(--ink4)}
+.stat-sub{font-size:13px;font-weight:500;color:var(--ink4)}
+.rc-unit{font-size:13px;font-weight:500;color:var(--ink4)}
+.stat-icon{width:38px;height:38px;font-size:16px;border-radius:9px;opacity:1}
+.stat-progress{height:2px}
+.stat-bar{animation:barGrow 1s .4s var(--ez) both;background-size:100% 100% !important}
+.sc-teal .stat-bar{background-image:none !important;background-color:var(--teal)}
+.sc-gold .stat-bar{background-image:none !important;background-color:var(--gold)}
+.sc-green .stat-bar{background-image:none !important;background-color:var(--green)}
+.sc-amber .stat-bar{background-image:none !important;background-color:var(--amber)}
+/* rate change badge - vs previous day's rate */
+.rc-chg{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:var(--r-pill);line-height:1.5}
+.rc-chg i{font-size:11px}
+.rc-chg.up{color:var(--green);background:var(--green-pale)}
+.rc-chg.down{color:var(--red);background:var(--red-pale)}
+.chart-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink4);font-size:13px;text-align:center}
+.chart-empty i{font-size:30px;color:var(--line2)}
 
 /* Info-list rows fade in */
 @keyframes rowSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
@@ -495,7 +547,9 @@ body.company-secondary .sb-hi{color:#ffd5c8}
 .shell.tab-open .sb-avatar{margin:0 auto}
 /* Tooltip on hover */
 .shell.tab-open .sb-link{position:relative}
-.shell.tab-open .sb-link:hover::after{content:attr(data-label);position:absolute;left:66px;top:50%;transform:translateY(-50%);background:#1a3a2a;color:#fff;padding:5px 12px;border-radius:6px;font-size:14px !important;white-space:nowrap;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
+.shell.tab-open .sb-link:hover::after{content:none}
+.sidebar-icon-tooltip{position:fixed;left:72px;top:0;z-index:10000;display:none;max-width:260px;padding:6px 12px;border-radius:7px;background:#123f22;color:#fff;font-size:14px;font-weight:700;line-height:1.25;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none}
+.sidebar-icon-tooltip.show{display:block}
 
 /* â”€â”€ RESPONSIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .mob-toggle{display:none;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--line);border-radius:var(--r-xs);background:var(--surface2);cursor:pointer;font-size:14px;color:var(--ink2);flex-shrink:0;transition:all .18s}
@@ -845,6 +899,7 @@ body.company-secondary .sb-hi{color:#ffd5c8}
                 <a href="{{ url('/logout') . '?company_db=' . urlencode($currentDatabase ?? '') }}"><i class="fas fa-right-from-bracket"></i>Sign Out</a>
             </div>
         </div>
+        <a class="sb-logout" href="{{ url('/logout') . '?company_db=' . urlencode($currentDatabase ?? '') }}" title="Logout"><i class="fas fa-right-from-bracket"></i><span class="sb-logout-txt">Logout</span></a>
     </div>
 </aside>
 
@@ -852,7 +907,7 @@ body.company-secondary .sb-hi{color:#ffd5c8}
     <header class="topbar">
         <div class="topbar-left">
             <div class="mob-toggle" id="mobToggle" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i></div>
-            <div class="page-title"><i class="fas fa-chart-line"></i> <span id="pageTitle">Dashboard</span></div>
+            <div class="page-title"><i class="fas fa-chart-line"></i> <span id="pageTitle">Dashb<span id="dayLockSecretTrigger" onclick="handleDashboardOClick(event)">o</span>ard</span></div>
             <div class="breadcrumb"><span>{{ $siteName }}</span><i class="fas fa-chevron-right" style="font-size:8px"></i><span id="pageBreadcrumb">Overview</span></div>
         </div>
         <div class="topbar-right">
@@ -866,9 +921,11 @@ body.company-secondary .sb-hi{color:#ffd5c8}
             </div>
             <div class="tb-icon-btn theme-toggle-btn" id="themeToggleBtn" title="WiFi theme switcher" onclick="handleThemeTap()"><i class="fas fa-wifi"></i></div>
             <div class="tb-icon-btn" title="AI Analytics" onclick="openModule('ai-insights','AI Analytics')"><i class="fas fa-robot"></i></div>
+            <div class="tb-icon-btn erp-notify-btn" id="erpNotifyButton" title="ERP Notifications" onclick="showErpNotificationPopup(true)"><i class="fas fa-bell"></i><span class="erp-notify-count" id="erpNotifyCount">0</span></div>
             <div class="tb-icon-btn" title="Day Summary" onclick="openModule('day-summary','Day Summary')"><i class="fas fa-chart-column"></i></div>
             <div class="tb-icon-btn" title="Settings" onclick="openModule('application-settings','Settings')"><i class="fas fa-gear"></i></div>
             <div class="date-chip"><i class="fas fa-calendar"></i><span id="topDate"></span></div>
+            <a class="tb-icon-btn tb-logout" href="{{ url('/logout') . '?company_db=' . urlencode($currentDatabase ?? '') }}" title="Logout"><i class="fas fa-right-from-bracket"></i></a>
         </div>
     </header>
 
@@ -885,26 +942,24 @@ body.company-secondary .sb-hi{color:#ffd5c8}
                     </div>
                 </div>
             @else
-            @php
-                $prevSales = $dashboardData['prevMonthSales'] ?? 0;
-                $curSales  = $dashboardData['monthSales'] ?? 0;
-            @endphp
             {{-- Quick Action bar removed - shortcuts available in sidebar & menubar --}}
-            <div class="stat-row dash-row">
-                <div class="stat-card sc-teal" data-requires-module="sales-bill"><div class="stat-top"><div class="stat-label">Today Sales</div><div class="stat-icon si-teal"><i class="fas fa-cart-shopping"></i></div></div><div class="stat-val">{{ number_format($dashboardData['todaySalesWeight'] ?? 0, 3) }} gm</div><div class="stat-foot"><span class="stat-sub">{{ (int)($dashboardData['todaySalesBills'] ?? 0) }} bills Â· Amt &#8377;{{ number_format($dashboardData['todaySales'] ?? 0, 0) }} Â· SR &#8377;{{ number_format($dashboardData['todaySalesReturn'] ?? 0, 0) }}</span><div class="stat-progress"><div class="stat-bar"></div></div></div></div>
-                <div class="stat-card sc-gold" data-requires-module="purchase-bill"><div class="stat-top"><div class="stat-label">Today Purchase</div><div class="stat-icon si-gold"><i class="fas fa-bag-shopping"></i></div></div><div class="stat-val">{{ number_format($dashboardData['todayPurchaseWeight'] ?? 0, 3) }} gm</div><div class="stat-foot"><span class="stat-sub">{{ (int)($dashboardData['todayPurchaseBills'] ?? 0) }} bills Â· Amt &#8377;{{ number_format($dashboardData['todayPurchase'] ?? 0, 0) }}</span><div class="stat-progress"><div class="stat-bar"></div></div></div></div>
-                <div class="stat-card sc-green" data-requires-module="sales-bill"><div class="stat-top"><div class="stat-label">Month Sales</div><div class="stat-icon si-green"><i class="fas fa-chart-line"></i></div></div><div class="stat-val">{{ number_format($dashboardData['monthSalesWeight'] ?? 0, 3) }} gm</div><div class="stat-foot"><span class="stat-sub">Amt &#8377;{{ number_format($dashboardData['monthSales'] ?? 0, 0) }} Â· SR &#8377;{{ number_format($dashboardData['monthSalesReturn'] ?? 0, 0) }}</span><div class="stat-progress"><div class="stat-bar"></div></div></div></div>
-                <div class="stat-card sc-amber" data-requires-module="purchase-bill"><div class="stat-top"><div class="stat-label">Month Purchase</div><div class="stat-icon si-amber"><i class="fas fa-truck"></i></div></div><div class="stat-val">{{ number_format($dashboardData['monthPurchaseWeight'] ?? 0, 3) }} gm</div><div class="stat-foot"><span class="stat-sub">{{ (int)($dashboardData['monthPurchaseBills'] ?? 0) }} bills Â· Amt &#8377;{{ number_format($dashboardData['monthPurchase'] ?? 0, 0) }}</span><div class="stat-progress"><div class="stat-bar"></div></div></div></div>
-            </div>
             <div class="rate-grid dash-row">
-                <div class="rate-card rg22"><div class="rc-lbl"><i class="fas fa-star"></i>Gold 22K</div><div class="rc-num">&#8377;{{ number_format($dashboardData['goldRate22K'] ?? 0, 2) }}</div><div class="rc-unit">Per gram</div></div>
-                <div class="rate-card rg18"><div class="rc-lbl"><i class="fas fa-star-half-stroke"></i>Gold 18K</div><div class="rc-num">&#8377;{{ number_format($dashboardData['goldRate18K'] ?? 0, 2) }}</div><div class="rc-unit">Per gram</div></div>
-                <div class="rate-card rgag"><div class="rc-lbl"><i class="fas fa-moon"></i>Silver</div><div class="rc-num">&#8377;{{ number_format($dashboardData['silverRate'] ?? 0, 2) }}</div><div class="rc-unit">Per gram</div></div>
-                <div class="rate-card rgth"><div class="rc-lbl"><i class="fas fa-gem"></i>TH Rate</div><div class="rc-num">&#8377;{{ number_format($dashboardData['thRate'] ?? 0, 2) }}</div><div class="rc-unit">Per gram</div></div>
+                @php
+                    $rateChangeBadge = function ($chg) {
+                        if (is_null($chg) || abs($chg) < 0.005) return '';
+                        $dir = $chg > 0 ? 'up' : 'down';
+                        $caret = $chg > 0 ? 'up' : 'down';
+                        return '<div class="rc-chg '.$dir.'"><i class="fas fa-caret-'.$caret.'"></i>&#8377;'.number_format(abs($chg), 2).'</div>';
+                    };
+                @endphp
+                <div class="rate-card rg22"><div class="rc-lbl"><i class="fas fa-star"></i>Gold 22K</div><div class="rc-num">&#8377;{{ number_format($dashboardData['goldRate22K'] ?? 0, 2) }}</div>{!! $rateChangeBadge($dashboardData['goldRate22KChange'] ?? null) !!}<div class="rc-unit">Per gram</div></div>
+                <div class="rate-card rg18"><div class="rc-lbl"><i class="fas fa-star-half-stroke"></i>Gold 18K</div><div class="rc-num">&#8377;{{ number_format($dashboardData['goldRate18K'] ?? 0, 2) }}</div>{!! $rateChangeBadge($dashboardData['goldRate18KChange'] ?? null) !!}<div class="rc-unit">Per gram</div></div>
+                <div class="rate-card rgag"><div class="rc-lbl"><i class="fas fa-moon"></i>Silver</div><div class="rc-num">&#8377;{{ number_format($dashboardData['silverRate'] ?? 0, 2) }}</div>{!! $rateChangeBadge($dashboardData['silverRateChange'] ?? null) !!}<div class="rc-unit">Per gram</div></div>
+                <div class="rate-card rgth"><div class="rc-lbl"><i class="fas fa-gem"></i>TH Rate</div><div class="rc-num">&#8377;{{ number_format($dashboardData['thRate'] ?? 0, 2) }}</div>{!! $rateChangeBadge($dashboardData['thRateChange'] ?? null) !!}<div class="rc-unit">Per gram</div></div>
             </div>
             <div class="analytics-row dash-row">
-                <div class="panel"><div class="panel-head"><div class="panel-title"><i class="fas fa-chart-area"></i>Sales &amp; Purchase Trend</div><div class="panel-pills"><button class="ppill" id="btn7d" onclick="switchChart('7d')">7 Days</button><button class="ppill active" id="btn6m" onclick="switchChart('6m')">6 Months</button></div></div><div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
-                <div class="panel"><div class="panel-head"><div class="panel-title"><i class="fas fa-gem"></i>Top Items</div></div><div class="chart-wrap" style="height:222px"><canvas id="topItemsChart"></canvas></div></div>
+                <div class="panel"><div class="panel-head"><div class="panel-title"><i class="fas fa-arrow-right-arrow-left"></i>Item Movement</div></div><div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
+                <div class="panel"><div class="panel-head"><div class="panel-title"><i class="fas fa-gem"></i>Top Items</div></div><div class="chart-wrap"><canvas id="topItemsChart"></canvas></div></div>
             </div>
             <div class="bottom-row dash-row">
                 <div class="info-panel" data-requires-module="sales-bill">
@@ -997,6 +1052,21 @@ body.company-secondary .sb-hi{color:#ffd5c8}
                 </div>
             </section>
         </div>
+
+        <div class="startup-overlay" id="erpNotificationOverlay" aria-hidden="true">
+            <section class="startup-modal sm" role="dialog" aria-modal="true" aria-labelledby="erpNotificationTitle">
+                <div class="startup-head">
+                    <div class="startup-title" id="erpNotificationTitle"><i class="fas fa-bell"></i>ERP Notifications</div>
+                    <button class="startup-close" type="button" title="Close" onclick="closeErpNotificationPopup()"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="startup-body" id="erpNotificationBody"><div class="startup-empty">Loading notifications...</div></div>
+                <div class="startup-actions">
+                    <button class="startup-btn" type="button" onclick="openErpNotificationTarget('reminders')">Open Reminders</button>
+                    <button class="startup-btn" type="button" onclick="openErpNotificationTarget('audit')">Open Audit Copilot</button>
+                    <button class="startup-btn primary" type="button" onclick="closeErpNotificationPopup()">Done</button>
+                </div>
+            </section>
+        </div>
     </div>
 
     <footer class="statusbar">
@@ -1053,7 +1123,7 @@ function goHome() {
     // Sidebar
     document.querySelectorAll('.sb-link').forEach(function(l){ l.classList.remove('active'); });
     document.querySelector('.sb-link').classList.add('active');
-    document.getElementById('pageTitle').textContent = 'Dashboard';
+    renderDashboardSecretTitle();
     document.getElementById('pageBreadcrumb').textContent = 'Overview';
     setTopbarPrimaryAction('default');
 }
@@ -1112,6 +1182,7 @@ function closeTab(tabId) {
     if (idx === -1) return;
     var tab = openTabs[idx];
     var wasCompanySelect = tab.moduleId === 'company-select';
+    var wasDayLock = tab.moduleId === 'data-transfer' || tab.containsDayLock === true;
     // Remove iframe
     if (tab.iframe) {
         tab.iframe.onload = null;
@@ -1129,6 +1200,9 @@ function closeTab(tabId) {
         companySelectSecretUnlocked = false;
         themeTapCount = 0;
         if (typeof buildMenu === 'function') buildMenu();
+    }
+    if (wasDayLock) {
+        lockDayLockOption();
     }
     // Switch to another tab or go home
     if (tabId === activeTabId) {
@@ -1242,8 +1316,8 @@ function tickClock() {
     var el = document.getElementById('statusTime'); if(el) el.textContent = t;
     var el2 = document.getElementById('topDate'); if(el2) el2.textContent = d + ' ' + t;
 }
-setInterval(tickClock, 1000);
-tickClock();
+// The single guarded clock timer is started by the initializer at the end of
+// the page. Starting it here as well created duplicate timers after login.
 
 // Override openInDashboardFrame to use tabbed layout
 var _origOpenInFrame = null;
@@ -1335,9 +1409,14 @@ const SECONDARY_CLOSE_URL = @json(url('/company-select/close'));
 const SAVED_DASHBOARD_THEME = @json($savedDashboardTheme ?? 'default');
 const CURRENT_COMPANY_DB = @json($currentDatabase ?? '');
 const SHOW_STARTUP_POPUPS = {!! !empty($showStartupPopups) ? 'true' : 'false' !!};
+const ERP_REMINDERS_URL = @json(url('/api/reminders'));
+const ERP_AUDIT_URL = @json(url('/api/ai/audit-copilot'));
 const DROPDOWN_AUTOCLOSE_URL = @json(is_file(public_path('js/dropdown-autoclose.js')) ? asset('js/dropdown-autoclose.js') . '?v=' . (@filemtime(public_path('js/dropdown-autoclose.js')) ?: time()) : '');
-const TODAY_DUE_PENDING_ACCOUNTS = {!! json_encode($dashboardData['todayDuePendingAccounts'] ?? ['rows' => [], 'totals' => []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
-const CREDIT_BILL_SUMMARY = {!! json_encode($dashboardData['creditBillSummary'] ?? ['rows' => [], 'totals' => []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+let TODAY_DUE_PENDING_ACCOUNTS = {!! json_encode($dashboardData['todayDuePendingAccounts'] ?? ['rows' => [], 'totals' => []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+let CREDIT_BILL_SUMMARY = {!! json_encode($dashboardData['creditBillSummary'] ?? ['rows' => [], 'totals' => []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+let STARTUP_SUMMARY_LOADED = false;
+let STARTUP_SUMMARY_LOADING = false;
+const STARTUP_SUMMARY_URL = @json(url('/api/dashboard/startup-summary'));
 
 function withCompanyContext(url) {
     if (!url) {
@@ -1421,6 +1500,10 @@ const moduleConfigMap = {
     'sales-man':                         { mode: 'iframe', url: '{{ url("/accounts/master/sales-man") }}' },
     'accounts-receipt':                  { mode: 'iframe', url: '{{ url("/accounts/receipt") }}' },
     'accounts-payment':                  { mode: 'iframe', url: '{{ url("/accounts/payment") }}' },
+    'accounts-receipt-edit':             { mode: 'iframe', url: '{{ url("/accounts/edit-entry?type=receipt&mode=edit") }}' },
+    'accounts-payment-edit':             { mode: 'iframe', url: '{{ url("/accounts/edit-entry?type=payment&mode=edit") }}' },
+    'accounts-receipt-reprint':          { mode: 'iframe', url: '{{ url("/accounts/edit-entry?type=receipt&mode=reprint") }}' },
+    'accounts-payment-reprint':          { mode: 'iframe', url: '{{ url("/accounts/edit-entry?type=payment&mode=reprint") }}' },
     'accounts-edit-rcpt-pmnt-entry':     { mode: 'iframe', url: '{{ url("/accounts/edit-entry") }}' },
     'accounts-suspense-entry':           { mode: 'iframe', url: '{{ url("/accounts/suspense-entry") }}' },
     'accounts-journal':                  { mode: 'iframe', url: '{{ url("/accounts/journal") }}' },
@@ -1478,6 +1561,7 @@ const moduleConfigMap = {
     'sales-reports-sales-book':          { mode: 'iframe', url: '{{ url("/sales-book-report?module=sales-reports-sales-book&issr=S&view=book") }}' },
     'sales-reports-sales-return-book':   { mode: 'iframe', url: '{{ url("/sales-book-report?module=sales-reports-sales-return-book&issr=R&view=book") }}' },
     'tax-reports-sales-book':            { mode: 'iframe', url: '{{ url("/sales-book-report?module=tax-reports-sales-book&issr=S&view=tax") }}' },
+    'tax-reports-sales-return-book':     { mode: 'iframe', url: '{{ url("/sales-book-report?module=tax-reports-sales-return-book&issr=R&view=tax") }}' },
     'remake-reports-remake-reports':      { mode: 'iframe', url: '{{ url("/remake-reports/remake-reports?module=remake-reports-remake-reports") }}' },
     'remake-reports-remake-pending':      { mode: 'iframe', url: '{{ url("/remake-reports/remake-pending?module=remake-reports-remake-pending") }}' },
     'remake-reports-remake-returns':      { mode: 'iframe', url: '{{ url("/remake-reports/remake-returns?module=remake-reports-remake-returns") }}' },
@@ -1774,6 +1858,16 @@ const moduleConfigMap = {
     'accounts-reports-group-ac-summary':  { mode: 'iframe', url: '{{ url("/accounts/group-ac-summary") }}' },
     'accounts-reports-groupwise-expanded-list': { mode: 'iframe', url: '{{ url("/accounts/groupwise-expanded-list") }}' },
     'accounts-reports-rcpt-pmnt-report':  { mode: 'iframe', url: '{{ url("/accounts/rcpt-pmnt-report") }}' },
+    'receipt-analytics-rcpt-pmnt-report': { mode: 'iframe', url: '{{ url("/accounts/rcpt-pmnt-report?module=receipt-analytics-rcpt-pmnt-report") }}' },
+    'receipt-analytics-received-details': { mode: 'iframe', url: '{{ url("/customers/received-details?module=receipt-analytics-received-details") }}' },
+    'receipt-analytics-collection-report': { mode: 'iframe', url: '{{ url("/customers/bill-collection-details?module=receipt-analytics-collection-report") }}' },
+    'receipt-analytics-payment-history': { mode: 'iframe', url: '{{ url("/customers/payment-details?module=receipt-analytics-payment-history") }}' },
+    'receipt-analytics-pdc-report': { mode: 'iframe', url: '{{ url("/accounts/pdc-report?module=receipt-analytics-pdc-report") }}' },
+    'payment-analytics-rcpt-pmnt-report': { mode: 'iframe', url: '{{ url("/accounts/rcpt-pmnt-report?module=payment-analytics-rcpt-pmnt-report") }}' },
+    'payment-analytics-supplier-payment': { mode: 'iframe', url: '{{ url("/accounts/supplier-billwise-payment?module=payment-analytics-supplier-payment") }}' },
+    'payment-analytics-payment-approval': { mode: 'iframe', url: '{{ url("/accounts/payment-confirmation?module=payment-analytics-payment-approval") }}' },
+    'payment-analytics-payables': { mode: 'iframe', url: '{{ url("/accounts/ac-receivable-payable-summary?mode=S&module=payment-analytics-payables") }}' },
+    'payment-analytics-pdc-report': { mode: 'iframe', url: '{{ url("/accounts/pdc-report?module=payment-analytics-pdc-report") }}' },
     'accounts-reports-avg-rate-profit':   { mode: 'iframe', url: '{{ url("/reports/avg-rate-profit") }}' },
     'accounts-reports-suspense-ac-ledger': { mode: 'iframe', url: '{{ url("/accounts/suspense-ac-ledger") }}' },
     'stock-summary-cost-wise':            { mode: 'iframe', url: '{{ url("/stock-summary-cost-wise") }}' },
@@ -1926,19 +2020,12 @@ const menuSpec = [
         ]},
         { label: 'Item Master', icon: 'fa-box', children: [
             m('Item Add/Edit', 'item-add-edit', 'fa-gem'),
-            m('Item Temp', 'item-temp', 'fa-clock'),
             m('Other Items', 'other-items', 'fa-boxes-stacked'),
             m('Groups', 'groups', 'fa-layer-group'),
             m('Sub Groups', 'sub-groups', 'fa-sitemap'),
             m('Purity Type', 'purity-type', 'fa-star'),
-            m('Counters', 'counters', 'fa-desktop'),
-            m('Wastage Table', 'wastage-table', 'fa-table'),
-            m('MC Table', 'mc-table', 'fa-calculator'),
-            m('Party MC Table', 'party-mc-table', 'fa-users'),
-            m('Stock Type', 'stock-type', 'fa-warehouse'),
             m('Models', 'models', 'fa-shapes'),
-            m('Opening Stock Entry', 'opening-stock-entry', 'fa-file-invoice'),
-            m('ReOrder Level Table', 'reorder-level-table', 'fa-chart-line')
+            m('Opening Stock Entry', 'opening-stock-entry', 'fa-file-invoice')
         ]},
         m('Customer Master', 'customer', 'fa-users', 'Shift+Alt+C'),
         m('Supplier Master', 'supplier', 'fa-truck', 'Shift+Alt+U'),
@@ -1950,21 +2037,14 @@ const menuSpec = [
             m('Account', 'accounts-master-account', 'fa-book-open', 'Shift+Alt+A'),
             m('Position Settings', 'accounts-master-position-settings', 'fa-sliders'),
             m('Book Stock', 'accounts-master-book-stock', 'fa-box'),
-            m('Op.Stock Value Set', 'accounts-master-op-stock-value-set', 'fa-calculator'),
-            m('C/o Party Limit', 'accounts-master-co-party-limit', 'fa-scale-balanced')
+            m('Op.Stock Value Set', 'accounts-master-op-stock-value-set', 'fa-calculator')
         ]},
         m('Staff Master', 'staff-adding', 'fa-user-tie', 'Shift+Alt+M'),
         m('Salesman Master', 'sales-man', 'fa-user-tag'),
         m('Scheme Master', 'scheme-type-master', 'fa-list-check'),
         m('Invoice Settings', 'bill-prefix', 'fa-hashtag'),
         m('State Master', 'states-adding', 'fa-map'),
-        m('Repair Management', 'repair-complaints', 'fa-screwdriver-wrench'),
-        m('Gift Management', 'gift-table', 'fa-gift'),
         m('Loyalty Program', 'point-card', 'fa-credit-card'),
-        m('Denomination Master', 'denomination-master', 'fa-money-bill'),
-        { label: 'Opening Balance Entry', icon: 'fa-file-lines', children: [
-            m('Customers', 'op-bill-creation-customers', 'fa-users')
-        ]},
         { label: 'User Management', icon: 'fa-user-shield', children: [
             m('Change Password', 'change-password', 'fa-key'),
             m('Provide Access', 'provide-access', 'fa-lock'),
@@ -1995,9 +2075,13 @@ const menuSpec = [
             m('Journal Entry', 'accounts-journal', 'fa-book', 'Shift+Alt+J'),
             m('Multi Bill To One Account', 'accounts-party-code-merge', 'fa-code-branch'),
             m('Make Payment', 'accounts-payment', 'fa-money-check-dollar', 'Shift+Alt+3'),
+            m('Edit Payment', 'accounts-payment-edit', 'fa-pen-to-square'),
+            m('Reprint Payment', 'accounts-payment-reprint', 'fa-print'),
             m('Payment Approval', 'accounts-payment-confirmation', 'fa-circle-check'),
             m('Rate Adjustment', 'accounts-rate-diff-adjustment', 'fa-scale-balanced'),
             m('Receive Payment', 'accounts-receipt', 'fa-money-bill-wave', 'Shift+Alt+1'),
+            m('Edit Receipt', 'accounts-receipt-edit', 'fa-pen-to-square'),
+            m('Reprint Receipt', 'accounts-receipt-reprint', 'fa-print'),
             m('Supplier Payment', 'accounts-supplier-billwise-payment', 'fa-file-invoice-dollar'),
             m('Suspense Entry', 'accounts-suspense-entry', 'fa-circle-question', 'Ctrl+Shift+S'),
             m('Edit Transactions', 'accounts-edit-rcpt-pmnt-entry', 'fa-pen')
@@ -2037,7 +2121,6 @@ const menuSpec = [
                 m('Print', 'diamonds-pres-stone-purchase-return-reprint', 'fa-print')
             ]}
         ]},
-        m('Gold Rate Display', 'gold-rate-image-set', 'fa-image'),
         { label: 'Goldsmith Work', icon: 'fa-hammer', children: [
             m('Cancel Work', 'goldsmith-bill-cancel', 'fa-ban'),
             m('Create Work Note', 'goldsmith-bill-new-work-note', 'fa-file-signature', 'Shift+Alt+W'),
@@ -2080,14 +2163,6 @@ const menuSpec = [
                 m('Reprint', 'other-items-trans-sales-reprint', 'fa-print')
             ]}
         ]},
-        { label: 'Partner Deposit', icon: 'fa-handshake', children: [
-            m('Cancel Deposit', 'partners-deposit-wgt-cancel', 'fa-ban'),
-            m('Edit Deposit', 'partners-deposit-wgt-edit', 'fa-pen'),
-            m('Interest Calculation', 'partners-deposit-wgt-intrest-posting', 'fa-percent'),
-            m('New Deposit', 'partners-deposit-wgt-new', 'fa-file-circle-plus', 'Ctrl+W'),
-            m('Opening Weight', 'partners-deposit-wgt-op-weight-entry', 'fa-weight-scale'),
-            m('Print Deposit', 'partners-deposit-wgt-reprint', 'fa-print')
-        ]},
         { label: 'Purchase Invoice', icon: 'fa-bag-shopping', children: [
             m('New Purchase', 'purchase-bill', 'fa-file-invoice', 'Shift+Alt+P'),
             m('Edit Purchase', 'purchase-bill-edit', 'fa-pen'),
@@ -2100,12 +2175,6 @@ const menuSpec = [
             m('Edit Return', 'purchase-return-bill-edit', 'fa-pen'),
             m('Print Return', 'purchase-return-bill-reprint', 'fa-print'),
             m('Cancel Return', 'purchase-return-bill-cancel', 'fa-ban')
-        ]},
-        { label: 'Purity Check', icon: 'fa-vial', children: [
-            m('Cancel Test', 'purity-testing-cancel', 'fa-ban'),
-            m('Edit Test', 'purity-testing-edit', 'fa-pen'),
-            m('New Test', 'purity-testing-new', 'fa-file-circle-plus'),
-            m('Print Test', 'purity-testing-reprint', 'fa-print')
         ]},
         { label: 'Refinery Operations', icon: 'fa-fire', children: [
             m('Cancel Entry', 'refinery-bill-cancel', 'fa-ban'),
@@ -2203,16 +2272,6 @@ const menuSpec = [
             m('Stock Adjustment', 'item-stock-adjustment-stock-add-less', 'fa-plus-minus', 'Shift+Alt+K'),
             m('Transfer Stock', 'item-stock-adjustment-stock-transfer', 'fa-right-left', 'Ctrl+A')
         ]},
-        { label: 'Gold Loan', icon: 'fa-coins', children: [
-            m('Loan Entry', 'gold-loan', 'fa-coins'),
-            m('Loan Report', 'gold-loan/report', 'fa-file-invoice'),
-        ]},
-        { label: 'Hallmarking (BIS)', icon: 'fa-stamp', children: [
-            m('BIS Records', 'hallmark', 'fa-stamp'),
-        ]},
-        { label: 'Staff Payroll', icon: 'fa-money-check', children: [
-            m('Process Salary', 'staff-payroll', 'fa-money-check'),
-        ]},
     ]},
     { label: 'Reports', items: [
         { label: 'Barcode Reports', icon: 'fa-barcode', children: [
@@ -2268,6 +2327,7 @@ const menuSpec = [
             m('Pending Tax Report', 'tax-reports-outstanding-tax-report', 'fa-file-circle-exclamation'),
             m('Purchase Tax Report', 'tax-reports-purchase-book', 'fa-book-open'),
             m('Sales Tax Report', 'tax-reports-sales-book', 'fa-book'),
+            m('Sales Return Tax Report', 'tax-reports-sales-return-book', 'fa-rotate-left'),
             m('Stock Register', 'tax-reports-stock-register', 'fa-boxes-stacked')
         ]},
         { label: 'Inventory Reports', icon: 'fa-box', children: [
@@ -2331,13 +2391,8 @@ const menuSpec = [
             m('Malayalam Report', 'other-reports-daysummary-malayalam', 'fa-language'),
             m('Month End Report', 'other-reports-month-end-report', 'fa-calendar-check'),
             m('Print All Reports', 'other-reports-all-report-print', 'fa-print'),
-            m('Purity Report', 'other-reports-purity-test-report', 'fa-vial'),
             m('Stock Value Report', 'other-reports-stockvalue-profit-report', 'fa-chart-column'),
             m('Term Report', 'other-reports-term-summary-malayalam', 'fa-language')
-        ]},
-        { label: 'Partner Deposit Reports', icon: 'fa-handshake', children: [
-            m('Deposit Ledger', 'partners-deposit-reports-deposit-book', 'fa-book'),
-            m('Weight Balance', 'partners-deposit-reports-wgt-balance-summary', 'fa-scale-balanced')
         ]},
         { label: 'Purchase Analytics', icon: 'fa-chart-column', children: [
             m('Credit Purchase Balance', 'supplier-reports-ac-payable', 'fa-money-bill-transfer'),
@@ -2345,6 +2400,20 @@ const menuSpec = [
             m('Purchase Register', 'purchase-reports-purchase-register', 'fa-clipboard-list'),
             m('Purchase Return Register', 'purchase-reports-purchase-return-register', 'fa-clipboard-check'),
             m('Purchase Verification', 'purchase-reports-purchase-check-list', 'fa-list-check')
+        ]},
+        { label: 'Receipt Analytics', icon: 'fa-hand-holding-dollar', children: [
+            m('Receipts & Payments', 'receipt-analytics-rcpt-pmnt-report', 'fa-receipt'),
+            m('Received Payments', 'receipt-analytics-received-details', 'fa-list-check'),
+            m('Collection Report', 'receipt-analytics-collection-report', 'fa-money-bill-wave'),
+            m('Payment History', 'receipt-analytics-payment-history', 'fa-clock-rotate-left'),
+            m('Post Dated Cheque', 'receipt-analytics-pdc-report', 'fa-money-check')
+        ]},
+        { label: 'Payment Analytics', icon: 'fa-money-check-dollar', children: [
+            m('Receipts & Payments', 'payment-analytics-rcpt-pmnt-report', 'fa-receipt'),
+            m('Supplier Payment', 'payment-analytics-supplier-payment', 'fa-file-invoice-dollar'),
+            m('Payment Approval', 'payment-analytics-payment-approval', 'fa-circle-check'),
+            m('Payables', 'payment-analytics-payables', 'fa-scale-balanced'),
+            m('Post Dated Cheque', 'payment-analytics-pdc-report', 'fa-money-check')
         ]},
         { label: 'Refinery Analytics', icon: 'fa-fire', children: [
             m('Account Summary', 'refinery-reports-ac-summary', 'fa-book'),
@@ -2464,7 +2533,7 @@ const menuSpec = [
         m('Contact Directory', 'phone-book', 'fa-address-book'),
         m('Data Backup & Restore', 'backup', 'fa-database'),
         m('Local Backup', 'local-backup', 'fa-hard-drive'),
-        m('Data Transfer', 'data-transfer', 'fa-right-left'),
+        m('Day Lock', 'data-transfer', 'fa-lock'),
         m('Financial Year Closing', 'year-end-account-close', 'fa-calendar-check'),
         m('System Administration', 'administration', 'fa-user-gear'),
         m('Task Reminders', 'reminder', 'fa-bell'),
@@ -2539,6 +2608,8 @@ const reportPermissionKeys = new Set([
     'MDI_CHITTY_ANALYTICS',
     'MDI_STAFF_ANALYTICS',
     'MDI_SUPPLIER_ANALYTICS',
+    'MDI_RECEIPT_ANALYTICS',
+    'MDI_PAYMENT_ANALYTICS',
     'MDI_REFINERY_ANALYTICS',
     'MDI_REPAIR_ANALYTICS'
 ]);
@@ -2774,6 +2845,8 @@ const reportCategoryPermissionByLabel = {
     'Chitty Management Analytics': 'MDI_CHITTY_ANALYTICS',
     'Staff Analytics': 'MDI_STAFF_ANALYTICS',
     'Supplier Analytics': 'MDI_SUPPLIER_ANALYTICS',
+    'Receipt Analytics': 'MDI_RECEIPT_ANALYTICS',
+    'Payment Analytics': 'MDI_PAYMENT_ANALYTICS',
     'Refinery Analytics': 'MDI_REFINERY_ANALYTICS',
     'Repair Analytics': 'MDI_REPAIR_ANALYTICS'
 };
@@ -2891,6 +2964,10 @@ function permissionForModule(moduleId) {
         'sales-bill-quotation-cancel': 'MDI_SALES_QUOTATION_CANCEL',
         'sales-bill-reprint': 'MDI_SALES_BILL_PRINT',
         'sales-bill-confirmation': 'MDI_SALES_BILL_CONFIRMATION',
+        'accounts-receipt-edit': 'MDI_ACCOUNTS_RECEIPT',
+        'accounts-receipt-reprint': 'MDI_ACCOUNTS_RECEIPT',
+        'accounts-payment-edit': 'MDI_ACCOUNTS_PAYMENT',
+        'accounts-payment-reprint': 'MDI_ACCOUNTS_PAYMENT',
         'customer': 'MDI_CUSTOMER',
         'supplier': 'MDI_SUPPLIER_MASTER',
         'staff-adding': 'MDI_STAFF_MASTER',
@@ -3151,10 +3228,17 @@ function buildMenu() {
             if (spec.layout === 'grid2') {
                 dd.classList.add('registration-menu');
             }
-            spec.items.forEach(function(sub) { dd.appendChild(buildDdItem(sub)); });
-            // use 2-column layout when there are many items so nothing is cut off
-            if (spec.items.length > 12) {
-                dd.classList.add('dd-cols-2');
+            var dropdownBuilt = false;
+            function ensureDropdownBuilt() {
+                if (dropdownBuilt) return;
+                dropdownBuilt = true;
+                var fragment = document.createDocumentFragment();
+                spec.items.forEach(function(sub) { fragment.appendChild(buildDdItem(sub)); });
+                dd.appendChild(fragment);
+                // Use two columns when there are many items so nothing is cut off.
+                if (spec.items.length > 12) {
+                    dd.classList.add('dd-cols-2');
+                }
             }
             item.appendChild(dd);
 
@@ -3163,6 +3247,7 @@ function buildMenu() {
                 var isOpen = dd.classList.contains('show');
                 closeAllMenus();
                 if (!isOpen) {
+                    ensureDropdownBuilt();
                     item.classList.add('active');
                     dd.classList.add('show');
                 }
@@ -3173,6 +3258,7 @@ function buildMenu() {
                     return;
                 }
                 closeAllMenus();
+                ensureDropdownBuilt();
                 item.classList.add('active');
                 dd.classList.add('show');
             });
@@ -3200,6 +3286,10 @@ function buildDdItem(def) {
 
     var row = document.createElement('div');
     row.className = 'dd-item';
+    if (def.id === 'data-transfer') {
+        row.classList.add('day-lock-menu-item');
+        row.style.display = dayLockIsUnlocked() ? '' : 'none';
+    }
 
     var left = document.createElement('span');
     left.className = 'dd-left';
@@ -4355,10 +4445,59 @@ function formatStartupDate(value) {
     return parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : String(value);
 }
 
+function loadStartupSummary() {
+    if (STARTUP_SUMMARY_LOADED) {
+        return Promise.resolve({
+            todayDuePendingAccounts: TODAY_DUE_PENDING_ACCOUNTS,
+            creditBillSummary: CREDIT_BILL_SUMMARY
+        });
+    }
+    if (STARTUP_SUMMARY_LOADING) {
+        return Promise.resolve(null);
+    }
+
+    STARTUP_SUMMARY_LOADING = true;
+    return fetch(withCompanyContext(STARTUP_SUMMARY_URL) + '?_=' + Date.now(), {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cache-Control': 'no-cache'
+        },
+        cache: 'no-store'
+    })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d && d.ok) {
+                TODAY_DUE_PENDING_ACCOUNTS = d.todayDuePendingAccounts || { rows: [], totals: {} };
+                CREDIT_BILL_SUMMARY = d.creditBillSummary || { rows: [], totals: {} };
+                STARTUP_SUMMARY_LOADED = true;
+            }
+            return d;
+        })
+        .catch(function() {
+            return null;
+        })
+        .finally(function() {
+            STARTUP_SUMMARY_LOADING = false;
+        });
+}
+
 function showStartupDuePopup() {
     var overlay = document.getElementById('startupDueOverlay');
     var body = document.getElementById('startupDueBody');
     if (!overlay || !body) return;
+
+    if (!STARTUP_SUMMARY_LOADED) {
+        body.innerHTML = '<div class="startup-empty"><i class="fas fa-spinner fa-spin" style="font-size:28px;color:var(--teal);display:block;margin-bottom:8px"></i>Loading startup summary...</div>';
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+        loadStartupSummary().then(function() {
+            if (overlay.classList.contains('show')) {
+                showStartupDuePopup();
+            }
+        });
+        return;
+    }
 
     var payload = CREDIT_BILL_SUMMARY || {};
     var rows = Array.isArray(payload.rows) ? payload.rows : [];
@@ -4420,6 +4559,7 @@ function closeStartupDuePopup() {
     if (!overlay) return;
     overlay.classList.remove('show');
     overlay.setAttribute('aria-hidden', 'true');
+    window.setTimeout(function() { showErpNotificationPopup(false); }, 150);
 }
 
 function openStartupRateUpdate() {
@@ -4436,8 +4576,184 @@ function openCreditBillDetails() {
     });
 }
 
+var ERP_NOTIFICATION_DATA = {items: [], reminderCount: 0, auditCount: 0, total: 0};
+var ERP_NOTIFICATION_LOADED = false;
+var ERP_NOTIFICATION_LOADING = false;
+var DAY_LOCK_CLICK_TARGET = 5;
+var dayLockHeadingClicks = 0;
+
+function renderDashboardSecretTitle() {
+    var title = document.getElementById('pageTitle');
+    if (!title) return;
+    title.innerHTML = 'Dashb<span id="dayLockSecretTrigger" onclick="handleDashboardOClick(event)">o</span>ard';
+}
+
+function dayLockSessionKey() {
+    return 'goldapp-day-lock-unlocked-' + String(CURRENT_COMPANY_DB || 'default');
+}
+
+function dayLockIsUnlocked() {
+    try { return sessionStorage.getItem(dayLockSessionKey()) === '1'; } catch (e) { return false; }
+}
+
+function revealDayLockOption() {
+    try { sessionStorage.setItem(dayLockSessionKey(), '1'); } catch (e) {}
+    document.querySelectorAll('.day-lock-menu-item').forEach(function(row) {
+        row.style.display = '';
+    });
+    document.querySelectorAll('iframe').forEach(function(frame) {
+        try { frame.contentWindow.postMessage({type: 'goldapp:day-lock-state', unlocked: true}, window.location.origin); } catch (e) {}
+    });
+}
+
+function lockDayLockOption() {
+    try { sessionStorage.removeItem(dayLockSessionKey()); } catch (e) {}
+    dayLockHeadingClicks = 0;
+    document.querySelectorAll('.day-lock-menu-item').forEach(function(row) {
+        row.style.display = 'none';
+    });
+    document.querySelectorAll('iframe').forEach(function(frame) {
+        try { frame.contentWindow.postMessage({type: 'goldapp:day-lock-state', unlocked: false}, window.location.origin); } catch (e) {}
+    });
+}
+
+function registerDayLockOpenedFromAdministration() {
+    if (!dayLockIsUnlocked()) return false;
+    for (var i = 0; i < openTabs.length; i++) {
+        if (openTabs[i].id === activeTabId) {
+            openTabs[i].containsDayLock = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+function handleDashboardOClick(event) {
+    if (event) event.stopPropagation();
+    if (dayLockIsUnlocked()) return;
+
+    dayLockHeadingClicks += 1;
+    if (dayLockHeadingClicks >= DAY_LOCK_CLICK_TARGET) {
+        revealDayLockOption();
+        dayLockHeadingClicks = 0;
+    }
+}
+
+function erpNotificationSessionKey() {
+    return 'goldapp-erp-notifications-' + String(CURRENT_COMPANY_DB || 'default') + '-' + new Date().toISOString().slice(0, 10);
+}
+
+function erpNotificationWasSeen() {
+    try { return sessionStorage.getItem(erpNotificationSessionKey()) === '1'; } catch (e) { return false; }
+}
+
+function markErpNotificationsSeen() {
+    try { sessionStorage.setItem(erpNotificationSessionKey(), '1'); } catch (e) {}
+}
+
+function loadErpNotifications() {
+    if (ERP_NOTIFICATION_LOADING) return;
+    ERP_NOTIFICATION_LOADING = true;
+    var today = new Date().toISOString().slice(0, 10);
+    Promise.allSettled([
+        fetch(withCompanyContext(ERP_REMINDERS_URL) + '?status=pending&range=all', {headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.json();}),
+        fetch(withCompanyContext(ERP_AUDIT_URL) + '?days=90', {headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.json();})
+    ]).then(function(results) {
+        var reminderData = results[0].status === 'fulfilled' && results[0].value && results[0].value.ok ? results[0].value : {rows:[]};
+        var auditData = results[1].status === 'fulfilled' && results[1].value && results[1].value.ok ? results[1].value : {issues:[],summary:{}};
+        var dueRows = (reminderData.rows || []).filter(function(row) {
+            return !row.is_done && row.due_date && String(row.due_date) <= today;
+        });
+        var auditRows = (auditData.issues || []).filter(function(row) {
+            return row.severity === 'critical' || row.severity === 'warning';
+        });
+        var items = [];
+        dueRows.slice(0, 6).forEach(function(row) {
+            items.push({kind:'reminder', severity:String(row.due_date) < today ? 'critical' : 'reminder', title:row.title || row.category || 'Reminder', text:(row.party_name ? row.party_name + ' | ' : '') + (row.reference_no || '') + (row.due_date ? ' | Due ' + formatStartupDate(row.due_date) : ''), target:'reminders'});
+        });
+        auditRows.slice(0, 6).forEach(function(row) {
+            items.push({kind:'audit', severity:row.severity || 'warning', title:row.title || 'ERP audit warning', text:row.explanation || '', target:'audit'});
+        });
+        ERP_NOTIFICATION_DATA = {
+            items: items,
+            reminderCount: dueRows.length,
+            auditCount: Number((auditData.summary || {}).critical || 0) + Number((auditData.summary || {}).warning || 0),
+            total: dueRows.length + Number((auditData.summary || {}).critical || 0) + Number((auditData.summary || {}).warning || 0)
+        };
+        ERP_NOTIFICATION_LOADED = true;
+        ERP_NOTIFICATION_LOADING = false;
+        updateErpNotificationBadge();
+        if (ERP_NOTIFICATION_DATA.total > 0) window.setTimeout(function(){showErpNotificationPopup(false);}, 500);
+    }).catch(function() {
+        ERP_NOTIFICATION_LOADING = false;
+    });
+}
+
+function updateErpNotificationBadge() {
+    var badge = document.getElementById('erpNotifyCount');
+    if (!badge) return;
+    var count = Number(ERP_NOTIFICATION_DATA.total || 0);
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.toggle('show', count > 0);
+}
+
+function showErpNotificationPopup(force) {
+    if (!ERP_NOTIFICATION_LOADED) {
+        loadErpNotifications();
+        return;
+    }
+    if (!ERP_NOTIFICATION_DATA.total) return;
+    if (!force && erpNotificationWasSeen()) return;
+    if (!force && document.querySelector('.startup-overlay.show')) {
+        window.setTimeout(function(){showErpNotificationPopup(false);}, 500);
+        return;
+    }
+    var overlay = document.getElementById('erpNotificationOverlay');
+    var body = document.getElementById('erpNotificationBody');
+    if (!overlay || !body) return;
+    var data = ERP_NOTIFICATION_DATA;
+    var html = '<div class="erp-notify-summary">'
+        + '<span class="startup-pill red">Audit findings: ' + data.auditCount + '</span>'
+        + '<span class="startup-pill">Due reminders: ' + data.reminderCount + '</span>'
+        + '</div>';
+    if (!data.items.length) {
+        html += '<div class="startup-empty">No notification details available.</div>';
+    } else {
+        html += '<div class="erp-notify-list">';
+        data.items.forEach(function(item) {
+            var css = item.severity === 'critical' ? 'critical' : (item.kind === 'reminder' ? 'reminder' : 'warning');
+            html += '<div class="erp-notify-item ' + css + '" onclick="openErpNotificationTarget(\'' + item.target + '\')">'
+                + '<div class="erp-notify-item-head"><div><div class="erp-notify-item-title">' + escapeHtml(item.title) + '</div><div class="erp-notify-item-text">' + escapeHtml(item.text) + '</div></div>'
+                + '<span class="erp-notify-tag">' + escapeHtml(item.kind === 'reminder' ? 'Reminder' : item.severity) + '</span></div></div>';
+        });
+        html += '</div>';
+    }
+    body.innerHTML = html;
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeErpNotificationPopup() {
+    var overlay = document.getElementById('erpNotificationOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+    markErpNotificationsSeen();
+}
+
+function openErpNotificationTarget(target) {
+    closeErpNotificationPopup();
+    if (target === 'reminders') {
+        openModule('reminder', 'Task Reminders');
+    } else {
+        openModule('ai-insights', 'AI Audit Copilot');
+    }
+}
+
 function initStartupPopups() {
     if (!SHOW_STARTUP_POPUPS) return;
+    loadStartupSummary();
     window.setTimeout(showStartupDuePopup, 350);
 }
 
@@ -4509,35 +4825,50 @@ function initDashboardCharts() {
     var trendCanvas = document.getElementById('trendChart');
     var topItemsCanvas = document.getElementById('topItemsChart');
 
-    if (typeof Chart === 'undefined') return;
-
-    // Sales vs Purchases â€” Bar Chart (6 months)
+    // Current-month item movement — jewellery weight sold versus purchased.
     if (trendCanvas) {
+        var movementRows = (dashboardData.itemMovement || []).slice(0, 8);
+        var movementLabels = movementRows.map(function(row) { return row.item_name || row.code || 'Item'; });
+        var soldQuantities = movementRows.map(function(row) { return Number(row.sold_qty || 0); });
+        var purchasedQuantities = movementRows.map(function(row) { return Number(row.purchased_qty || 0); });
+        var movementUnit = movementRows.some(function(row) { return row.unit === 'g'; }) ? 'g' : 'qty';
+
+        if (!movementRows.length || soldQuantities.concat(purchasedQuantities).every(function(v) { return !v; })) {
+            var movementWrap = trendCanvas.parentElement;
+            if (movementWrap) movementWrap.innerHTML = '<div class="chart-empty"><i class="fas fa-arrow-right-arrow-left"></i><span>No item movement this month</span></div>';
+        } else if (typeof Chart === 'undefined') {
+            var movementUnavailableWrap = trendCanvas.parentElement;
+            if (movementUnavailableWrap) movementUnavailableWrap.innerHTML = '<div class="chart-empty"><i class="fas fa-chart-bar"></i><span>Chart could not be loaded</span></div>';
+        } else {
         trendChartInstance = new Chart(trendCanvas, {
             type: 'bar',
             data: {
-                labels: dashboardData.monthLabels || dashboardData.labels || [],
+                labels: movementLabels,
                 datasets: [
                     {
-                        label: 'Sales',
-                        data: dashboardData.monthlySalesSeries || dashboardData.salesSeries || [],
+                        label: 'Sold',
+                        data: soldQuantities,
                         backgroundColor: '#1a73e8',
                         borderRadius: 6,
-                        barPercentage: 0.5,
-                        categoryPercentage: 0.6
+                        maxBarThickness: 24,
+                        barPercentage: 0.72,
+                        categoryPercentage: 0.78
                     },
                     {
-                        label: 'Purchases',
-                        data: dashboardData.monthlyPurchaseSeries || dashboardData.purchaseSeries || [],
-                        backgroundColor: '#e53935',
+                        label: 'Purchased',
+                        data: purchasedQuantities,
+                        backgroundColor: '#1e8e3e',
                         borderRadius: 6,
-                        barPercentage: 0.5,
-                        categoryPercentage: 0.6
+                        maxBarThickness: 24,
+                        barPercentage: 0.72,
+                        categoryPercentage: 0.78
                     }
                 ]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
+                animation: false,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
@@ -4547,59 +4878,122 @@ function initDashboardCharts() {
                             color: '#565e71', font: { size: 11, family: 'Segoe UI' },
                             padding: 16
                         }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(c) { return c.dataset.label + ': ' + Number(c.raw || 0).toLocaleString('en-IN') + ' ' + movementUnit; }
+                        }
                     }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#74777f', font: { size: 10.5 } } },
-                    y: { grid: { color: '#f0f0f4' }, ticks: { color: '#74777f', font: { size: 10 } }, beginAtZero: true }
+                    x: { grid: { color: '#f0f0f4' }, ticks: { color: '#74777f', font: { size: 10 } }, beginAtZero: true },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#565e71',
+                            font: { size: 10.5 },
+                            callback: function(v) {
+                                var label = this.getLabelForValue(v);
+                                return label.length > 20 ? label.slice(0, 19) + '…' : label;
+                            }
+                        }
+                    }
                 }
             }
         });
+        }
     }
 
-    // Top Items â€” Donut Chart
+    // Top Items â€” Modern ranked horizontal bar chart
     if (topItemsCanvas) {
-        var topLabels = (dashboardData.topItems || []).map(function(row) { return row.item_name || row.code || 'Item'; });
-        var topValues = (dashboardData.topItems || []).map(function(row) { return Number(row.total_amount || 0); });
-        var donutColors = ['#1a73e8','#1e8e3e','#e8710a','#e53935','#7b1fa2','#00897b'];
+        var topRows   = (dashboardData.topItems || []).slice(0, 6);
+        var topLabels = topRows.map(function(row) { return row.item_name || row.code || 'Item'; });
+        var topValues = topRows.map(function(row) { return Number(row.total_amount || 0); });
+        var barColors = ['#1a73e8','#1e8e3e','#e8710a','#e53935','#7b1fa2','#00897b'];
 
-        new Chart(topItemsCanvas, {
-            type: 'doughnut',
-            data: {
-                labels: topLabels,
-                datasets: [{
-                    data: topValues,
-                    backgroundColor: donutColors.slice(0, topLabels.length),
-                    borderWidth: 2,
-                    borderColor: '#fff',
-                    hoverOffset: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    legend: { display: false }
+        var fmtMoneyShort = function(v) {
+            v = Number(v) || 0;
+            if (v >= 1e7) return '₹' + (v / 1e7).toFixed(1).replace(/\.0$/, '') + 'Cr';
+            if (v >= 1e5) return '₹' + (v / 1e5).toFixed(1).replace(/\.0$/, '') + 'L';
+            if (v >= 1e3) return '₹' + (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+            return '₹' + v.toFixed(0);
+        };
+
+        if (!topValues.length || topValues.every(function(v) { return !v; })) {
+            var wrap = topItemsCanvas.parentElement;
+            if (wrap) wrap.innerHTML = '<div class="chart-empty"><i class="fas fa-gem"></i><span>No item sales this month</span></div>';
+        } else if (typeof Chart === 'undefined') {
+            var topItemsUnavailableWrap = topItemsCanvas.parentElement;
+            if (topItemsUnavailableWrap) topItemsUnavailableWrap.innerHTML = '<div class="chart-empty"><i class="fas fa-chart-bar"></i><span>Chart could not be loaded</span></div>';
+        } else {
+            // Draws the formatted value at the end of each bar
+            var valueLabelPlugin = {
+                id: 'topItemsValueLabels',
+                afterDatasetsDraw: function(chart) {
+                    var ctx = chart.ctx;
+                    var meta = chart.getDatasetMeta(0);
+                    if (!meta || !meta.data) return;
+                    ctx.save();
+                    ctx.font = '600 11px Segoe UI';
+                    ctx.fillStyle = '#565e71';
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'left';
+                    meta.data.forEach(function(bar, i) {
+                        if (!topValues[i]) return;
+                        ctx.fillText(fmtMoneyShort(topValues[i]), bar.x + 8, bar.y);
+                    });
+                    ctx.restore();
                 }
-            }
-        });
+            };
+
+            new Chart(topItemsCanvas, {
+                type: 'bar',
+                data: {
+                    labels: topLabels,
+                    datasets: [{
+                        data: topValues,
+                        backgroundColor: barColors.slice(0, topLabels.length),
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        maxBarThickness: 34,
+                        barPercentage: 0.8,
+                        categoryPercentage: 0.86
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    animation: false,
+                    maintainAspectRatio: false,
+                    layout: { padding: { right: 46 } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(c) { return '₹' + Number(c.raw || 0).toLocaleString('en-IN'); }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { display: false, grid: { display: false }, beginAtZero: true, grace: '12%' },
+                        y: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: {
+                                color: '#565e71',
+                                font: { size: 11.5, family: 'Segoe UI' },
+                                callback: function(v) {
+                                    var l = this.getLabelForValue(v);
+                                    return l.length > 16 ? l.slice(0, 15) + '…' : l;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [valueLabelPlugin]
+            });
+        }
     }
-}
-
-function switchChart(mode) {
-    if (!trendChartInstance) return;
-
-    var use7d = mode === '7d';
-    trendChartInstance.data.labels = use7d ? (dashboardData.labels || []) : (dashboardData.monthLabels || []);
-    trendChartInstance.data.datasets[0].data = use7d ? (dashboardData.salesSeries || []) : (dashboardData.monthlySalesSeries || []);
-    trendChartInstance.data.datasets[1].data = use7d ? (dashboardData.purchaseSeries || []) : (dashboardData.monthlyPurchaseSeries || []);
-    trendChartInstance.update();
-
-    var btn7d = document.getElementById('btn7d');
-    var btn6m = document.getElementById('btn6m');
-    if (btn7d) btn7d.classList.toggle('active', use7d);
-    if (btn6m) btn6m.classList.toggle('active', !use7d);
 }
 
 /**
@@ -4698,22 +5092,99 @@ function initYearlyChart() {
     });
 }
 
+function initSidebarIconTooltips() {
+    var shell = document.querySelector('.shell');
+    var tooltip = document.createElement('div');
+    tooltip.className = 'sidebar-icon-tooltip';
+    document.body.appendChild(tooltip);
+
+    function isCollapsed() {
+        return shell && shell.classList.contains('tab-open');
+    }
+
+    function placeTooltip(link) {
+        var rect = link.getBoundingClientRect();
+        var top = rect.top + (rect.height / 2);
+        tooltip.style.left = (rect.right + 10) + 'px';
+        tooltip.style.top = top + 'px';
+        tooltip.style.transform = 'translateY(-50%)';
+    }
+
+    function showTooltip(link) {
+        if (!isCollapsed()) return;
+        var label = (link.getAttribute('data-label') || link.textContent || '').trim();
+        if (!label) return;
+        tooltip.textContent = label;
+        placeTooltip(link);
+        tooltip.classList.add('show');
+    }
+
+    function hideTooltip() {
+        tooltip.classList.remove('show');
+    }
+
+    document.querySelectorAll('.sb-link[data-label]').forEach(function(link) {
+        link.setAttribute('title', link.getAttribute('data-label') || '');
+        link.addEventListener('mouseenter', function() { showTooltip(link); });
+        link.addEventListener('mousemove', function() { if (tooltip.classList.contains('show')) placeTooltip(link); });
+        link.addEventListener('mouseleave', hideTooltip);
+        link.addEventListener('focus', function() { showTooltip(link); });
+        link.addEventListener('blur', hideTooltip);
+    });
+}
+
 /**
  * ============================================================
  * Initialize Everything
  * ============================================================
  */
-try { buildMenu(); } catch (err) { console.error(err); }
-try { pruneDashboardShortcuts(); } catch (err) { console.error(err); }
-try { initShortcuts(); } catch (err) { console.error(err); }
-try { initUserMenu(); } catch (err) { console.error(err); }
-try { initPhoneLookup(); } catch (err) { console.error(err); }
-try { initModuleFrameClose(); } catch (err) { console.error(err); }
-try { initDashboardCharts(); } catch (err) { console.error(err); }
-try { initFinTabs(); } catch (err) { console.error(err); }
-try { initThemeEasterEgg(); } catch (err) { console.error(err); }
-try { initStartupPopups(); } catch (err) { console.error(err); }
-try { setInterval(tickClock, 1000); tickClock(); } catch (err) { console.error(err); }
+function runDashboardInitializer(name, fn) {
+    try { fn(); } catch (err) { console.error('Dashboard initializer failed: ' + name, err); }
+}
+
+// Do not execute every expensive dashboard initializer in one uninterrupted
+// task. Yield to Chrome between steps so login, painting and user input remain
+// responsive even on shop PCs with limited CPU/RAM.
+var dashboardInitializers = [
+    ['menu', buildMenu],
+    ['permissions', pruneDashboardShortcuts],
+    ['shortcuts', initShortcuts],
+    ['user menu', initUserMenu],
+    ['phone lookup', initPhoneLookup],
+    ['module frame', initModuleFrameClose],
+    ['tooltips', initSidebarIconTooltips],
+    ['financial tabs', initFinTabs],
+    ['theme', initThemeEasterEgg],
+    ['charts', initDashboardCharts],
+    ['startup popups', function() { window.setTimeout(initStartupPopups, 1200); }],
+    ['notifications', function() { window.setTimeout(loadErpNotifications, 2500); }]
+];
+
+function runNextDashboardInitializer() {
+    var task = dashboardInitializers.shift();
+    if (!task) return;
+    var execute = function() {
+        runDashboardInitializer(task[0], task[1]);
+        window.setTimeout(runNextDashboardInitializer, 60);
+    };
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(execute, { timeout: 700 });
+    } else {
+        window.setTimeout(execute, 80);
+    }
+}
+
+try {
+    tickClock();
+    if (!window.__goldappClockTimer) {
+        window.__goldappClockTimer = window.setInterval(tickClock, 1000);
+    }
+    // Allow the first dashboard paint and browser input handling to finish
+    // before any menu/chart construction begins.
+    window.setTimeout(runNextDashboardInitializer, 250);
+} catch (err) {
+    console.error(err);
+}
 </script>
 </body>
 </html>
