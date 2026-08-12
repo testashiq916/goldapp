@@ -2466,21 +2466,29 @@ const menuSpec = [
         m('Balance Sheet', 'balance-sheet', 'fa-file-invoice-dollar')
     ]},
     { label: 'Sheme/Chitty', items: [
-        { label: 'Scheme / Chitty', icon: 'fa-list-check', children: [
-            m('Register Customer', 'scheme-details-customer-registration', 'fa-user-plus', 'Ctrl+M'),
-            m('Collection', 'scheme-details-scheme-collection', 'fa-money-bill-wave', 'Ctrl+L'),
+        { label: 'Chit Scheme', icon: 'fa-list-check', children: [
+            m('Add Members', 'kuri-details-enter-customers', 'fa-users'),
+            m('Collection Entry', 'kuri-details-kuri-collection', 'fa-money-bill-wave', 'Alt+K'),
+            m('Close Scheme', 'kuri-details-kuri-finish', 'fa-flag-checkered'),
+            m('Draw Process', 'kuri-details-kuri-draw', 'fa-ticket'),
+            m('Interest Calculation', 'kuri-details-interest-posting', 'fa-percent')
+        ]},
+        { label: 'Chitty Weight Management', icon: 'fa-list', children: [
             m('Close Scheme', 'scheme-details-scheme-finished', 'fa-check-double'),
-            m('Refund', 'scheme-details-scheme-part-refund', 'fa-money-bill-transfer'),
+            m('Collection', 'scheme-details-scheme-collection', 'fa-money-bill-wave', 'Ctrl+L'),
             m('Interest', 'scheme-details-interest-posting', 'fa-percent'),
             m('Passbook Print', 'scheme-details-pass-book-print', 'fa-book-open'),
-            m('POS Sync', 'scheme-details-pos-upload', 'fa-upload')
+            m('Refund', 'scheme-details-scheme-part-refund', 'fa-money-bill-transfer'),
+            m('Register Customer', 'scheme-details-customer-registration', 'fa-user-plus', 'Ctrl+M')
         ]},
-        { label: 'Chitty Reports', icon: 'fa-diagram-project', children: [
+        { label: 'Scheme Analytics', icon: 'fa-diagram-project', children: [
             m('Collection Report', 'scheme-reports-scheme-collection', 'fa-money-bill-wave'),
             m('Commission Report', 'scheme-reports-colln-commision-report', 'fa-percent'),
-            m('Maturity Report', 'scheme-reports-scheme-maturity', 'fa-calendar-check'),
-            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul'),
-            m('Scheme Ledger', 'scheme-reports-scheme-book', 'fa-book')
+            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul')
+        ]},
+        { label: 'Chit Reports', icon: 'fa-list-ul', children: [
+            m('Collection Chart', 'kuri-reports-chart', 'fa-chart-line'),
+            m('Collection Summary', 'kuri-reports-collection-report', 'fa-money-bill-wave')
         ]}
     ]},
     { label: 'Sales Reports', items: [
