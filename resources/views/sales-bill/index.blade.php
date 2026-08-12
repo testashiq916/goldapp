@@ -482,6 +482,16 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
+  table.items input.ic-vaperc {
+    width: 52px !important;
+  }
+  table.items input.ic-vadiscperc {
+    width: 64px !important;
+  }
+  table.items input.ic-vadiscamt,
+  table.items input.ic-mc {
+    width: 76px !important;
+  }
   .bottom-section .row input[type="checkbox"] {
     width: 18px;
     height: 18px;
@@ -3997,6 +4007,25 @@
       rebuildItemCodeList(groupCode);
     }
   });
+  function refreshMainRowValues(idx) {
+    const row = items[idx];
+    const tr = $('itemsTbody')?.querySelector(`tr [data-idx="${idx}"]`)?.closest('tr');
+    if (!row || !tr) return;
+    const setInput = (selector, value) => {
+      const input = tr.querySelector(selector);
+      if (input && document.activeElement !== input) input.value = value;
+    };
+    const setCell = (cellIndex, value) => {
+      if (tr.cells[cellIndex]) tr.cells[cellIndex].textContent = value;
+    };
+    setInput('.ic-vaperc', fmt2(row.mc_perc ?? row.vaperc ?? row.mcrate ?? 0));
+    setInput('.ic-vadiscperc', fmt2(row.va_disc_perc || 0));
+    setInput('.ic-vadiscamt', fmt2(row.va_disc_amt || 0));
+    setInput('.ic-mc', fmt2(row.making_charge));
+    setInput('.ic-amount', fmt2(row.amount));
+    setInput('.ic-rate', fmt2(row.rate));
+    setCell(9, fmt3(row.net_wgt));
+  }
 
   // Item table event delegation (blur captures since blur doesn't bubble)
   $('itemsTbody').addEventListener('blur', function(e) {
@@ -4053,7 +4082,7 @@
     } else if (el.classList.contains('ic-mc')) {
       r.making_charge = toNum(el.value); r.manual_mcharge = true; recalcMainByPb(idx, 'mcharge'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-rate')) {
-      r.rate = toNum(el.value); recalcMainByPb(idx, 'rate'); renderItemsTable(); triggerRecalc();
+      r.rate = toNum(el.value); recalcMainByPb(idx, 'rate'); updateTableFooter(); refreshMainRowValues(idx); triggerRecalc();
     } else if (el.classList.contains('ic-amount')) {
       const newAmount = toNum(el.value);
       if (Math.abs(newAmount - toNum(r.amount)) > 0.0001) {
@@ -4112,7 +4141,7 @@
     } else if (el.classList.contains('ic-mc')) {
       r.making_charge = toNum(el.value); r.manual_mcharge = true; recalcMainByPb(idx, 'mcharge'); renderItemsTable(); triggerRecalc();
     } else if (el.classList.contains('ic-rate')) {
-      r.rate = toNum(el.value); recalcMainByPb(idx, 'rate'); renderItemsTable(); triggerRecalc();
+      r.rate = toNum(el.value); recalcMainByPb(idx, 'rate'); updateTableFooter(); refreshMainRowValues(idx); triggerRecalc();
     } else if (el.classList.contains('ic-amount')) {
       const newAmount = toNum(el.value);
       if (Math.abs(newAmount - toNum(r.amount)) > 0.0001) {
