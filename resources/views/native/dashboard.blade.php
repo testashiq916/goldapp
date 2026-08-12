@@ -2465,6 +2465,24 @@ const menuSpec = [
         m('Profit & Loss', 'profit-loss', 'fa-chart-pie'),
         m('Balance Sheet', 'balance-sheet', 'fa-file-invoice-dollar')
     ]},
+    { label: 'Sheme/Chitty', items: [
+        { label: 'Scheme / Chitty', icon: 'fa-list-check', children: [
+            m('Register Customer', 'scheme-details-customer-registration', 'fa-user-plus', 'Ctrl+M'),
+            m('Collection', 'scheme-details-scheme-collection', 'fa-money-bill-wave', 'Ctrl+L'),
+            m('Close Scheme', 'scheme-details-scheme-finished', 'fa-check-double'),
+            m('Refund', 'scheme-details-scheme-part-refund', 'fa-money-bill-transfer'),
+            m('Interest', 'scheme-details-interest-posting', 'fa-percent'),
+            m('Passbook Print', 'scheme-details-pass-book-print', 'fa-book-open'),
+            m('POS Sync', 'scheme-details-pos-upload', 'fa-upload')
+        ]},
+        { label: 'Chitty Reports', icon: 'fa-diagram-project', children: [
+            m('Collection Report', 'scheme-reports-scheme-collection', 'fa-money-bill-wave'),
+            m('Commission Report', 'scheme-reports-colln-commision-report', 'fa-percent'),
+            m('Maturity Report', 'scheme-reports-scheme-maturity', 'fa-calendar-check'),
+            m('Scheme Details', 'scheme-reports-scheme-details', 'fa-list-ul'),
+            m('Scheme Ledger', 'scheme-reports-scheme-book', 'fa-book')
+        ]}
+    ]},
     { label: 'Sales Reports', items: [
         m('Daily Sales', 'daily-sales', 'fa-calendar-day'),
         m('Monthly Sales', 'monthly-sales', 'fa-calendar-days'),
@@ -2681,8 +2699,8 @@ const topMenuLabelMap = {
     'Gold Rate Update': 'Rate Update'
 };
 
-const primaryTopMenuOrder = ['System', 'Masters', 'Operations', 'Reports', 'System Tools', 'Rate Update'];
-const topMenuOrder = primaryTopMenuOrder.concat(['Other Menu Items']);
+const primaryTopMenuOrder = ['System', 'Masters', 'Operations', 'Reports', 'Accounts Reports', 'Sheme/Chitty', 'System Tools', 'Rate Update'];
+const topMenuOrder = primaryTopMenuOrder;
 
 function resolveOtherTopMenuSpec() {
     var usedLabels = new Set(primaryTopMenuOrder);
