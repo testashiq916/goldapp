@@ -2569,10 +2569,14 @@ const operationsPriorityOrder = [
     'Jewellery Processing',
     'Accounts Transactions',
     'Barcode Management',
-    'Chitty Management',
     'Staff Management',
     'Other Item Transactions',
     'Refinery Operations',
+    'Customer Greetings',
+    'Customer Weight Deposit',
+    'Repair & Remake',
+    'Stock Management',
+    'Chitty Management',
 ];
 
 const reportsPriorityOrder = [
