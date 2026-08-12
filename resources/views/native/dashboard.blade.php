@@ -2215,7 +2215,7 @@ const menuSpec = [
         ]},
     ]},
     { label: 'Reports', items: [
-        { label: 'Financial Reports', icon: 'fa-book', children: [
+        { label: 'Accounts Reports', icon: 'fa-book', children: [
             m('Account Ledger', 'accounts-reports-ac-ledger', 'fa-book-open'),
             m('All Transactions', 'accounts-reports-all-trans-report', 'fa-file-lines'),
             m('Average Profit', 'accounts-reports-avg-rate-profit', 'fa-chart-pie'),
@@ -2606,7 +2606,7 @@ const reportsPriorityOrder = [
     'Term Report',
     'GST Reports',
     'Branch Reports',
-    'Financial Reports',
+    'Accounts Reports',
     'Chitty Management Analytics',
 ];
 
@@ -2776,6 +2776,7 @@ const reportModuleIds = (function buildReportModuleIds() {
 })();
 
 const reportCategoryPermissionByLabel = {
+    'Accounts Reports': 'MDI_FINANCIAL_REPORTS',
     'Financial Reports': 'MDI_FINANCIAL_REPORTS',
     'Barcode Reports': 'MDI_BARCODE_REPORTS',
     'Customer Analytics': 'MDI_CUSTOMER_ANALYTICS',
