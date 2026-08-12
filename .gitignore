@@ -23,3 +23,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# supergold (Django)
+supergold/**/__pycache__/
+supergold/**/*.pyc
+supergold/db.sqlite3
+supergold/staticfiles/

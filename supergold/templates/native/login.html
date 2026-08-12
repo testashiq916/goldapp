@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block bare_content %}
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg,#3D2B0E,#6B4E2A);">
+  <div class="card" style="width:360px; text-align:center;">
+    <h1 style="margin-top:0;">{{ shop_name }}</h1>
+    <p style="color:#7a6a4a; margin-top:-8px;">Sign in to SuperGold</p>
+    {% if error %}<p style="color:#b3261e; font-weight:600;">{{ error }}</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="field" style="text-align:left;">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autofocus required>
+      </div>
+      <button type="submit" class="btn" style="width:100%;">Sign In</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Modules{% endblock %}
+{% block content %}
+<h1>All Modules</h1>
+<p style="color:#7a6a4a;">Every table in the legacy schema, browsable here. Read-only modules are transaction detail lines managed through their parent document screens.</p>
+{% for section in sections %}
+<div class="card module-group">
+  <h3>{{ section.label }}</h3>
+  <div class="module-links">
+    {% for m in section.models %}
+    <a class="btn btn-sm {% if m.readonly %}secondary{% endif %}" href="{{ m.url }}">{{ m.name }}{% if m.readonly %} (view){% endif %}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

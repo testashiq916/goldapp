@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load core_extras %}
+{% block title %}{{ verbose_name }}{% endblock %}
+{% block content %}
+<h1>{{ verbose_name }}</h1>
+<p><a href="{% url 'module_home' %}">&larr; All modules</a></p>
+
+<div class="card">
+  <form method="get" style="display:flex; gap:10px; margin-bottom:14px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search...">
+    <button class="btn" type="submit">Search</button>
+    {% if not readonly %}
+    <a class="btn" href="{% url 'module_add' group slug %}" style="margin-left:auto;">+ Add</a>
+    {% endif %}
+  </form>
+
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr>
+        {% for f in field_names %}<th>{{ f }}</th>{% endfor %}
+        {% if not readonly %}<th>Actions</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for obj in page %}
+      <tr>
+        {% for f in field_names %}<td>{{ obj|getattr:f }}</td>{% endfor %}
+        {% if not readonly %}
+        <td>
+          <a class="btn btn-sm" href="{% url 'module_edit' group slug obj.pk %}">Edit</a>
+          <a class="btn btn-sm danger" href="{% url 'module_delete' group slug obj.pk %}">Delete</a>
+        </td>
+        {% endif %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ field_names|length|add:1 }}">No records.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <div style="margin-top:14px;">
+    {% if page.has_previous %}<a class="btn btn-sm" href="?page={{ page.previous_page_number }}&q={{ q }}">&laquo; Prev</a>{% endif %}
+    <span style="margin:0 8px;">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-sm" href="?page={{ page.next_page_number }}&q={{ q }}">Next &raquo;</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

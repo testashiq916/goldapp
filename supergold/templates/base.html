@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ shop_name }}{% endblock %} — SuperGold</title>
+<style>
+    :root {
+        --gold: #B8860B; --gold-mid: #C9962A; --gold-bright: #D4A017;
+        --brown: #3D2B0E; --cream: #FDFAF6; --panel: #F2E8D0; --border: #D4A017;
+        --text: #2A1A08; --danger: #b3261e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, 'EB Garamond', serif; background: var(--cream); color: var(--text); }
+    header.topbar {
+        background: linear-gradient(135deg, #9A6F00, #C9962A 60%, #D4A017);
+        color: #fff; padding: 14px 24px; display: flex; align-items: center;
+        justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header.topbar a { color: #fff; text-decoration: none; }
+    header.topbar .brand { font-size: 1.3rem; font-weight: 700; letter-spacing: .5px; }
+    header.topbar nav a { margin-left: 18px; font-size: .92rem; opacity: .95; }
+    header.topbar nav a:hover { text-decoration: underline; }
+    .layout { display: flex; min-height: calc(100vh - 58px); }
+    .sidebar { width: 230px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border);
+        padding: 16px 0; overflow-y: auto; }
+    .sidebar h4 { margin: 14px 16px 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); }
+    .sidebar a { display: block; padding: 6px 18px; color: var(--text); text-decoration: none; font-size: .92rem; }
+    .sidebar a:hover { background: rgba(212,160,23,.15); }
+    main { flex: 1; padding: 26px 32px; }
+    .card { background: #fff; border: 1px solid #e7ddc4; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    h1, h2, h3 { color: var(--brown); }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    th { background: var(--panel); color: var(--brown); }
+    tr:hover td { background: #fbf6ea; }
+    .btn { display: inline-block; padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer;
+        background: linear-gradient(135deg,#9A6F00,#C9962A 40%,#D4A017); color: #fff; text-decoration: none;
+        font-size: .9rem; font-weight: 600; }
+    .btn.secondary { background: #6b6b6b; }
+    .btn.danger { background: var(--danger); }
+    .btn-sm { padding: 4px 10px; font-size: .8rem; }
+    input, select, textarea { padding: 8px 10px; border: 1px solid #cbb98a; border-radius: 6px; font-size: .92rem;
+        font-family: inherit; width: 100%; }
+    form .field { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 4px; font-size: .85rem; color: var(--brown); font-weight: 600; }
+    .messages { list-style: none; padding: 0; margin: 0 0 16px; }
+    .messages li { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; background: #eef8ee; color: #1e6b2f; }
+    .messages li.error { background: #fbeaea; color: var(--danger); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .72rem; background: var(--panel); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .stat { background: #fff; border: 1px solid #e7ddc4; border-radius: 10px; padding: 16px; }
+    .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--gold); }
+    .stat .label { font-size: .8rem; color: #7a6a4a; text-transform: uppercase; }
+    .module-group { margin-bottom: 22px; }
+    .module-group h3 { margin-bottom: 8px; border-bottom: 2px solid var(--panel); padding-bottom: 4px; }
+    .module-links a { margin-right: 10px; }
+    footer { text-align: center; padding: 14px; font-size: .8rem; color: #8a7a5a; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if legacy_user %}
+<header class="topbar">
+    <a class="brand" href="{% url 'dashboard' %}">{{ shop_name }}</a>
+    <nav>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'module_home' %}">Modules</a>
+        <a href="/admin/">Admin</a>
+        <span>{{ legacy_user.name }} ({{ legacy_user.code }})</span>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+</header>
+<div class="layout">
+    <aside class="sidebar">
+        {% for group, items in nav_groups.items %}
+        <h4>{{ group }}</h4>
+        {% for label, url in items %}
+        <a href="{{ url }}">{{ label }}</a>
+        {% endfor %}
+        {% endfor %}
+    </aside>
+    <main>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% else %}
+{% block bare_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

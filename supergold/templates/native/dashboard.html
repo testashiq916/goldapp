@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="grid">
+  <div class="stat"><div class="num">{{ stats.items }}</div><div class="label">Items</div></div>
+  <div class="stat"><div class="num">{{ stats.customers }}</div><div class="label">Customers</div></div>
+  <div class="stat"><div class="num">{{ stats.purchase_bills }}</div><div class="label">Purchase Bills</div></div>
+  <div class="stat"><div class="num">{{ stats.sales_bills }}</div><div class="label">Sales Bills</div></div>
+  <div class="stat"><div class="num">{{ stats.pending_reminders }}</div><div class="label">Pending Reminders</div></div>
+</div>
+
+<div class="card">
+  <h2>Modules</h2>
+  <div class="grid">
+    {% for label, count in module_counts.items %}
+    <div class="stat"><div class="num">{{ count }}</div><div class="label">{{ label }}</div></div>
+    {% endfor %}
+  </div>
+  <p><a class="btn" href="{% url 'module_home' %}">Browse all modules &rarr;</a></p>
+</div>
+{% endblock %}
